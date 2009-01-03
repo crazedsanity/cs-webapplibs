@@ -13,6 +13,7 @@
 abstract class cs_versionAbstract {
 	
 	public $isTest = FALSE;
+	private $versionFileLocation=null;
 	
 	abstract public function __construct();
 	
@@ -24,9 +25,8 @@ abstract class cs_versionAbstract {
 	 */
 	final public function get_version($asArray=false) {
 		$retval = NULL;
-		$versionFileLocation = dirname(__FILE__) .'/../VERSION';
-		if(file_exists($versionFileLocation)) {
-			$myData = file($versionFileLocation);
+		if(file_exists($this->versionFileLocation)) {
+			$myData = file($this->versionFileLocation);
 			
 			//set the logical line number that the version string is on, and 
 			//	drop by one to get the corresponding array index.
@@ -56,7 +56,13 @@ abstract class cs_versionAbstract {
 					$suffix = "";
 				}
 				
-				$fullVersionString = $this->gfObj->string_from_array(array_values($retval), NULL, '.');
+				$fullVersionString = "";
+				foreach(array_values($retval) as $chunk) {
+					if(strlen($fullVersionString)) {
+						$fullVersionString .= '.';
+					}
+					$fullVersionString .= $chunk;
+				}
 				if(strlen($suffix)) {
 					$fullVersionString .= '-'. $suffix;
 				}
@@ -87,9 +93,8 @@ abstract class cs_versionAbstract {
 	//=========================================================================
 	final public function get_project() {
 		$retval = NULL;
-		$versionFileLocation = dirname(__FILE__) .'/VERSION';
-		if(file_exists($versionFileLocation)) {
-			$myData = file($versionFileLocation);
+		if(file_exists($this->versionFileLocation)) {
+			$myData = file($this->versionFileLocation);
 			
 			//set the logical line number that the version string is on, and 
 			//	drop by one to get the corresponding array index.
@@ -111,6 +116,19 @@ abstract class cs_versionAbstract {
 		
 		return($retval);
 	}//end get_project()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function set_version_file_location($location) {
+		if(file_exists($location)) {
+			$this->versionFileLocation = $location;
+		}
+		else {
+			throw new exception(__METHOD__ .": invalid location of VERSION file (". $location .")");
+		}
+	}//end set_version_file_location()
 	//=========================================================================
 	
 	
