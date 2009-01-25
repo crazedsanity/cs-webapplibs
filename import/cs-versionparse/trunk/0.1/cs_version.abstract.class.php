@@ -81,7 +81,8 @@ abstract class cs_versionAbstract {
 			}
 		}
 		else {
-			throw new exception(__METHOD__ .": failed to retrieve version information");
+			throw new exception(__METHOD__ .": failed to retrieve version information, file " .
+					"(". $this->versionFileLocation .") does not exist or was not set");
 		}
 		
 		return($retval);
