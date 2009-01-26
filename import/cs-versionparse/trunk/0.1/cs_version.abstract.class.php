@@ -131,7 +131,6 @@ abstract class cs_versionAbstract {
 	protected function auto_set_version_file() {
 		if(!strlen($this->versionFileLocation)) {
 			$bt = debug_backtrace();
-			$gf = new cs_globalFunctions;
 			foreach($bt as $callNum=>$data) {
 				if(strlen($data['class'])) {
 					if($data['class'] != __CLASS__) {
@@ -142,8 +141,6 @@ abstract class cs_versionAbstract {
 						elseif(preg_match('/test$/', $dir)) {
 							$dir = preg_replace('/\/test$/', '', $dir);
 						}
-						$gf->debug_print(__METHOD__ .": going to use (". $dir .")");
-						cs_debug_backtrace(1);
 						break;
 					}
 				}
@@ -152,7 +149,6 @@ abstract class cs_versionAbstract {
 				}
 			}
 			
-			$gf = new cs_globalFunctions;
 			if(file_exists($dir .'/VERSION')) {
 				$this->set_version_file_location($dir .'/VERSION');
 			}
