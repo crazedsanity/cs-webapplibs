@@ -70,6 +70,54 @@ class testOfCSVersionParse extends UnitTestCase {
 		}
 	}//end test_basics()
 	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	function test_check_higher() {
+		
+		//NOTE: the first item should ALWAYS be higher.
+		$tests = array(
+			'basic, no suffix'	=> array('1.0.1', '1.0.0'),
+			'basic + suffix'	=> array('1.0.0-ALPHA1', '1.0.0-ALPHA0'),
+			'basic w/o maint'	=> array('1.0.1', '1.0'),
+			'suffix check'		=> array('1.0.0-BETA1', '1.0.0-ALPHA1'),
+			'suffix check2'		=> array('1.0.0-ALPHA10', '1.0.0-ALPHA1'),
+			'suffix check3'		=> array('1.0.1', '1.0.0-RC1')
+		);
+		
+		foreach($tests as $name=>$checkData) {
+			$ver = new middleTestClass;
+			$this->assertTrue($ver->is_higher_version($checkData[1], $checkData[0]));
+			$this->assertFalse($ver->is_higher_version($checkData[0], $checkData[1]));
+		}
+		
+		//now check to ensure there's no problem with parsing equivalent versions.
+		$tests = array(
+			'no suffix'				=> array('1.0', '1.0.0'),
+			'no maint + suffix'		=> array('1.0-ALPHA1', '1.0.0-ALPHA1'),
+			'no maint + BETA'		=> array('1.0-BETA5555', '1.0.0-BETA5555'),
+			'no maint + RC'			=> array('1.0-RC33', '1.0.0-RC33'),
+			'maint with space'		=> array('1.0-RC  33', '1.0.0-RC33'),
+			'extra spaces'			=> array(' 1.0   ', '1.0.0')
+		);
+		foreach($tests as $name=>$checkData) {
+			$ver = new middleTestClass;
+			
+			//rip apart & recreate first version to test against the expected...
+			$derivedFullVersion = $ver->build_full_version_string($ver->parse_version_string($checkData[0]));
+			$this->assertEqual($derivedFullVersion, $checkData[1], "TEST=(". $name ."): derived version " .
+					"(". $derivedFullVersion .") doesn't match expected (". $checkData[1] .")");
+			
+			//now rip apart & recreate the expected version (second) and make sure it matches itself.
+			$derivedFullVersion = $ver->build_full_version_string($ver->parse_version_string($checkData[1]));
+			$this->assertEqual($derivedFullVersion, $checkData[1], "TEST=(". $name ."): derived version " .
+					"(". $derivedFullVersion .") doesn't match expected (". $checkData[1] .")");
+		}
+		
+		
+	}//end test_check_higher()
+	//--------------------------------------------------------------------------
 }
 
 
