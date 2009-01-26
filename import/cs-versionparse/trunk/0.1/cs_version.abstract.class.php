@@ -25,18 +25,15 @@ abstract class cs_versionAbstract {
 	 */
 	final public function get_version($asArray=false) {
 		$retval = NULL;
+		
+		$this->auto_set_version_file();
+		
 		if(file_exists($this->versionFileLocation)) {
-			$myData = file($this->versionFileLocation);
+			$myMatches = array();
+			$findIt = preg_match('/VERSION: (.+)/', file_get_contents($this->versionFileLocation), $matches);
 			
-			//set the logical line number that the version string is on, and 
-			//	drop by one to get the corresponding array index.
-			$lineOfVersion = 3;
-			$arrayIndex = $lineOfVersion -1;
-			
-			$myVersionString = trim($myData[$arrayIndex]);
-			
-			if(preg_match('/^VERSION: /', $myVersionString)) {
-				$fullVersionString = preg_replace('/^VERSION: /', '', $myVersionString);
+			if($findIt == 1 && count($matches) == 2) {
+				$fullVersionString = $matches[1];
 				$pieces = explode('.', $fullVersionString);
 				$retval = array(
 					'version_major'			=> $pieces[0],
@@ -77,7 +74,8 @@ abstract class cs_versionAbstract {
 				}
 			}
 			else {
-				throw new exception(__METHOD__ .": failed to retrieve version string");
+				throw new exception(__METHOD__ .": failed to retrieve version string in file " .
+						"(". $this->versionFileLocation .")");
 			}
 		}
 		else {
@@ -94,18 +92,13 @@ abstract class cs_versionAbstract {
 	//=========================================================================
 	final public function get_project() {
 		$retval = NULL;
+		$this->auto_set_version_file();
 		if(file_exists($this->versionFileLocation)) {
-			$myData = file($this->versionFileLocation);
+			$myMatches = array();
+			$findIt = preg_match('/PROJECT: (.+)/', file_get_contents($this->versionFileLocation), $matches);
 			
-			//set the logical line number that the version string is on, and 
-			//	drop by one to get the corresponding array index.
-			$lineOfProject = 4;
-			$arrayIndex = $lineOfProject -1;
-			
-			$myProject = trim($myData[$arrayIndex]);
-			
-			if(preg_match('/^PROJECT: /', $myProject)) {
-				$retval = preg_replace('/^PROJECT: /', '', $myProject);
+			if($findIt == 1 && count($matches) == 2 && strlen($matches[1])) {
+				$retval = $matches[1];
 			}
 			else {
 				throw new exception(__METHOD__ .": failed to retrieve project string");
@@ -130,6 +123,44 @@ abstract class cs_versionAbstract {
 			throw new exception(__METHOD__ .": invalid location of VERSION file (". $location .")");
 		}
 	}//end set_version_file_location()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	protected function auto_set_version_file() {
+		if(!strlen($this->versionFileLocation)) {
+			$bt = debug_backtrace();
+			$gf = new cs_globalFunctions;
+			foreach($bt as $callNum=>$data) {
+				if(strlen($data['class'])) {
+					if($data['class'] != __CLASS__) {
+						$dir = dirname($data['file']);
+						if(preg_match('/tests$/', $dir)) {
+							$dir = preg_replace('/\/tests$/', '', $dir);
+						}
+						elseif(preg_match('/test$/', $dir)) {
+							$dir = preg_replace('/\/test$/', '', $dir);
+						}
+						$gf->debug_print(__METHOD__ .": going to use (". $dir .")");
+						cs_debug_backtrace(1);
+						break;
+					}
+				}
+				else {
+					throw new exception(__METHOD__ .": failed to locate the calling class in backtrace");
+				}
+			}
+			
+			$gf = new cs_globalFunctions;
+			if(file_exists($dir .'/VERSION')) {
+				$this->set_version_file_location($dir .'/VERSION');
+			}
+			else {
+				throw new exception(__METHOD__ .": failed to automatically set version file");
+			}
+		}
+	}//end auto_set_version_file()
 	//=========================================================================
 	
 	
