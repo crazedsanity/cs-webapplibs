@@ -216,7 +216,6 @@ abstract class cs_versionAbstract {
 			unset($versionInfo['version_suffix']);
 			
 			$retval = "";
-			$gf = new cs_globalFunctions;
 			foreach($versionInfo as $name=>$value) {
 				if(strlen($retval)) {
 					$retval .= ".". $value;
@@ -230,7 +229,6 @@ abstract class cs_versionAbstract {
 			}
 		}
 		else {
-			cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": missing indexes in given array (". $missing .")");
 		}
 		
