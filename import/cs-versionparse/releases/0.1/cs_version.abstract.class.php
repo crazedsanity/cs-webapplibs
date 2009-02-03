@@ -137,7 +137,7 @@ abstract class cs_versionAbstract {
 				$this->set_version_file_location($dir .'/VERSION');
 			}
 			else {
-				throw new exception(__METHOD__ .": failed to automatically set version file");
+				throw new exception(__METHOD__ .": failed to automatically set version file (tried ". $dir ."/VERSION)");
 			}
 		}
 	}//end auto_set_version_file()
