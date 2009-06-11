@@ -157,10 +157,12 @@ abstract class cs_versionAbstract {
 			$pieces = explode('.', $version);
 			$retval = array(
 				'version_major'			=> $pieces[0],
-				'version_minor'			=> $pieces[1],
-				'version_maintenance'	=> $pieces[2]
+				'version_minor'			=> $pieces[1]
 			);
-			if(!strlen($retval['version_maintenance'])) {
+			if(isset($pieces[2]) && strlen($pieces[2])) {
+				$retval['version_maintenance'] = $pieces[2];
+			}
+			else {
 				$retval['version_maintenance'] = 0;
 			}
 			
