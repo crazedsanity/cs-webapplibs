@@ -253,14 +253,12 @@ class cs_webdblogger {
 		//okay, setup an array of all the data we need.
 		$cleanStringArr = array(
 			'log_event_id'	=> 'numeric',
-			'group_id'		=> 'numeric',
 			'uid'			=> 'numeric',
 			'affected_uid'	=> 'numeric',
 			'details'		=> 'sql'
 		);
 		$sqlArr = array (
 			'log_event_id'	=> cleanString($logEventId, 'numeric'),
-			'group_id'		=> $_SESSION['group_id'],
 			'uid'			=> $myUid,
 			'affected_uid'	=> $uid,
 			'details'		=> $details
@@ -408,7 +406,6 @@ class cs_webdblogger {
 			'log_category_id'	=> array('ca',	'numeric'),
 			'uid'				=> array('l',	'numeric'),
 			'affected_uid'		=> array('l',	'numeric'),
-			'group_id'			=> array('l',	'numeric'),
 			'creation'			=> array('l',	'sql')
 		);
 		
