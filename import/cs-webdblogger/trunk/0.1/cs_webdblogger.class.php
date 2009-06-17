@@ -57,6 +57,9 @@ class cs_webdblogger {
 	/** Last SQL file handled */
 	protected $lastSQLFile=null;
 	
+	/** Global functions class from cs-content */
+	private $gfObj;
+	
 	//=========================================================================
 	/**
 	 * The constructor.
@@ -205,7 +208,7 @@ class cs_webdblogger {
 			'log_category_id'	=> $this->logCategoryId
 		);
 		$sql = "SELECT log_event_id FROM log_event_table WHERE " .
-			string_from_array($sqlArr, 'select', NULL, 'numeric');
+			$this->gfObj->string_from_array($sqlArr, 'select', NULL, 'numeric');
 		$numrows = $this->db->exec($sql);
 		$dberror = $this->db->errorMsg();
 		
@@ -231,6 +234,11 @@ class cs_webdblogger {
 	
 	//=========================================================================
 	public function log_by_class($details, $className="error", $uid=NULL) {
+		//make sure there's a valid class name.
+		if(!strlen($className) || is_null($className)) {
+			$className = 'error';
+		}
+		
 		//make sure we've got a uid to log under.
 		if(is_null($uid) || !is_numeric($uid)) {
 			//set it.
@@ -261,14 +269,14 @@ class cs_webdblogger {
 			'details'		=> 'sql'
 		);
 		$sqlArr = array (
-			'log_event_id'	=> cleanString($logEventId, 'numeric'),
+			'log_event_id'	=> $this->gfObj->cleanString($logEventId, 'numeric'),
 			'uid'			=> $myUid,
 			'affected_uid'	=> $uid,
 			'details'		=> $details
 		);
 		
 		//build, run, error-checking.
-		$sql = "INSERT INTO log_table ". string_from_array($sqlArr, 'insert', NULL, $cleanStringArr, TRUE);
+		$sql = "INSERT INTO log_table ". $this->gfObj->string_from_array($sqlArr, 'insert', NULL, $cleanStringArr, TRUE);
 		$numrows = $this->db->exec($sql);
 		$dberror = $this->db->errorMsg();
 		
@@ -301,10 +309,7 @@ class cs_webdblogger {
 		$retval = $this->log_by_class($details, 'error', $uid);
 		$this->logCategoryId = $originalCategoryId;
 		
-		if(defined('ISDEVSITE')) {
-			cs_debug_backtrace(1);
-			throw new exception(__METHOD__ .": encountered error::: $details");
-		}
+		throw new exception(__METHOD__ .": encountered error::: $details");
 		
 		//give 'em the result.
 		return($retval);
@@ -319,31 +324,27 @@ class cs_webdblogger {
 	 */
 	private function auto_insert_record($logClassId) {
 		//generate a default name
-		$sql = "SELECT (select name FROM log_class_table WHERE log_class_id=". $logClassId .") || ': ' || " .
-				"(select name FROM log_category_table WHERE log_category_id=". $this->logCategoryId .") || " .
-				"' (auto-generated)' AS details;";
-		$numrows = $this->db->exec($sql);
-		$dberror = $this->db->errorMsg();
 		
-		if(strlen($dberror) || $numrows !== 1) {
-			//something bad happened.  Unable to recover.
+		$className = $this->get_log_class_name($logClassId);
+		$categoryName = $this->get_log_category_name($this->logCategoryId);
+		
+		$details = ucwords($categoryName) .": ". ucwords($className);
+		
+		if(strlen($details) <= 4) {
+			//something bad happened (i.e. details="0: 0")
 			throw new exception(__METHOD__ .": failed to recover with log_class_id=(". $logClassId .") " .
-					"AND log_category_id=(". $this->logCategoryId .")");
+					"AND log_category_id=(". $this->logCategoryId ."), details=(". $details .")");
 		}
 		else {
-			//retrieve the record.
-			$myData = $this->db->farray();
-			$details = $myData[0];
-			
 			//create the sql array.
 			$sqlArr = array (
 				'log_class_id'		=> $logClassId,
 				'log_category_id'	=> $this->logCategoryId,
-				'description'		=> "'". cleanString($details, 'sql') ."'"
+				'description'		=> "'". $this->gfObj->cleanString($details, 'sql') ."'"
 			);
 			
 			//now run the insert.
-			$sql = 'INSERT INTO log_event_table '. string_from_array($sqlArr, 'insert');
+			$sql = 'INSERT INTO log_event_table '. $this->gfObj->string_from_array($sqlArr, 'insert');
 			$numrows = $this->db->exec($sql);
 			$dberror = $this->db->errorMsg();
 			
@@ -398,11 +399,11 @@ class cs_webdblogger {
 				
 				//clean the data.
 				if($field == 'creation' && is_numeric($value)) {
-					$value = cleanString($value, 'numeric');
+					$value = $this->gfObj->cleanString($value, 'numeric');
 					$cleanedData = ">= (NOW() - interval '". $value ." hours')";
 				}
 				else {
-					$cleanedData = cleanString($value, $cleanStringArg);
+					$cleanedData = $this->gfObj->cleanString($value, $cleanStringArg);
 				}
 				
 				//set the prefixed column name.
@@ -418,7 +419,7 @@ class cs_webdblogger {
 		if($excludeNavigation) {
 			$sqlArr['ca.log_category_id'] = '<>10';
 		}
-		$critString = string_from_array($sqlArr, 'select');
+		$critString = $this->gfObj->string_from_array($sqlArr, 'select');
 		
 		//check if "timeperiod" is in there (it's special)
 		if(isset($criteria['timeperiod']) && isset($criteria['timeperiod']['start']) && isset($criteria['timeperiod']['end'])) {
@@ -428,7 +429,7 @@ class cs_webdblogger {
 			$critString = create_list($critString, $addThis, ' AND ');
 		}
 		
-		$orderString = string_from_array($orderBy, 'limit');
+		$orderString = $this->gfObj->string_from_array($orderBy, 'limit');
 		$sql = "select " .
 				"l.creation, " .
 				"l.log_id, " .
@@ -547,7 +548,6 @@ class cs_webdblogger {
 	
 	//=========================================================================
 	private function create_log_class($className) {
-		cs_debug_backtrace();
 		$sql = "INSERT INTO log_class_table (name) VALUES ('". 
 			$this->gfObj->cleanString($className, 'sql') ."')";
 		if($this->run_sql($sql)) {
@@ -572,8 +572,66 @@ class cs_webdblogger {
 	 * information to do the same thing).
 	 */
 	private function get_last_inserted_id($sequence) {
-		return($this->db->lastID($sequence));
+		$myId = $this->db->lastID($sequence);
+		
+		if(!is_numeric($myId) || $myId < 1) {
+			throw new exception(__METHOD__ .": failed to retrieve valid id (". $myId .")");
+		}
+		
+		return($myId);
 	}//end get_last_inserted_id()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	private function get_log_class_name($classId) {
+		if(is_numeric($classId)) {
+			$sql = "SELECT name FROM log_class_table WHERE log_class_id=". $classId;
+			if($this->run_sql($sql)) {
+				$data = $this->db->farray();
+				$className = $data[0];
+				
+				if(strlen($className) < 2) {
+					throw new exception(__METHOD__ .": invalid class name returned (". $className .")");
+				}
+			}
+			else {
+				throw new exception(__METHOD__ .": failed to retrieve class name data for id=(". $classId .")");
+			}
+		}
+		else {
+			throw new exception(__METHOD__ .": invalid class ID (". $classId .")");
+		}
+		
+		return($className);
+	}//end get_log_class_name()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	private function get_log_category_name($categoryId) {
+		if(is_numeric($categoryId)) {
+			$sql = "SELECT name FROM log_category_table WHERE log_category_id=". $categoryId;
+			if($this->run_sql($sql)) {
+				$data = $this->db->farray();
+				$categoryName = $data[0];
+				
+				if(strlen($categoryName) < 2) {
+					throw new exception(__METHOD__ .": invalid category name returned (". $categoryName .")");
+				}
+			}
+			else {
+				throw new exception(__METHOD__ .": failed to retrieve category name data for id=(". $categoryId .")");
+			}
+		}
+		else {
+			throw new exception(__METHOD__ .": invalid category ID (". $categoryId .")");
+		}
+		
+		return($categoryName);
+	}//end get_log_category_name()
 	//=========================================================================
 	
 	
