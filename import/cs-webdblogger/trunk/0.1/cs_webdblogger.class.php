@@ -503,7 +503,7 @@ class cs_webdblogger {
 	
 	
 	//=========================================================================
-	public function get_log_category_id($catName) {
+	private function get_log_category_id($catName) {
 		if(strlen($catName) && is_string($catName)) {
 			$catName = trim($catName);
 			$sql = "SELECT log_category_id FROM log_category_table WHERE lower(name) = '". strtolower($catName) ."'";
