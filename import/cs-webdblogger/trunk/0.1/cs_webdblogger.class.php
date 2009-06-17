@@ -161,7 +161,10 @@ class cs_webdblogger {
 		$numrows = $this->db->exec($sql);
 		$dberror = $this->db->errorMsg();
 		
-		if(strlen($dberror) || $numrows < 5) {
+		if(!strlen($dberror) && $numrows == 0) {
+			$this->logClassCache = array();
+		}
+		elseif(strlen($dberror) || $numrows < 0) {
 			//something bad happened.
 			throw new exception(__METHOD__ .": not enough data ($numrows) or database error:::\n$dberror");
 		}
@@ -275,19 +278,7 @@ class cs_webdblogger {
 		}
 		else {
 			//good to go.
-			$retval = $numrows;
-			
-			//good to go: get the log_id that was just created.
-			$sql = "SELECT currval('log_table_log_id_seq'::text)";
-			$numrows = $this->db->exec($sql);
-			$dberror = $this->db->errorMsg();
-			
-			//it's okay if it doesn't work.
-			if(!strlen($dberror) && $numrows == 1) {
-				//got it!
-				$data = $this->db->farray();
-				$retval = $data[0];
-			}
+			$retval = $this->get_last_inserted_id('log_table_log_id_seq');
 		}
 		
 		return($retval);
@@ -362,20 +353,7 @@ class cs_webdblogger {
 			}
 			else {
 				//got it.  Retrieve the id.
-				$sql = "SELECT currval('log_event_table_log_event_id_seq'::text)";
-				$numrows = $this->db->exec($sql);
-				$dberror = $this->db->errorMsg();
-				
-				if(strlen($dberror) || $numrows !== 1) {
-					//couldn't get the value... but we inserted it....
-					throw new exception(__METHOD__ .": unable to retrieve newly inserted id... " .
-							"numrows=($numrows), dberror:::\n$dberror");
-				}
-				else {
-					//got our value!!!
-					$data = $this->db->farray();
-					$retval = $data[0];
-				}
+				$retval = $this->get_last_inserted_id('log_event_table_log_event_id_seq');
 			}
 		}
 		
@@ -555,14 +533,7 @@ class cs_webdblogger {
 			$this->gfObj->cleanString($catName, 'sql') ."')";
 		if($this->run_sql($sql)) {
 			//sweet.  Get the newly created record.
-			$sql = "select currval('log_category_table_log_category_id_seq'::text)";
-			if($this->run_sql($sql)) {
-				$data = $this->db->farray();
-				$retval = $data[0];
-			}
-			else {
-				throw new exception(__METHOD__ .": failed to retrieve log_category_id of new record");
-			}
+			$retval = $this->get_last_inserted_id('log_category_table_log_category_id_seq');
 		}
 		else {
 			throw new exception(__METHOD__ .": failed to create new log_category (". $catName .")");
@@ -581,16 +552,7 @@ class cs_webdblogger {
 			$this->gfObj->cleanString($className, 'sql') ."')";
 		if($this->run_sql($sql)) {
 			//sweet.  Get the newly created record.
-			$sql = "select currval('log_class_table_log_class_id_seq'::text)";
-			if($this->run_sql($sql)) {
-				$data = $this->db->farray();
-				$retval = $data[0];
-				
-				$this->run_sql("SELECT * FROM log_class_table WHERE log_class_id=". $retval);
-			}
-			else {
-				throw new exception(__METHOD__ .": failed to retrieve log_class_id of new record");
-			}
+			$retval = $this->get_last_inserted_id('log_class_table_log_class_id_seq');
 		}
 		else {
 			throw new exception(__METHOD__ .": failed to create new log_class");
@@ -598,6 +560,20 @@ class cs_webdblogger {
 		
 		return($retval);
 	}//end create_log_class()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	/**
+	 * Returns ID of the last inserted record.  Added for future compatibility 
+	 * with other database types (mysql doesn't need to know what the sequence
+	 * name was, but pgsql does, future DB implementations may need different 
+	 * information to do the same thing).
+	 */
+	private function get_last_inserted_id($sequence) {
+		return($this->db->lastID($sequence));
+	}//end get_last_inserted_id()
 	//=========================================================================
 	
 	
