@@ -588,7 +588,8 @@ class cs_webdblogger {
 	private function get_log_class_name($classId) {
 		if(is_numeric($classId)) {
 			$sql = "SELECT name FROM log_class_table WHERE log_class_id=". $classId;
-			if($this->run_sql($sql)) {
+			$res = $this->run_sql($sql);
+			if($res) {
 				$data = $this->db->farray();
 				$className = $data[0];
 				
@@ -597,7 +598,7 @@ class cs_webdblogger {
 				}
 			}
 			else {
-				throw new exception(__METHOD__ .": failed to retrieve class name data for id=(". $classId .")");
+				throw new exception(__METHOD__ .": failed to retrieve class name data for id=(". $classId .") - res=(". $res .")");
 			}
 		}
 		else {
