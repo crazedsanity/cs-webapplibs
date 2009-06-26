@@ -416,9 +416,7 @@ class cs_webdblogger {
 		
 		
 		//build the criteria.
-		if($excludeNavigation) {
-			$sqlArr['ca.log_category_id'] = '<>10';
-		}
+		$sqlArr['ca.log_category_id'] = '>0';
 		$critString = $this->gfObj->string_from_array($sqlArr, 'select');
 		
 		//check if "timeperiod" is in there (it's special)
@@ -469,11 +467,8 @@ class cs_webdblogger {
 	
 	//=========================================================================
 	public function get_recent_logs() {
-		//set the criteria so we only get things within the last hour.
-		$criteria = array(
-			'creation'	=> 1
-		);
-		$retval = $this->get_logs($criteria, NULL, 20);
+		//set the criteria so we only get the last few entries.
+		$retval = $this->get_logs(array(), NULL, 20);
 		return($retval);
 	}//end get_recent_logs()
 	//=========================================================================
