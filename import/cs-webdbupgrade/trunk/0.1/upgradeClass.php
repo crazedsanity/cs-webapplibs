@@ -4,11 +4,11 @@
  * 
  * SVN INFORMATION:::
  * ------------------
- * SVN Signature::::::: $Id: upgradeClass.php 894 2008-05-16 03:26:15Z crazedsanity $
- * Last Author::::::::: $Author: crazedsanity $ 
- * Current Revision:::: $Revision: 894 $ 
- * Repository Location: $HeadURL: https://cs-project.svn.sourceforge.net/svnroot/cs-project/trunk/1.2/lib/upgradeClass.php $ 
- * Last Updated:::::::: $Date: 2008-05-15 22:26:15 -0500 (Thu, 15 May 2008) $
+ * SVN Signature::::::: $Id$
+ * Last Author::::::::: $Author$ 
+ * Current Revision:::: $Revision$ 
+ * Repository Location: $HeadURL$ 
+ * Last Updated:::::::: $Date$
  * 
  */
 
