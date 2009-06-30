@@ -12,7 +12,7 @@
  * 
  */
 
-class upgrade {
+class cs_webdbupgrade {
 	
 	private $fsObj;
 	private $gfObj;
