@@ -47,7 +47,7 @@ CREATE TABLE log_event_table (
 	log_class_id integer NOT NULL REFERENCES log_class_table(log_class_id),
 	log_category_id integer NOT NULL REFERENCES log_category_table(log_category_id),
 	description text NOT NULL
-)
+);
 
 
 --
