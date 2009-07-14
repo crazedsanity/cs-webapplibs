@@ -20,11 +20,11 @@ class cs_webdbupgrade {
 	protected $db;
 	protected $logsObj;
 	
-	private $versionFileVersion = NULL;
-	private $configVersion = NULL;
-	private $databaseVersion = NULL;
+	/** Name of the project as referenced in the database. */
+	protected $projectName;
 	
-	private $mainConfig = NULL;
+	private $versionFileVersion = NULL;
+	private $databaseVersion = NULL;
 	
 	/** List of acceptable suffixes; example "1.0.0-BETA3" -- NOTE: these MUST be in 
 	 * an order that reflects newest -> oldest; "ALPHA happens before BETA, etc. */
@@ -35,20 +35,73 @@ class cs_webdbupgrade {
 	);
 	
 	//=========================================================================
-	public function __construct() {
-		$this->fsObj =  new cs_fileSystemClass(dirname(__FILE__) .'/../');
+	public function __construct($versionFileLocation, array $config) {
+		
+		//Handle the config array (cope with XML-ish array)
+		if(is_array($config)) {
+			//check if it is in the complex XML array style...
+			$keys = array_keys($config);
+			if(isset($config[$keys[0]]['type'])) {
+				$this->fix_xml_config($config);
+				$this->config = $this->tempXmlConfig;
+			}
+			else {
+				$this->config = $config;
+			}
+		}
+		else {
+			throw new exception(__METHOD__ .": no configuration available");
+		}
+		
+		//cope with problems in CS-Content v1.0-ALPHA9 (or before)--see http://project.crazedsanity.com/extern/helpdesk/view?ID=281
+		if(isset($this->config['DBPARMLINKER'])) {
+			$this->config['DBPARAMS'] = array();
+			foreach($this->config['DBPARMLINKER'] as $i=>$loc) {
+				$this->config['DBPARAMS'][strtolower($i)] = $this->config[$loc];
+				unset($this->config[$loc]);
+			}
+			unset($this->config['DBPARMLINKER']);
+		}
+		
+		//Check for some required constants.
+		$requisiteConstants = array('LIBDIR');
+		if(!defined('LIBDIR')) {
+			throw new exception(__METHOD__ .": required constant 'LIBDIR' not set");
+		}
+		
+		require_once(constant('LIBDIR') .'/cs-content/cs_globalFunctions.class.php');
+		require_once(constant('LIBDIR') .'/cs-content/cs_fileSystem.class.php');
+		require_once(constant('LIBDIR') .'/cs-content/cs_phpDB.class.php');
+		require_once(constant('LIBDIR') .'/cs-webdblogger/cs_webdblogger.class.php');
+		require_once(constant('LIBDIR') .'/cs-phpxml/cs_phpxmlParser.class.php');
+		require_once(constant('LIBDIR') .'/cs-phpxml/cs_arrayToPath.class.php');
+		
+		$this->versionFileLocation = $versionFileLocation;
+		
+		$this->fsObj =  new cs_fileSystem(dirname($this->versionFileLocation));
 		$this->gfObj = new cs_globalFunctions;
 		$this->gfObj->debugPrintOpt = DEBUGPRINTOPT;
-		clearstatcache();
 		
-		$this->db = new cs_phpDB;
-		$this->db->connect(get_config_db_params());
+		if(!defined('DBTYPE')) {
+			throw new exception(__METHOD__ .": required constant 'DBTYPE' not set");
+		}
+		if(!isset($this->config['CONFIG_FILE_LOCATION'])) {
+			throw new exception(__METHOD__ .": required setting 'CONFIG_FILE_LOCATION' not found");
+		}
+		if(!strlen($versionFileLocation) || !file_exists($versionFileLocation)) {
+			throw new exception(__METHOD__ .": unable to locate version file (". $versionFileLocation .")");
+		}
 		
-		$this->logsObj = new logsClass($this->db, "Upgrade");
+		$this->db = new cs_phpDB(constant('DBTYPE'));
+		try {
+			$this->db->connect($this->config['DBPARAMS']);
+			$this->logsObj = new cs_webdblogger($this->db, "Upgrade");
+		}
+		catch(exception $e) {
+			throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
+		}
 		
-		//define some things for upgrades.
-		define("UPGRADE_LOCKFILE",	dirname(__FILE__) ."/../UPGRADING_VERSION"); //relative to the directory beneath lib.
-		define("UPGRADE_DIR",		dirname(__FILE__) ."/../upgrade");
+		$this->check_versions(false);
 	}//end __construct()
 	//=========================================================================
 	
@@ -61,42 +114,39 @@ class cs_webdbupgrade {
 	 * listed in the database.
 	 */
 	public function check_versions($performUpgrade=TRUE) {
+		if(!is_bool($performUpgrade) || is_null($performUpgrade)) {
+			$performUpgrade = true;
+		}
+		
 		//first, check that all files exist.
 		$retval = NULL;
 		
 		//check to see if the lock files for upgrading exist.
 		if($this->upgrade_in_progress()) {
+			$this->logsObj->log_by_class("Upgrade in progress", 'notice');
 			throw new exception(__METHOD__ .": upgrade in progress");
 		}
-		elseif(!file_exists(CONFIG_FILE_LOCATION)) {
-			throw new exception(__METHOD__ .": config.xml file missing");
+		elseif(!file_exists($this->config['CONFIG_FILE_LOCATION'])) {
+			throw new exception(__METHOD__ .": config file (". $this->config['CONFIG_FILE_LOCATION'] .") missing");
 		}
-		elseif(!file_exists(dirname(__FILE__) .'/../VERSION')) {
+		elseif(!file_exists($this->versionFileLocation)) {
+			$this->logsObj->log_by_class("VERSION file missing", 'error');
 			throw new exception(__METHOD__ .": VERSION file missing");
-		}
-		elseif(!file_exists(dirname(__FILE__) .'/../upgrade/upgrade.xml')) {
-			throw new exception(__METHOD__ .": upgrade.xml file missing");
 		}
 		else {
 			//okay, all files present: check the version in the VERSION file.
-			$versionFileContents = $this->read_version_file();
-			
-			//now read data from the config.
-			$versionFromConfig = $this->read_config_version();
+			$dbVersion = $this->get_database_version();
+			$versionFileVersion = $this->read_version_file();
 			
 			$versionsDiffer = TRUE;
 			$retval = FALSE;
-			if($versionFileContents == $versionFromConfig) {
-				$versionConflict = $this->check_for_version_conflict();
-				if($versionConflict === 0) {
-					//all is good: no problems detected (all things match-up).
-					$versionsDiffer=FALSE;
-					$performUpgrade = FALSE;
-				}
-				else {
-					//
-					$versionsDiffer = TRUE;
-				}
+			
+			if($this->check_for_version_conflict() == 0) {
+				$versionsDiffer = false;
+				$performUpgrade = false;
+			}
+			else {
+				$versionsDiffer = true;
 			}
 			
 			if($versionsDiffer == TRUE && $performUpgrade === TRUE) {
@@ -135,33 +185,6 @@ class cs_webdbupgrade {
 		
 		return($retval);
 	}//end read_version_file()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	private function read_config_version() {
-		$configObj = new config();
-		$config = $configObj->read_config_file(FALSE);
-		$this->mainConfig = $config;
-		$retval = NULL;
-		
-		if(!is_array($config) || !count($config)) {
-			throw new exception(__METHOD__ .": no configuration data available (missing config file?)");
-		}
-		else {
-			//now, let's see if there's a "version_string" index.
-			if(isset($config['VERSION_STRING']) && strlen($config['VERSION_STRING'])) {
-				$retval = $config['VERSION_STRING'];
-			}
-			else {
-				throw new exception(__METHOD__ .": invalid version string found (". $config['VERSION_STRING'] .")");
-			}
-		}
-		
-		$this->configVersion = $retval;
-		return($retval);
-	}//end read_config_version()
 	//=========================================================================
 	
 	
@@ -339,19 +362,9 @@ class cs_webdbupgrade {
 		//set a default return...
 		$retval = NULL;
 		
-		//call to ensure files have been processed.
-		#$this->check_versions(FALSE);
-		$this->read_config_version();
 		$this->read_version_file();
-		$configVersion = NULL;
 		
 		//parse the version strings.
-		if(strlen($this->configVersion)) {
-			$configVersion = $this->parse_version_string($this->configVersion);
-		}
-		$versionFile = $this->parse_version_string($this->versionFileVersion);
-		
-		
 		$dbVersion = $this->get_database_version();
 		$versionFileData = $this->parse_version_string($this->versionFileVersion);
 		
@@ -405,25 +418,33 @@ class cs_webdbupgrade {
 	
 	//=========================================================================
 	private function get_database_version() {
+		$this->gfObj->debugPrintOpt=1;
 		//create a database object & attempt to read the database version.
 		
-		if(!is_object($this->db) || get_class($this->db) != 'cs_phpDB') {
-			$this->db = new cs_phpDB;
-			$this->db->connect(get_config_db_params());
-		}
+		$sql = "SELECT * FROM ". $this->config['DB_TABLE'] ." WHERE project_name='" .
+				$this->gfObj->cleanString($this->projectName, 'sql') ."'";
 		
-		$sql = "SELECT " .
-			"internal_data_get_value('version_string') AS version_string, " .
-			"internal_data_get_value('version_major') AS version_major, " .
-			"internal_data_get_value('version_minor') AS version_minor, " .
-			"internal_data_get_value('version_maintenance') AS version_maintenance, " .
-			"internal_data_get_value('version_suffix') AS version_suffix";
 		$numrows = $this->db->exec($sql);
 		$dberror = $this->db->errorMsg();
 		
 		if(strlen($dberror) || $numrows != 1) {
-			//fail.
-			throw new exception(__METHOD__ .": failed to retrieve version... numrows=(". $numrows ."), DBERROR::: ". $dberror);
+			//
+			if(preg_match('/doesn\'t exist/', $dberror)) {
+				//add the table...
+				$loadTableResult = $this->load_table();
+				if($loadTableResult === TRUE) {
+					//now try the SQL...
+					$numrows = $this->db->exec($sql);
+					$dberror = $this->db->errorMsg();
+				}
+				else {
+					throw new exception(__METHOD__ .": no table in database, failed to create one... ORIGINAL " .
+						"ERROR: ". $dberror .", SCHEMA LOAD ERROR::: ". $loadTableResult);
+				}
+			}
+			else {
+				throw new exception(__METHOD__ .": failed to retrieve version... numrows=(". $numrows ."), DBERROR::: ". $dberror);
+			}
 		}
 		else {
 			$data = $this->db->farray_fieldnames();
@@ -893,6 +914,94 @@ class cs_webdbupgrade {
 		
 		return($retval);
 	}//end parse_suffix()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	private function fix_xml_config($config, $path=null) {
+		#$this->gfObj->debug_print(__METHOD__ .": path=(". $path ."):: ". $this->gfObj->debug_print($config,0));
+		$this->xmlLoops++;
+		if($this->xmlLoops > 1000) {
+			throw new exception(__METHOD__ .": infinite loop detected...");
+		}
+		
+		try {
+			$a2p = new cs_arrayToPath($config);
+		}
+		catch(exception $e) {
+			$this->gfObj->debug_print($config);
+			exit("died on #1");
+		}
+		if(!is_array($this->tempXmlConfig)) {	
+			$this->tempXmlConfig = array();
+		}
+		try {
+			$myA2p = new cs_arrayToPath(&$this->tempXmlConfig);
+		}
+		catch(exception $e) {
+			
+			exit("died on #2");
+		}
+		
+		$myData = $a2p->get_data($path);
+		
+		if(is_array($myData)) {
+			if(isset($myData['type']) && $myData['type'] != 'open') {
+				if($myData['type'] == 'complete') {
+					$val = null;
+					if(isset($myData['value'])) {
+						$val = $myData['value'];
+					}
+					$oldData = $myA2p->get_data();
+					$myA2p->set_data($path, $val);
+					$this->tempXmlConfig = $myA2p->get_data();
+					#$this->gfObj->debug_print(__METHOD__ .": set data, path=(". $path ."), val=(". $val ."), current data::: " .
+					#		$this->gfObj->debug_print($myA2p->get_data(),0) .", OLD DATA::: " .
+					#		$this->gfObj->debug_print($oldData,0));
+				}
+				else {
+					throw new exception(__METHOD__ .": invalid type (". $myData['type'] .")");
+				}
+			}
+			else {
+				foreach($myData as $i=>$d) {
+					if(!in_array($i, array('type', 'attributes', 'value'))) {
+						$this->fix_xml_config($config, $path .'/'. $i);
+					}
+				}
+			}
+		}
+		else {
+			throw new exception(__METHOD__ .": unable to fix data on path=(". $path .")::: ". $this->gfObj->debug_print($myData,0));
+		}
+	}//end fix_xml_config()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function load_table() {
+		$schemaFileLocation = dirname(__FILE__) .'/schema/schema.sql';
+		$schema = file_get_contents($schemaFileLocation);
+		$schema = str_replace('{tableName}', $this->config['DB_TABLE'], $schema);
+		$this->db->exec($schema);
+		
+		$loadTableResult = $this->db->errorMsg();
+		if(!strlen($loadTableResult)) {
+			$loadTableResult = true;
+			$logRes = 'Successfully loaded ';
+			$logType = 'initialize';
+		}
+		else {
+			$logRes = 'Failed to load ';
+			$logType = 'error';
+		}
+		$this->logsObj->log_by_class($logRes .' table ('. $this->config['DB_TABLE'] .') into ' .
+				'database::: '. $loadTableResult, $logType);
+		
+		return($loadTableResult);
+	}//end load_table()
 	//=========================================================================
 	
 	
