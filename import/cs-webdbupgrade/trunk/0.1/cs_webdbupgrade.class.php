@@ -135,8 +135,8 @@ class cs_webdbupgrade {
 		}
 		else {
 			//okay, all files present: check the version in the VERSION file.
-			$dbVersion = $this->get_database_version();
 			$versionFileVersion = $this->read_version_file();
+			$dbVersion = $this->get_database_version();
 			
 			$versionsDiffer = TRUE;
 			$retval = FALSE;
@@ -169,15 +169,24 @@ class cs_webdbupgrade {
 		$retval = NULL;
 		
 		//okay, all files present: check the version in the VERSION file.
-		$versionFileContents = $this->fsObj->read('VERSION');
+		$versionFileContents = $this->fsObj->read($this->versionFileLocation);
 		
-		//okay, rip it into bits. NOTE: this *depends* on "VERSION: " being on the third line.
-		$lines = explode("\n", $versionFileContents);
-		$versionLine = $lines[2];
-		if(preg_match('/^VERSION: /', $versionLine)) {
-			
-			$retval = trim(preg_replace('/VERSION: /', '', $versionLine));
+		
+		$versionMatches = array();
+		preg_match_all('/\nVERSION: (.*)\n/', $versionFileContents, $versionMatches);
+		if(count($versionMatches) == 2 && count($versionMatches[1]) == 1) {
+			$retval = trim($versionMatches[1][0]);
 			$this->versionFileVersion = $retval;
+			
+			//now retrieve the PROJECT name.
+			$projectMatches = array();
+			preg_match_all('/\nPROJECT: (.*)\n/', $versionFileContents, $projectMatches);
+			if(count($projectMatches) == 2 && count($projectMatches[1]) == 1) {
+				$this->projectName = trim($projectMatches[1][0]);
+			}
+			else {
+				throw new exception(__METHOD__ .": failed to find PROJECT name");
+			}
 		}
 		else {
 			throw new exception(__METHOD__ .": could not find VERSION data");
@@ -298,51 +307,31 @@ class cs_webdbupgrade {
 		if(is_null($versionString) || !strlen($versionString)) {
 			throw new exception(__METHOD__ .": invalid version string ($versionString)");
 		}
+		
+		$suffix = "";
+		if(preg_match('/-[A-Z]{2,5}[0-9]{1,}/', $versionString)) {
+			$bits = explode('-', $versionString);
+			$suffix = $bits[1];
+			$versionString = $bits[0];
+		}
 		$tmp = explode('.', $versionString);
 		
-		//NOTE: the order of the array MUST be major, then minor, then maintenance, so is_higher_version() can check it easily.
-		$retval = array(
-			'version_string'	=> $versionString,
-			'version_major'		=> $tmp[0],
-			'version_minor'		=> $tmp[1]
-		);
-		if(count($tmp) == 3) {
-			$retval['version_maintenance'] = $tmp[2];
-		}
-		else {
-			$retval['version_maintenance'] = "0";
-		}
 		
-		//check for a prefix or a suffix.
-		if(preg_match('/-/', $versionString)) {
-			//make sure there's only ONE dash.
-			$tmp = explode('-', $versionString);
-			if(count($tmp) == 2) {
-				if(preg_match('/-/', $retval['version_major'])) {
-					//example: BETA-3.3.0
-					
-					throw new exception(__METHOD__ .": versions that contain prefixes cannot be upgraded");
-					
-					#$tmp = explode('-', $retval['version_major']);
-					#$retval['version_major'] = $tmp[1];
-					#$retval['prefix'] = $tmp[0];
-				}
-				elseif(preg_match('/-/', $retval['version_maintenance'])) {
-					//example: 1.0.0-ALPHA1
-					$tmp = explode('-', $retval['version_maintenance']);
-					$retval['version_maintenance'] = $tmp[0];
-					$retval['version_suffix'] = $tmp[1];
-				}
-				else {
-					throw new exception(__METHOD__ .": invalid location of prefix/suffix in (". $versionString .")");
-				}
+		if(is_numeric($tmp[0]) && is_numeric($tmp[1])) {
+			$retval = array(
+				'version_string'	=> $versionString,
+				'version_major'		=> $tmp[0],
+				'version_minor'		=> $tmp[1],
+			);
+			if(isset($tmp[2])) {
+				$retval['version_maintenance'] = $tmp[2];
 			}
 			else {
-				throw new exception(__METHOD__ .": too many dashes in version string (". $versionString .")");
+				$retval['version_maintenance'] = 0;
 			}
 		}
 		else {
-			$retval['version_suffix'] = "";
+			throw new exception(__METHOD__ .": invalid version string format, requires MAJOR.MINOR syntax (". $versionString .")");
 		}
 		
 		return($retval);
@@ -956,9 +945,6 @@ class cs_webdbupgrade {
 					$oldData = $myA2p->get_data();
 					$myA2p->set_data($path, $val);
 					$this->tempXmlConfig = $myA2p->get_data();
-					#$this->gfObj->debug_print(__METHOD__ .": set data, path=(". $path ."), val=(". $val ."), current data::: " .
-					#		$this->gfObj->debug_print($myA2p->get_data(),0) .", OLD DATA::: " .
-					#		$this->gfObj->debug_print($oldData,0));
 				}
 				else {
 					throw new exception(__METHOD__ .": invalid type (". $myData['type'] .")");
@@ -992,6 +978,20 @@ class cs_webdbupgrade {
 			$loadTableResult = true;
 			$logRes = 'Successfully loaded ';
 			$logType = 'initialize';
+			
+			//now set the initial version information...
+			if(strlen($this->projectName) && strlen($this->versionFileVersion)) {
+				$insertData = $this->parse_version_string($this->versionFileVersion);
+				$insertData['project_name'] = $this->projectName;
+				
+				$sql = 'INSERT INTO '. $this->config['DB_TABLE'] . $this->gfObj->string_from_array($insertData, 'insert');
+				if($this->db->run_insert($sql)) {
+					$this->logsObj->log_by_class('Created initial version info ('. $insertData['version_string'] .')', $logType);
+				}
+				else {
+					$this->logsObj->log_by_class('Failed to create version info ('. $insertData['version_string'] .')', 'error');
+				}
+			}
 		}
 		else {
 			$logRes = 'Failed to load ';
