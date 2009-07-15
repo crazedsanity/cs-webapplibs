@@ -479,16 +479,12 @@ class cs_webdbupgrade {
 		$versionIndex = "V". $this->get_full_version_string($targetVersion);
 		$this->gfObj->debug_print(__METHOD__ .": versionIndex=(". $versionIndex ."), config MATCHING::: ". $this->gfObj->debug_print($this->config['UPGRADELIST']['MATCHING'],0));
 		if(!isset($this->config['UPGRADELIST']['MATCHING'][$versionIndex])) {
-			$this->gfObj->debug_print(__METHOD__ .": doing version-only upgrade...");
-			
-			$this->gfObj->debug_print($this->config['UPGRADELIST']['MATCHING']);
-			exit;
 			//version-only upgrade.
-			$this->update_database_version($this->versionFileVersion);
 			$this->newVersion = $this->versionFileVersion;
+			$this->update_database_version($this->versionFileVersion);
 		}
 		else {
-			$this->gfObj->debug_print(__METHOD__ .": doing scripted upgrade...");
+			//scripted upgrade...
 			$scriptIndex = $versionIndex;
 			
 			$upgradeData = $this->config['UPGRADELIST']['MATCHING'][$versionIndex];
