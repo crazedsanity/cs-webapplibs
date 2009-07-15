@@ -14,17 +14,32 @@
 
 class cs_webdbupgrade {
 	
+	/** cs_fileSystem{} object: for filesystem read/write operations. */
 	private $fsObj;
+	
+	/** cs_globalFunctions{} object: debugging, array, and string operations. */
 	private $gfObj;
+	
+	/** Array of configuration parameters. */
 	private $config = NULL;
+	
+	/** Database object. */
 	protected $db;
+	
+	/** Object used to log activity. */
 	protected $logsObj;
 	
 	/** Name of the project as referenced in the database. */
 	protected $projectName;
 	
+	/** Internal cache of the version string from the VERSION file. */
 	private $versionFileVersion = NULL;
+	
+	/** Stored database version. */
 	private $databaseVersion = NULL;
+	
+	/** Name (absolute location) of *.lock file that indicates an upgrade is running. */
+	private $lockfile;
 	
 	/** List of acceptable suffixes; example "1.0.0-BETA3" -- NOTE: these MUST be in 
 	 * an order that reflects newest -> oldest; "ALPHA happens before BETA, etc. */
@@ -68,17 +83,21 @@ class cs_webdbupgrade {
 		if(!defined('LIBDIR')) {
 			throw new exception(__METHOD__ .": required constant 'LIBDIR' not set");
 		}
+		if(!defined('SITE_ROOT')) {
+			throw new exception(__METHOD__ .": required constant 'SITE_ROOT' not set");
+		}
 		
 		require_once(constant('LIBDIR') .'/cs-content/cs_globalFunctions.class.php');
 		require_once(constant('LIBDIR') .'/cs-content/cs_fileSystem.class.php');
 		require_once(constant('LIBDIR') .'/cs-content/cs_phpDB.class.php');
 		require_once(constant('LIBDIR') .'/cs-webdblogger/cs_webdblogger.class.php');
 		require_once(constant('LIBDIR') .'/cs-phpxml/cs_phpxmlParser.class.php');
+		require_once(constant('LIBDIR') .'/cs-phpxml/cs_phpxmlCreator.class.php');
 		require_once(constant('LIBDIR') .'/cs-phpxml/cs_arrayToPath.class.php');
 		
 		$this->versionFileLocation = $versionFileLocation;
 		
-		$this->fsObj =  new cs_fileSystem(dirname($this->versionFileLocation));
+		$this->fsObj =  new cs_fileSystem(constant('SITE_ROOT'));
 		$this->gfObj = new cs_globalFunctions;
 		$this->gfObj->debugPrintOpt = DEBUGPRINTOPT;
 		
@@ -91,6 +110,10 @@ class cs_webdbupgrade {
 		if(!strlen($versionFileLocation) || !file_exists($versionFileLocation)) {
 			throw new exception(__METHOD__ .": unable to locate version file (". $versionFileLocation .")");
 		}
+		if(!isset($this->config['RWDIR']) || !is_dir($this->config['RWDIR']) || !is_readable($this->config['RWDIR']) || !is_writable($this->config['RWDIR'])) {
+			throw new exception(__METHOD__ .": missing RWDIR (". $this->config['RWDIR'] .") or isn't readable/writable");
+		}
+		$this->lockfile = $this->config['RWDIR'] .'/upgrade.lock';
 		
 		$this->db = new cs_phpDB(constant('DBTYPE'));
 		try {
@@ -99,6 +122,11 @@ class cs_webdbupgrade {
 		}
 		catch(exception $e) {
 			throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
+		}
+		
+		if($this->check_lockfile()) {
+			//there is an existing lockfile...
+			throw new exception(__METHOD__ .": upgrade in progress: ". $this->fsObj->read($this->lockfile));
 		}
 		
 		$this->check_versions(false);
@@ -126,13 +154,6 @@ class cs_webdbupgrade {
 			$this->logsObj->log_by_class("Upgrade in progress", 'notice');
 			throw new exception(__METHOD__ .": upgrade in progress");
 		}
-		elseif(!file_exists($this->config['CONFIG_FILE_LOCATION'])) {
-			throw new exception(__METHOD__ .": config file (". $this->config['CONFIG_FILE_LOCATION'] .") missing");
-		}
-		elseif(!file_exists($this->versionFileLocation)) {
-			$this->logsObj->log_by_class("VERSION file missing", 'error');
-			throw new exception(__METHOD__ .": VERSION file missing");
-		}
 		else {
 			//okay, all files present: check the version in the VERSION file.
 			$versionFileVersion = $this->read_version_file();
@@ -141,7 +162,7 @@ class cs_webdbupgrade {
 			$versionsDiffer = TRUE;
 			$retval = FALSE;
 			
-			if($this->check_for_version_conflict() == 0) {
+			if($this->check_for_version_conflict() == false) {
 				$versionsDiffer = false;
 				$performUpgrade = false;
 			}
@@ -176,7 +197,7 @@ class cs_webdbupgrade {
 		preg_match_all('/\nVERSION: (.*)\n/', $versionFileContents, $versionMatches);
 		if(count($versionMatches) == 2 && count($versionMatches[1]) == 1) {
 			$retval = trim($versionMatches[1][0]);
-			$this->versionFileVersion = $retval;
+			$this->versionFileVersion = $this->get_full_version_string($retval);
 			
 			//now retrieve the PROJECT name.
 			$projectMatches = array();
@@ -203,13 +224,20 @@ class cs_webdbupgrade {
 	 * Read information from our config file, so we know what to expect.
 	 */
 	private function read_upgrade_config_file() {
-		$xmlString = $this->fsObj->read("upgrade/upgrade.xml");
+		$xmlString = $this->fsObj->read($this->config['UPGRADE_CONFIG_FILE']);
 		
 		//parse the file.
-		$xmlParser = new xmlParser($xmlString);
+		$xmlParser = new cs_phpxmlParser($xmlString);
 		
 		$config = $xmlParser->get_tree(TRUE);
-		$this->config = $config['UPGRADE'];
+		
+		if(is_array($config['UPGRADE']) && count($config['UPGRADE'])) {
+			$this->config['UPGRADELIST'] = $config['UPGRADE'];
+		}
+		else {
+			throw new exception(__METHOD__ .": failed to retrieve 'UPGRADE' section; " .
+					"make sure upgrade.xml's ROOT element is 'UPGRADE'");
+		}
 	}//end read_upgrade_config_file()
 	//=========================================================================
 	
@@ -233,11 +261,6 @@ class cs_webdbupgrade {
 			}
 			else {
 				$this->gfObj->debug_print(__METHOD__ .": result of setting 'upgrade in progress': (". $lockConfig .")");
-				
-				//check to see if our config file is writable.
-				if(!$this->fsObj->is_writable(CONFIG_FILE_LOCATION)) {
-					throw new exception(__METHOD__ .": config file isn't writable!");
-				}
 				
 				//push data into our internal "config" array.
 				$this->read_upgrade_config_file();
@@ -272,8 +295,7 @@ class cs_webdbupgrade {
 				else {
 					throw new exception(__METHOD__ .": finished upgrade, but version wasn't updated (expecting '". $this->versionFileVersion ."', got '". $this->databaseVersion ."')!!!");
 				}
-				$this->update_config_file('version_string', $this->newVersion);
-				$this->update_config_file('workingonit', "0");
+				$this->remove_lockfile();
 				
 				$this->db->commitTrans();
 			}
@@ -288,8 +310,8 @@ class cs_webdbupgrade {
 		$retval = FALSE;
 		if($makeItSo === TRUE) {
 			$this->get_database_version();
-			$details = 'Upgrade from '. $this->databaseVersion .' started at '. date('Y-m-d H:i:s');
-			$this->update_config_file('WORKINGONIT', $details);
+			$details = $this->projectName .': Upgrade from '. $this->databaseVersion .' started at '. date('Y-m-d H:i:s');
+			$this->create_lockfile($details);
 			$retval = TRUE;
 		}
 		elseif(preg_match('/^upgrade/i', $this->mainConfig['WORKINGONIT'])) {
@@ -309,12 +331,13 @@ class cs_webdbupgrade {
 		}
 		
 		$suffix = "";
+		$explodeThis = $versionString;
 		if(preg_match('/-[A-Z]{2,5}[0-9]{1,}/', $versionString)) {
 			$bits = explode('-', $versionString);
 			$suffix = $bits[1];
-			$versionString = $bits[0];
+			$explodeThis = $bits[0];
 		}
-		$tmp = explode('.', $versionString);
+		$tmp = explode('.', $explodeThis);
 		
 		
 		if(is_numeric($tmp[0]) && is_numeric($tmp[1])) {
@@ -329,6 +352,8 @@ class cs_webdbupgrade {
 			else {
 				$retval['version_maintenance'] = 0;
 			}
+			
+			$retval['version_suffix'] = $suffix;
 		}
 		else {
 			throw new exception(__METHOD__ .": invalid version string format, requires MAJOR.MINOR syntax (". $versionString .")");
@@ -359,7 +384,7 @@ class cs_webdbupgrade {
 		
 		if($versionFileData['version_string'] == $dbVersion['version_string']) {
 			//good to go: no upgrade needed.
-			$retval = 0;
+			$retval = false;
 		}
 		else {
 			//NOTE: this seems very convoluted, but it works.
@@ -395,7 +420,8 @@ class cs_webdbupgrade {
 			}
 		}
 		
-		if(!is_null($retval) && $retval !== 0) {
+		if($retval !== false) {
+			$this->logsObj->log_by_class('Upgrading '. $retval .', db version is ('. $dbVersion['version_string'] .'), versionFile is ('. $versionFileData['version_string'] .')', 'DEBUG');
 			$this->gfObj->debug_print(__METHOD__ .": upgrading ". $retval ." versions, from (". $this->databaseVersion .") to (". $this->versionFileVersion .")");
 		}
 		
@@ -450,18 +476,22 @@ class cs_webdbupgrade {
 	//=========================================================================
 	private function do_single_upgrade($targetVersion) {
 		//Use the "matching_syntax" data in the upgrade.xml file to determine the filename.
-		$versionIndex = "V". $targetVersion;
-		$this->gfObj->debug_print(__METHOD__ .": versionIndex=(". $versionIndex ."), config MATCHING::: ". $this->gfObj->debug_print($this->config['MATCHING'],0));
-		if(!isset($this->config['MATCHING'][$versionIndex])) {
+		$versionIndex = "V". $this->get_full_version_string($targetVersion);
+		$this->gfObj->debug_print(__METHOD__ .": versionIndex=(". $versionIndex ."), config MATCHING::: ". $this->gfObj->debug_print($this->config['UPGRADELIST']['MATCHING'],0));
+		if(!isset($this->config['UPGRADELIST']['MATCHING'][$versionIndex])) {
+			$this->gfObj->debug_print(__METHOD__ .": doing version-only upgrade...");
+			
+			$this->gfObj->debug_print($this->config['UPGRADELIST']['MATCHING']);
+			exit;
 			//version-only upgrade.
 			$this->update_database_version($this->versionFileVersion);
 			$this->newVersion = $this->versionFileVersion;
-			$this->gfObj->debug_print(__METHOD__ .": doing version-only upgrade...");
 		}
 		else {
+			$this->gfObj->debug_print(__METHOD__ .": doing scripted upgrade...");
 			$scriptIndex = $versionIndex;
 			
-			$upgradeData = $this->config['MATCHING'][$versionIndex];
+			$upgradeData = $this->config['UPGRADELIST']['MATCHING'][$versionIndex];
 			
 			if(isset($upgradeData['TARGET_VERSION']) && count($upgradeData) > 1) {
 				$this->newVersion = $upgradeData['TARGET_VERSION'];
@@ -498,11 +528,18 @@ class cs_webdbupgrade {
 			$queryArr[$index] = "SELECT internal_data_set_value('". $index ."', '". $value ."');";
 		}
 		
-		$retval = NULL;
-		foreach($queryArr as $name=>$sql) {
-			if($this->run_sql($sql, 1)) {
-				$retval++;
-			}
+		$updateData = $versionArr;
+		$sql = "UPDATE ". $this->config['DB_TABLE'] ." SET ". 
+				$this->gfObj->string_from_array($updateData, 'update', null, 'sql') ." WHERE " .
+				"project_name='". $this->gfObj->cleanString($this->projectName, 'sql') ."'";
+		
+		
+		$updateRes = $this->db->run_update($sql,false);
+		if($updateRes == 1) {
+			$retval = $updateRes;
+		}
+		else {
+			throw new exception(__METHOD__ .": invalid result (". $updateRes .")	");
 		}
 		
 		//okay, now check that the version string matches the updated bits.
@@ -522,43 +559,30 @@ class cs_webdbupgrade {
 	 * Checks consistency of version information in the database, and optionally 
 	 * against a given version string.
 	 */
-	private function check_database_version($checkThisVersion=NULL) {
+	private function check_database_version() {
 		//retrieve the internal version information.
-		$sql = "select internal_data_get_value('version_string') as version_string, (" .
-			"internal_data_get_value('version_major') || '.' || " .
-			"internal_data_get_value('version_minor') || '.' || " .
-			"internal_data_get_value('version_maintenance')) as check_version, " .
-			"internal_data_get_value('version_suffix') AS version_suffix";
-		
-		$retval = NULL;
-		if($this->run_sql($sql,1)) {
-			$data = $this->db->farray_fieldnames();
+		if(!is_null($this->newVersion)) {
+			$data = $this->get_database_version();
 			$versionString = $data['version_string'];
-			$checkVersion = $data['check_version'];
 			
-			if(strlen($data['version_suffix'])) {
-				//the version string already would have this, but the checked version wouldn't.
-				$checkVersion .= "-". $data['version_suffix'];
-			}
-			
-			if($versionString == $checkVersion) {
+			if($versionString == $this->newVersion) {
 				$retval = TRUE; 
 			}
 			else {
 				$retval = FALSE;
 			}
+			
+			if(!$retval) {
+				$this->gfObj->debug_print($data);
+				$this->gfObj->debug_print(__METHOD__ .": versionString=(". $versionString ."), checkVersion=(". $this->newVersion .")");
+			}
+			
 		}
 		else {
-			$retval = FALSE;
-		}
-		
-		if(!$retval) {
-			$this->gfObj->debug_print($data);
-			$this->gfObj->debug_print(__METHOD__ .": versionString=(". $versionString ."), checkVersion=(". $checkVersion .")");
+			throw new exception(__METHOD__ .": no version string given (". $this->newVersion .")");
 		}
 		
 		return($retval);
-		
 	}//end check_database_version()
 	//=========================================================================
 	
@@ -571,9 +595,17 @@ class cs_webdbupgrade {
 		$this->gfObj->debug_print(__METHOD__ .": script name=(". $myConfigFile .")");
 		
 		//we've got the filename, see if it exists.
-		$fileName = UPGRADE_DIR .'/'. $myConfigFile;
+		if(isset($this->config['UPGRADE_SCRIPTS_DIR'])) {
+			$scriptsDir = $this->config['UPGRADE_SCRIPTS_DIR'];
+		}
+		else {
+			$this->logsObj->log_by_class("No UPGRADE_SCRIPTS_DIR config setting", 'warning');
+			$scriptsDir = dirname($this->config['UPGRADE_CONFIG_FILE']);
+		}
+		$fileName = $scriptsDir .'/'. $myConfigFile;
 		if(file_exists($fileName)) {
-			$this->gfObj->debug_print(__METHOD__ .": file exists... ");
+		
+			$this->logsObj->log_by_class("Performing scripted upgrade (". $myConfigFile .")", 'DEBUG');
 			$createClassName = $upgradeData['CLASS_NAME'];
 			$classUpgradeMethod = $upgradeData['CALL_METHOD'];
 			require_once($fileName);
@@ -583,6 +615,14 @@ class cs_webdbupgrade {
 				$upgradeObj = new $createClassName($this->db);
 				if(method_exists($upgradeObj, $classUpgradeMethod)) {
 					$upgradeResult = $upgradeObj->$classUpgradeMethod();
+					
+					if($upgradeResult === true) {
+						//yay, it worked!
+						$this->logsObj->log_by_class("Upgrade succeeded (". $upgradeResult .")", 'success');
+					}
+					else {
+						throw new exception(__METHOD__ .": upgrade failed (". $upgradeResult .")");
+					}
 					$this->gfObj->debug_print(__METHOD__ .": finished running ". $createClassName ."::". $classUpgradeMethod ."(), result was (". $upgradeResult .")");
 				}
 				else {
@@ -598,93 +638,6 @@ class cs_webdbupgrade {
 			throw new exception(__METHOD__ .": upgrade filename (". $fileName .") does not exist");
 		}
 	}//end do_scripted_upgrade()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	protected function run_sql($sql, $expectedNumrows=1) {
-		if(!$this->db->is_connected()) {
-			$this->db->connect(get_config_db_params());
-		}
-		$numrows = $this->db->exec($sql);
-		$dberror = $this->db->errorMsg();
-		
-		if(strlen($dberror)) {
-			$details = "DBERROR::: ". $dberror;
-			throw new exception(__METHOD__ .": SQL FAILED::: ". $sql ."\n\nDETAILS: ". $details);
-		}
-		elseif(!is_null($expectedNumrows) && $numrows != $expectedNumrows) {
-			throw new exception(__METHOD__ .": SQL FAILED::: ". $sql ."\n\nDETAILS: " .
-				"rows affected didn't match expectation (". $numrows ." != ". $expectedNumrows .")");
-		}
-		elseif(is_null($expectedNumrows) && $numrows < 1) {
-			throw new exception(__METHOD__ .": SQL FAILED::: ". $sql ."\n\nDETAILS: " .
-				"invalid number of rows affected (". $numrows .")");
-		}
-		else {
-			$retval = TRUE;
-		}
-		
-		return($retval);
-	}//end run_sql()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	private function update_config_file($index, $value) {
-		$gf = new cs_globalFunctions;
-		$myConfigFile = CONFIG_FILE_LOCATION;
-		$fs = new cs_fileSystemClass(dirname(__FILE__) .'/../');
-		$xmlParser = new XMLParser($fs->read($myConfigFile));
-		$xmlCreator = new XMLCreator;
-		$xmlCreator->load_xmlparser_data($xmlParser);
-		
-		//update the given index.
-		$xmlCreator->add_tag($index, $value, $xmlParser->get_attribute('/CONFIG/'. strtoupper($index)));
-		$this->mainConfig[strtoupper($index)] = $value;
-		
-		$xmlString = $xmlCreator->create_xml_string();
-		
-		//truncate the file, to avoid problems with extra data at the end...
-		$fs->closeFile();
-		$fs->create_file($myConfigFile,TRUE);
-		$fs->openFile($myConfigFile);
-		
-		//now write the new configuration.
-		$fs->write($xmlString, $myConfigFile);
-	}//end update_config_file()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	protected function get_num_users_to_convert() {
-		
-		$retval = 0;
-		try {
-			//if this generates an error, there are no users...
-			$this->run_sql("SELECT internal_data_get_value('users_to_convert')");
-			$data = $this->db->farray();
-			$retval = $data[0];
-		}
-		catch(exception $e) {
-			$this->gfObj->debug_print(__METHOD__ .": failed to retrieve users to convert: ");
-		}
-		
-		return($retval);
-		
-	}//end get_num_users_to_convert()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	protected function update_num_users_to_convert() {
-		$retval = $this->run_sql("SELECT internal_data_set_value('users_to_convert', (select count(*) FROM user_table WHERE length(password) != 32))");
-		return($retval);
-	}//end update_num_users_to_convert()
 	//=========================================================================
 	
 	
@@ -1002,6 +955,90 @@ class cs_webdbupgrade {
 		
 		return($loadTableResult);
 	}//end load_table()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function check_lockfile() {
+		$status = false;
+		if(file_exists($this->lockfile)) {
+			$status = true;
+		}
+		
+		return($status);
+	}//end check_lockfile()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	/**
+	 * Create a *.lock file that indicates the system is in the process of 
+	 * performing an upgrade (safer than always updating the site's configuration 
+	 * file).
+	 */
+	public function create_lockfile($contents) {
+		if(!$this->check_lockfile()) {
+			if($this->fsObj->create_file($this->lockfile)) {
+				if(!preg_match('/\n$/', $contents)) {
+					$contents .= "\n";
+				}
+				$writeRes = $this->fsObj->write($contents);
+				if(is_numeric($writeRes) && $writeRes > 0) {
+					$this->fsObj->closeFile();
+				}
+				else {
+					throw new exception(__METHOD__ .": failed to write contents (". $contents .") to lockfile");
+				}
+			}
+			else {
+				throw new exception(__METHOD__ .": failed to create lockfile (". $this->lockfile .")");
+			}
+		}
+		else {
+			throw new exception(__METHOD__ .": failed to create lockfile, one already exists (". $this->lockfile .")");
+		}
+	}//end create_lockfile()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	/**
+	 * Destroy the *.lock file that indicates an upgrade is underway.
+	 */
+	private function remove_lockfile() {
+		if($this->check_lockfile()) {
+			if(!$this->fsObj->rm($this->lockfile)) {
+				throw new exception(__METHOD__ .": failed to remove lockfile (". $this->lockfile .")");
+			}
+		}
+		else {
+			throw new exception(__METHOD__ .": no lockfile (". $this->lockfile .")");
+		}
+	}//end remove_lockfile()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	private function get_full_version_string($versionString) {
+		if(strlen($versionString)) {
+			$bits = $this->parse_version_string($versionString);
+			
+			$fullVersion = $bits['version_major'] .'.'. $bits['version_minor'] .'.'.
+					$bits['version_maintenance'];
+			if(strlen($bits['version_suffix'])) {
+				$fullVersion .= '-'. $bits['version_suffix'];
+			}
+		}
+		else {
+			throw new exception(__METHOD__ .": no version string given");
+		}
+		
+		return($fullVersion);
+	}//end get_full_version_string()
 	//=========================================================================
 	
 	
