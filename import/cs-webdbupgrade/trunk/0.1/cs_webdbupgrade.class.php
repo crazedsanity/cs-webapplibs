@@ -279,7 +279,6 @@ class cs_webdbupgrade {
 				foreach($upgradeList as $fromVersion=>$toVersion) {
 					
 					$details = __METHOD__ .": upgrading from ". $fromVersion ." to ". $toVersion ."... ";
-					$this->gfObj->debug_print($details);
 					$this->logsObj->log_by_class($details, 'system');
 					$this->do_single_upgrade($fromVersion);
 					$this->get_database_version();
@@ -687,7 +686,6 @@ class cs_webdbupgrade {
 			//	the "$checkIfHigher" is actually higher, don't bother (i.e. suffixes don't matter when
 			//	we already know there's a major, minor, or maintenance version that's also higher.
 			if($retval === FALSE) {
-				$this->gfObj->debug_print(__METHOD__ .": checking suffixes... ");
 				//EXAMPLE: $version="1.0.0-BETA3", $checkIfHigher="1.1.0"
 				// Moving from a non-suffixed version to a suffixed version isn't supported, but the inverse is:
 				//		i.e. (1.0.0-BETA3 to 1.0.0) is okay, but (1.0.0 to 1.0.0-BETA3) is NOT.
@@ -777,7 +775,6 @@ class cs_webdbupgrade {
 							$retval[$this->databaseVersion] = $matchVersion;
 						}
 						//the MATCHING version is NOT higher than the version file's version, looks ok.
-						$this->gfObj->debug_print(__METHOD__ .": adding (". $matchVersion .")");
 						$lastVersion = $data['TARGET_VERSION'];
 						$retval[$matchVersion] = $data['TARGET_VERSION'];
 					}
@@ -841,7 +838,6 @@ class cs_webdbupgrade {
 	
 	//=========================================================================
 	private function fix_xml_config($config, $path=null) {
-		#$this->gfObj->debug_print(__METHOD__ .": path=(". $path ."):: ". $this->gfObj->debug_print($config,0));
 		$this->xmlLoops++;
 		if($this->xmlLoops > 1000) {
 			throw new exception(__METHOD__ .": infinite loop detected...");
