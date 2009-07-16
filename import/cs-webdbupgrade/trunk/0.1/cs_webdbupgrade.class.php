@@ -99,7 +99,9 @@ class cs_webdbupgrade {
 		
 		$this->fsObj =  new cs_fileSystem(constant('SITE_ROOT'));
 		$this->gfObj = new cs_globalFunctions;
-		$this->gfObj->debugPrintOpt = DEBUGPRINTOPT;
+		if(defined('DEBUGPRINTOPT')) {
+			$this->gfObj->debugPrintOpt = constant('DEBUGPRINTOPT');
+		}
 		
 		if(!defined('DBTYPE')) {
 			throw new exception(__METHOD__ .": required constant 'DBTYPE' not set");
@@ -260,7 +262,7 @@ class cs_webdbupgrade {
 				throw new exception(__METHOD__ .": failed to set 'upgrade in progress'");
 			}
 			else {
-				$this->gfObj->debug_print(__METHOD__ .": result of setting 'upgrade in progress': (". $lockConfig .")");
+				$this->logsObj->log_by_class(__METHOD__ .": result of creating lockfile: (". $lockConfig .")", 'debug');
 				
 				//push data into our internal "config" array.
 				$this->read_upgrade_config_file();
@@ -272,7 +274,7 @@ class cs_webdbupgrade {
 				$upgradeList = $this->get_upgrade_list();
 				
 				$i=0;
-				$this->gfObj->debug_print(__METHOD__ .": starting to run through the upgrade list, starting at (". $this->databaseVersion .")...");
+				$this->logsObj->log_by_class(__METHOD__ .": starting to run through the upgrade list, starting at (". $this->databaseVersion .")...", 'debug');
 				$this->db->beginTrans(__METHOD__);
 				foreach($upgradeList as $fromVersion=>$toVersion) {
 					
@@ -284,12 +286,11 @@ class cs_webdbupgrade {
 					$i++;
 					
 					$details = __METHOD__ .": finished upgrade #". $i .", now at version (". $this->databaseVersion .")";
-					$this->gfObj->debug_print($details);
 					$this->logsObj->log_by_class($details, 'system');
 				}
 				
 				if($this->databaseVersion == $this->versionFileVersion) {
-					$this->gfObj->debug_print(__METHOD__ .": finished upgrading after performing (". $i .") upgrades!!!");
+					$this->logsObj->log_by_class(__METHOD__ .": finished upgrading after performing (". $i .") upgrades", 'debug');
 					$this->newVersion = $this->databaseVersion;
 				}
 				else {
@@ -421,8 +422,7 @@ class cs_webdbupgrade {
 		}
 		
 		if($retval !== false) {
-			$this->logsObj->log_by_class('Upgrading '. $retval .', db version is ('. $dbVersion['version_string'] .'), versionFile is ('. $versionFileData['version_string'] .')', 'DEBUG');
-			$this->gfObj->debug_print(__METHOD__ .": upgrading ". $retval ." versions, from (". $this->databaseVersion .") to (". $this->versionFileVersion .")");
+			$this->logsObj->log_by_class("Upgrading ". $retval ." versions, from (". $this->databaseVersion .") to (". $this->versionFileVersion .")", 'debug');
 		}
 		
 		return($retval);
@@ -477,7 +477,6 @@ class cs_webdbupgrade {
 	private function do_single_upgrade($targetVersion) {
 		//Use the "matching_syntax" data in the upgrade.xml file to determine the filename.
 		$versionIndex = "V". $this->get_full_version_string($targetVersion);
-		$this->gfObj->debug_print(__METHOD__ .": versionIndex=(". $versionIndex ."), config MATCHING::: ". $this->gfObj->debug_print($this->config['UPGRADELIST']['MATCHING'],0));
 		if(!isset($this->config['UPGRADELIST']['MATCHING'][$versionIndex])) {
 			//version-only upgrade.
 			$this->newVersion = $this->versionFileVersion;
@@ -504,7 +503,7 @@ class cs_webdbupgrade {
 				throw new exception(__METHOD__ .": target version not specified, unable to proceed with upgrade for ". $versionIndex);
 			}
 		}
-		$this->gfObj->debug_print(__METHOD__ .": done... ");
+		$this->logsObj->log_by_class("Finished upgrade to ". $targetVersion);
 	}//end do_single_upgrade()
 	//=========================================================================
 	
@@ -516,7 +515,6 @@ class cs_webdbupgrade {
 	 * so the version there is consistent with all the others.
 	 */
 	protected function update_database_version($newVersionString) {
-		$this->gfObj->debug_print(__METHOD__ .": setting (". $newVersionString .")");
 		$versionArr = $this->parse_version_string($newVersionString);
 		
 		$queryArr = array();
@@ -569,8 +567,7 @@ class cs_webdbupgrade {
 			}
 			
 			if(!$retval) {
-				$this->gfObj->debug_print($data);
-				$this->gfObj->debug_print(__METHOD__ .": versionString=(". $versionString ."), checkVersion=(". $this->newVersion .")");
+				$this->logsObj->log_by_class("Version check failed, versionString=(". $versionString ."), checkVersion=(". $this->newVersion .")", 'FATAL');
 			}
 			
 		}
@@ -588,7 +585,7 @@ class cs_webdbupgrade {
 	private function do_scripted_upgrade(array $upgradeData) {
 		$myConfigFile = $upgradeData['SCRIPT_NAME'];
 		
-		$this->gfObj->debug_print(__METHOD__ .": script name=(". $myConfigFile .")");
+		$this->logsObj->log_by_class("Preparing to run script '". $myConfigFile ."'", 'debug');
 		
 		//we've got the filename, see if it exists.
 		if(isset($this->config['UPGRADE_SCRIPTS_DIR'])) {
@@ -619,7 +616,7 @@ class cs_webdbupgrade {
 					else {
 						throw new exception(__METHOD__ .": upgrade failed (". $upgradeResult .")");
 					}
-					$this->gfObj->debug_print(__METHOD__ .": finished running ". $createClassName ."::". $classUpgradeMethod ."(), result was (". $upgradeResult .")");
+					$this->logsObj->log_by_class("Finished running ". $createClassName ."::". $classUpgradeMethod ."(), result was (". $upgradeResult .")", 'debug');
 				}
 				else {
 					throw new exception(__METHOD__ .": upgrade method doesn't exist (". $createClassName ."::". $classUpgradeMethod 
@@ -677,7 +674,7 @@ class cs_webdbupgrade {
 					}
 					else {
 						//TODO: should there maybe be an option to throw an exception (freak out) here?
-						debug_print(__METHOD__ .": while checking ". $index .", realized the new version (". $checkIfHigher .") is LOWER than current (". $version .")",1);
+						$this->logsObj->log_by_class(__METHOD__ .": while checking ". $index .", realized the new version (". $checkIfHigher .") is LOWER than current (". $version .")",'debug');
 					}
 				}
 				else {
@@ -697,7 +694,6 @@ class cs_webdbupgrade {
 				//		Also: (1.0.0-BETA3 to 1.0.0-BETA4) is okay, but (1.0.0-BETA4 to 1.0.0-BETA3) is NOT.
 				if(strlen($curVersionSuffix) && strlen($checkVersionSuffix) && $curVersionSuffix == $checkVersionSuffix) {
 					//matching suffixes.
-					$this->gfObj->debug_print(__METHOD__ .": suffixes match");
 				}
 				elseif(strlen($curVersionSuffix) || strlen($checkVersionSuffix)) {
 					//we know the suffixes are there and DO match.
@@ -707,19 +703,15 @@ class cs_webdbupgrade {
 						$checkVersionData = $this->parse_suffix($checkVersionSuffix);
 						
 						if($curVersionData['type'] == $checkVersionData['type']) {
-							$this->gfObj->debug_print(__METHOD__ .": got the same type...");
 							//got the same suffix type (like "BETA"), check the number.
 							if($checkVersionData['number'] > $curVersionData['number']) {
-								$this->gfObj->debug_print(__METHOD__ .": new version's suffix number higher than current... ");
 								$retval = TRUE;
 							}
 							elseif($checkVersionData['number'] == $curVersionData['number']) {
-								$this->gfObj->debug_print(__METHOD__ .": new version's suffix number is EQUAL TO current... ");
 								$retval = FALSE;
 							}
 							else {
 								//umm... they're identical???  LOGIC HAS FAILED ME ALTOGETHER!!!
-								$this->gfObj->debug_print(__METHOD__ .": new version's suffix number is LESS THAN current... ");
 								$retval = FALSE;
 							}
 						}
@@ -728,9 +720,6 @@ class cs_webdbupgrade {
 							$suffixValues = array_flip($this->suffixList);
 							if($suffixValues[$checkVersionData['type']] > $suffixValues[$curVersionData['type']]) {
 								$retval = TRUE;
-							}
-							else {
-								$this->gfObj->debug_print(__METHOD__ .": current suffix type is higher... ");
 							}
 						}
 						
@@ -741,16 +730,11 @@ class cs_webdbupgrade {
 					}
 					elseif(!strlen($curVersionSuffix) && strlen($checkVersionSuffix)) {
 						//i.e. "1.0.0" to "1.0.0-BETA1" --->>> NOT ACCEPTABLE!
-						$this->gfObj->debug_print(__METHOD__ .": from (". $version .") to (". $checkIfHigher .") isn't acceptable...?");
+						$this->logsObj->log_by_class(__METHOD__ .": from (". $version .") to (". $checkIfHigher .") isn't acceptable...?", 'debug');
 					}
-				}
-				else {
-					$this->gfObj->debug_print(__METHOD__ .": no suffix to care about");
 				}
 			}
 		}
-		
-		$this->gfObj->debug_print(__METHOD__ .": ('". $version ."',  '". $checkIfHigher ."') retval=(". $retval .")", 1);
 		
 		return($retval);
 		
@@ -798,22 +782,21 @@ class cs_webdbupgrade {
 						$retval[$matchVersion] = $data['TARGET_VERSION'];
 					}
 					else {
-						$this->gfObj->debug_print(__METHOD__ .": entry in upgrade.xml (". $matchVersion .") is higher than the VERSION file (". $this->versionFileVersion .")");
+						$this->logsObj->log_by_class(__METHOD__ .": entry in upgrade.xml (". $matchVersion .") is higher than the VERSION file (". $this->versionFileVersion .")", 'warning');
 					}
 				}
 				else {
-					$this->gfObj->debug_print(__METHOD__ .": SKIPPING (". $matchVersion .")");
+					$this->logsObj->log_by_class(__METHOD__ .": SKIPPING (". $matchVersion .")", 'debug');
 				}
 			}
 			
 			if($lastVersion !== $newVersion && (!isset($retval[$lastVersion]) || $retval[$lastVersion] != $newVersion)) {
-				$this->gfObj->debug_print(__METHOD__ .": <b>ALSO (". $lastVersion .") => (". $newVersion .")</b>");
 				$retval[$lastVersion] = $newVersion;
 			}
 		}
 		else {
 			//no intermediary upgrades: just pass back the latest version.
-			$this->gfObj->debug_print(__METHOD__ .": no intermediary upgrades");
+			$this->logsObj->log_by_class(__METHOD__ .": no intermediary upgrades", 'debug');
 			$retval[$dbVersion] = $this->versionFileVersion;
 		}
 		
@@ -868,8 +851,8 @@ class cs_webdbupgrade {
 			$a2p = new cs_arrayToPath($config);
 		}
 		catch(exception $e) {
-			$this->gfObj->debug_print($config);
-			exit("died on #1");
+			$this->logsObj->log_by_class(__METHOD__ .': encountered exception: '. $e->getMessage());
+			throw new exception($e->getMessage());
 		}
 		if(!is_array($this->tempXmlConfig)) {	
 			$this->tempXmlConfig = array();
@@ -878,8 +861,8 @@ class cs_webdbupgrade {
 			$myA2p = new cs_arrayToPath(&$this->tempXmlConfig);
 		}
 		catch(exception $e) {
-			
-			exit("died on #2");
+			$this->logsObj->log_by_class(__METHOD__ .': encountered exception: '. $e->getMessage());
+			throw new exception($e->getMessage());
 		}
 		
 		$myData = $a2p->get_data($path);
