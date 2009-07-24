@@ -153,7 +153,7 @@ class cs_webdblogger extends cs_versionAbstract {
 		$sql = "SELECT log_class_id, lower(name) as name FROM log_class_table";
 		
 		try {
-			$data = $this->db->run_query($sql, 'log_class_id', 'name');
+			$data = $this->db->run_query($sql, 'name', 'log_class_id');
 			
 			if(is_array($data)) {
 				$this->logClassCache = $data;
@@ -186,17 +186,9 @@ class cs_webdblogger extends cs_versionAbstract {
 			$retval = $this->logClassCache[$name];
 		}
 		else {
-			//not available.  Try to create a new one & refresh the cache.
+			//create the class & then rebuild cache.
+			$retval = $this->create_log_class($name);
 			$this->build_cache();
-			if(isset($this->logClassCache[$name])) {
-				//set the id.
-				$retval = $this->logClassCache[$name];
-			}
-			else {
-$this->gfObj->debug_print($this->logClassCache,1);
-exit;
-				$retval = $this->create_log_class($name);
-			}
 		}
 		
 		return($retval);
