@@ -128,7 +128,7 @@ class cs_webdbupgrade {
 		
 		if($this->check_lockfile()) {
 			//there is an existing lockfile...
-			throw new exception(__METHOD__ .": upgrade in progress: ". $this->fsObj->read($this->lockfile));
+			$this->error_handler(__METHOD__ .": upgrade in progress: ". $this->fsObj->read($this->lockfile));
 		}
 		
 		$this->check_versions(false);
@@ -208,11 +208,11 @@ class cs_webdbupgrade {
 				$this->projectName = trim($projectMatches[1][0]);
 			}
 			else {
-				throw new exception(__METHOD__ .": failed to find PROJECT name");
+				$this->error_handler(__METHOD__ .": failed to find PROJECT name");
 			}
 		}
 		else {
-			throw new exception(__METHOD__ .": could not find VERSION data");
+			$this->error_handler(__METHOD__ .": could not find VERSION data");
 		}
 		
 		return($retval);
@@ -237,7 +237,7 @@ class cs_webdbupgrade {
 			$this->config['UPGRADELIST'] = $config['UPGRADE'];
 		}
 		else {
-			throw new exception(__METHOD__ .": failed to retrieve 'UPGRADE' section; " .
+			$this->error_handler(__METHOD__ .": failed to retrieve 'UPGRADE' section; " .
 					"make sure upgrade.xml's ROOT element is 'UPGRADE'");
 		}
 	}//end read_upgrade_config_file()
@@ -250,7 +250,7 @@ class cs_webdbupgrade {
 		//make sure there's not already a lockfile.
 		if($this->upgrade_in_progress()) {
 			//ew.  Can't upgrade.
-			throw new exception(__METHOD__ .": upgrade already in progress...????");
+			$this->error_handler(__METHOD__ .": upgrade already in progress...????");
 		}
 		else {
 			$lockConfig = $this->upgrade_in_progress(TRUE);
@@ -259,7 +259,7 @@ class cs_webdbupgrade {
 			//TODO: not only should the "create_file()" method be run, but also do a sanity check by calling lock_file_exists().
 			if($lockConfig === 0) {
 				//can't create the lockfile.  Die.
-				throw new exception(__METHOD__ .": failed to set 'upgrade in progress'");
+				$this->error_handler(__METHOD__ .": failed to set 'upgrade in progress'");
 			}
 			else {
 				$this->logsObj->log_by_class(__METHOD__ .": result of creating lockfile: (". $lockConfig .")", 'debug');
@@ -293,7 +293,7 @@ class cs_webdbupgrade {
 					$this->newVersion = $this->databaseVersion;
 				}
 				else {
-					throw new exception(__METHOD__ .": finished upgrade, but version wasn't updated (expecting '". $this->versionFileVersion ."', got '". $this->databaseVersion ."')!!!");
+					$this->error_handler(__METHOD__ .": finished upgrade, but version wasn't updated (expecting '". $this->versionFileVersion ."', got '". $this->databaseVersion ."')!!!");
 				}
 				$this->remove_lockfile();
 				
@@ -327,7 +327,7 @@ class cs_webdbupgrade {
 	//=========================================================================
 	public function parse_version_string($versionString) {
 		if(is_null($versionString) || !strlen($versionString)) {
-			throw new exception(__METHOD__ .": invalid version string ($versionString)");
+			$this->error_handler(__METHOD__ .": invalid version string ($versionString)");
 		}
 		
 		$suffix = "";
@@ -356,7 +356,7 @@ class cs_webdbupgrade {
 			$retval['version_suffix'] = $suffix;
 		}
 		else {
-			throw new exception(__METHOD__ .": invalid version string format, requires MAJOR.MINOR syntax (". $versionString .")");
+			$this->error_handler(__METHOD__ .": invalid version string format, requires MAJOR.MINOR syntax (". $versionString .")");
 		}
 		
 		return($retval);
@@ -392,7 +392,7 @@ class cs_webdbupgrade {
 				if($versionFileData['version_minor'] == $dbVersion['version_minor']) {
 					if($versionFileData['version_maintenance'] == $dbVersion['version_maintenance']) {
 						if($versionFileData['version_suffix'] == $dbVersion['version_suffix']) {
-							throw new exception(__METHOD__ .": no version upgrade detected, but version strings don't match (versionFile=". $versionFileData['version_string'] .", dbVersion=". $dbVersion['version_string'] .")");
+							$this->error_handler(__METHOD__ .": no version upgrade detected, but version strings don't match (versionFile=". $versionFileData['version_string'] .", dbVersion=". $dbVersion['version_string'] .")");
 						}
 						else {
 							$retval = "suffix";
@@ -402,21 +402,21 @@ class cs_webdbupgrade {
 						$retval = "maintenance";
 					}
 					else {
-						throw new exception(__METHOD__ .": downgrading from maintenance versions is unsupported");
+						$this->error_handler(__METHOD__ .": downgrading from maintenance versions is unsupported");
 					}
 				}
 				elseif($versionFileData['version_minor'] > $dbVersion['version_minor']) {
 					$retval = "minor";
 				}
 				else {
-					throw new exception(__METHOD__ .": downgrading minor versions is unsupported");
+					$this->error_handler(__METHOD__ .": downgrading minor versions is unsupported");
 				}
 			}
 			elseif($versionFileData['version_major'] > $dbVersion['version_major']) {
 				$retval = "major";
 			}
 			else {
-				throw new exception(__METHOD__ .": downgrading major versions is unsupported");
+				$this->error_handler(__METHOD__ .": downgrading major versions is unsupported");
 			}
 		}
 		
@@ -452,12 +452,12 @@ class cs_webdbupgrade {
 					$dberror = $this->db->errorMsg();
 				}
 				else {
-					throw new exception(__METHOD__ .": no table in database, failed to create one... ORIGINAL " .
+					$this->error_handler(__METHOD__ .": no table in database, failed to create one... ORIGINAL " .
 						"ERROR: ". $dberror .", SCHEMA LOAD ERROR::: ". $loadTableResult);
 				}
 			}
 			else {
-				throw new exception(__METHOD__ .": failed to retrieve version... numrows=(". $numrows ."), DBERROR::: ". $dberror);
+				$this->error_handler(__METHOD__ .": failed to retrieve version... numrows=(". $numrows ."), DBERROR::: ". $dberror);
 			}
 		}
 		else {
@@ -495,11 +495,11 @@ class cs_webdbupgrade {
 					$this->update_database_version($upgradeData['TARGET_VERSION']);
 				}
 				else {
-					throw new exception(__METHOD__ .": not enough information to run scripted upgrade for ". $versionIndex);
+					$this->error_handler(__METHOD__ .": not enough information to run scripted upgrade for ". $versionIndex);
 				}
 			}
 			else {
-				throw new exception(__METHOD__ .": target version not specified, unable to proceed with upgrade for ". $versionIndex);
+				$this->error_handler(__METHOD__ .": target version not specified, unable to proceed with upgrade for ". $versionIndex);
 			}
 		}
 		$this->logsObj->log_by_class("Finished upgrade to ". $targetVersion);
@@ -532,12 +532,12 @@ class cs_webdbupgrade {
 			$retval = $updateRes;
 		}
 		else {
-			throw new exception(__METHOD__ .": invalid result (". $updateRes .")	");
+			$this->error_handler(__METHOD__ .": invalid result (". $updateRes .")	");
 		}
 		
 		//okay, now check that the version string matches the updated bits.
 		if(!$this->check_database_version($this->newVersion)) {
-			throw new exception(__METHOD__ .": database version information is invalid: (". $this->newVersion .")");
+			$this->error_handler(__METHOD__ .": database version information is invalid: (". $this->newVersion .")");
 		}
 		
 		return($retval);
@@ -571,7 +571,7 @@ class cs_webdbupgrade {
 			
 		}
 		else {
-			throw new exception(__METHOD__ .": no version string given (". $this->newVersion .")");
+			$this->error_handler(__METHOD__ .": no version string given (". $this->newVersion .")");
 		}
 		
 		return($retval);
@@ -613,21 +613,21 @@ class cs_webdbupgrade {
 						$this->logsObj->log_by_class("Upgrade succeeded (". $upgradeResult .")", 'success');
 					}
 					else {
-						throw new exception(__METHOD__ .": upgrade failed (". $upgradeResult .")");
+						$this->error_handler(__METHOD__ .": upgrade failed (". $upgradeResult .")");
 					}
 					$this->logsObj->log_by_class("Finished running ". $createClassName ."::". $classUpgradeMethod ."(), result was (". $upgradeResult .")", 'debug');
 				}
 				else {
-					throw new exception(__METHOD__ .": upgrade method doesn't exist (". $createClassName ."::". $classUpgradeMethod 
+					$this->error_handler(__METHOD__ .": upgrade method doesn't exist (". $createClassName ."::". $classUpgradeMethod 
 						."), unable to perform upgrade ");
 				}
 			}
 			else {
-				throw new exception(__METHOD__ .": unable to locate upgrade class name (". $createClassName .")");
+				$this->error_handler(__METHOD__ .": unable to locate upgrade class name (". $createClassName .")");
 			}
 		}
 		else {
-			throw new exception(__METHOD__ .": upgrade filename (". $fileName .") does not exist");
+			$this->error_handler(__METHOD__ .": upgrade filename (". $fileName .") does not exist");
 		}
 	}//end do_scripted_upgrade()
 	//=========================================================================
@@ -638,7 +638,7 @@ class cs_webdbupgrade {
 	protected function is_higher_version($version, $checkIfHigher) {
 		$retval = FALSE;
 		if(!is_string($version) || !is_string($checkIfHigher)) {
-			throw new exception(__METHOD__ .": didn't get strings... ". debug_print(func_get_args(),0));
+			$this->error_handler(__METHOD__ .": didn't get strings... ". debug_print(func_get_args(),0));
 		}
 		elseif($version == $checkIfHigher) {
 			$retval = FALSE;
@@ -677,7 +677,7 @@ class cs_webdbupgrade {
 					}
 				}
 				else {
-					throw new exception(__METHOD__ .": ". $index ." is not numeric in one of the strings " .
+					$this->error_handler(__METHOD__ .": ". $index ." is not numeric in one of the strings " .
 						"(versionNumber=". $versionNumber .", checkThis=". $checkThis .")");
 				}
 			}
@@ -757,7 +757,7 @@ class cs_webdbupgrade {
 		
 		$retval = array();
 		if(!$this->is_higher_version($dbVersion, $newVersion)) {
-			throw new exception(__METHOD__ .": version (". $newVersion .") isn't higher than (". $dbVersion .")... something is broken");
+			$this->error_handler(__METHOD__ .": version (". $newVersion .") isn't higher than (". $dbVersion .")... something is broken");
 		}
 		elseif(is_array($this->config['MATCHING'])) {
 			$lastVersion = $dbVersion;
@@ -765,7 +765,7 @@ class cs_webdbupgrade {
 				
 				$matchVersion = preg_replace('/^V/', '', $matchVersion);
 				if($matchVersion == $data['TARGET_VERSION']) {
-					throw new exception(__METHOD__ .": detected invalid TARGET_VERSION in (". $matchVersion ."): make sure TARGET_VERSION is higher than matching!");
+					$this->error_handler(__METHOD__ .": detected invalid TARGET_VERSION in (". $matchVersion ."): make sure TARGET_VERSION is higher than matching!");
 				}
 				elseif($this->databaseVersion == $matchVersion || $this->is_higher_version($this->databaseVersion, $matchVersion)) {
 					//the version in MATCHING is equal to or HIGHER than our database version... make sure it is NOT
@@ -820,14 +820,14 @@ class cs_webdbupgrade {
 						);
 					}
 					else {
-						throw new exception(__METHOD__ .": invalid suffix (". $suffix .")");
+						$this->error_handler(__METHOD__ .": invalid suffix (". $suffix .")");
 					}
 					break;
 				}
 			}
 		}
 		else {
-			throw new exception(__METHOD__ .": invalid suffix (". $suffix .")");
+			$this->error_handler(__METHOD__ .": invalid suffix (". $suffix .")");
 		}
 		
 		return($retval);
@@ -840,7 +840,7 @@ class cs_webdbupgrade {
 	private function fix_xml_config($config, $path=null) {
 		$this->xmlLoops++;
 		if($this->xmlLoops > 1000) {
-			throw new exception(__METHOD__ .": infinite loop detected...");
+			$this->error_handler(__METHOD__ .": infinite loop detected...");
 		}
 		
 		try {
@@ -848,7 +848,7 @@ class cs_webdbupgrade {
 		}
 		catch(exception $e) {
 			$this->logsObj->log_by_class(__METHOD__ .': encountered exception: '. $e->getMessage());
-			throw new exception($e->getMessage());
+			$this->error_handler($e->getMessage());
 		}
 		if(!is_array($this->tempXmlConfig)) {	
 			$this->tempXmlConfig = array();
@@ -858,7 +858,7 @@ class cs_webdbupgrade {
 		}
 		catch(exception $e) {
 			$this->logsObj->log_by_class(__METHOD__ .': encountered exception: '. $e->getMessage());
-			throw new exception($e->getMessage());
+			$this->error_handler($e->getMessage());
 		}
 		
 		$myData = $a2p->get_data($path);
@@ -875,7 +875,7 @@ class cs_webdbupgrade {
 					$this->tempXmlConfig = $myA2p->get_data();
 				}
 				else {
-					throw new exception(__METHOD__ .": invalid type (". $myData['type'] .")");
+					$this->error_handler(__METHOD__ .": invalid type (". $myData['type'] .")");
 				}
 			}
 			else {
@@ -887,7 +887,7 @@ class cs_webdbupgrade {
 			}
 		}
 		else {
-			throw new exception(__METHOD__ .": unable to fix data on path=(". $path .")::: ". $this->gfObj->debug_print($myData,0));
+			$this->error_handler(__METHOD__ .": unable to fix data on path=(". $path .")::: ". $this->gfObj->debug_print($myData,0));
 		}
 	}//end fix_xml_config()
 	//=========================================================================
@@ -964,15 +964,15 @@ class cs_webdbupgrade {
 					$this->fsObj->closeFile();
 				}
 				else {
-					throw new exception(__METHOD__ .": failed to write contents (". $contents .") to lockfile");
+					$this->error_handler(__METHOD__ .": failed to write contents (". $contents .") to lockfile");
 				}
 			}
 			else {
-				throw new exception(__METHOD__ .": failed to create lockfile (". $this->lockfile .")");
+				$this->error_handler(__METHOD__ .": failed to create lockfile (". $this->lockfile .")");
 			}
 		}
 		else {
-			throw new exception(__METHOD__ .": failed to create lockfile, one already exists (". $this->lockfile .")");
+			$this->error_handler(__METHOD__ .": failed to create lockfile, one already exists (". $this->lockfile .")");
 		}
 	}//end create_lockfile()
 	//=========================================================================
@@ -986,11 +986,11 @@ class cs_webdbupgrade {
 	private function remove_lockfile() {
 		if($this->check_lockfile()) {
 			if(!$this->fsObj->rm($this->lockfile)) {
-				throw new exception(__METHOD__ .": failed to remove lockfile (". $this->lockfile .")");
+				$this->error_handler(__METHOD__ .": failed to remove lockfile (". $this->lockfile .")");
 			}
 		}
 		else {
-			throw new exception(__METHOD__ .": no lockfile (". $this->lockfile .")");
+			$this->error_handler(__METHOD__ .": no lockfile (". $this->lockfile .")");
 		}
 	}//end remove_lockfile()
 	//=========================================================================
@@ -1009,11 +1009,23 @@ class cs_webdbupgrade {
 			}
 		}
 		else {
-			throw new exception(__METHOD__ .": no version string given");
+			$this->error_handler(__METHOD__ .": no version string given");
 		}
 		
 		return($fullVersion);
 	}//end get_full_version_string()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function error_handler($details) {
+		//log the error.
+		$this->logsObj->log_by_class($details, 'exception in code');
+		
+		//now throw an exception so other code can catch it.
+		throw new exception($details);
+	}//end error_handler()
 	//=========================================================================
 	
 	
