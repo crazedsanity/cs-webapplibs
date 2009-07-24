@@ -86,7 +86,7 @@ class cs_webdblogger extends cs_versionAbstract {
 		if(strlen($logCategory)) {
 			if(!is_numeric($logCategory)) {
 				//attempt to retreive the logCategoryId (assuming they passed a name)
-				$this->set_log_category($logCategory);
+				$this->logCategoryId = $this->get_log_category_id($logCategory);
 			}
 			else {
 				//it was numeric: set it!
@@ -111,14 +111,9 @@ class cs_webdblogger extends cs_versionAbstract {
 	
 	
 	//=========================================================================
-	public function set_log_category($catName) {
-		$this->logCategoryId = $this->get_log_category_id($catName);
-	}//end set_log_category();
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
+	/**
+	 * Execute the entire contents of the given file (with absolute path) as SQL.
+	 */
 	final public function run_sql_file($filename) {
 		if(!is_object($this->fsObj)) {
 			if(class_exists('cs_fileSystem')) {
@@ -150,6 +145,9 @@ class cs_webdblogger extends cs_versionAbstract {
 	
 	
 	//=========================================================================
+	/**
+	 * Build internal cache to avoid extra queries.
+	 */
 	private function build_cache() {
 		//build query, run it, check for errors.
 		$sql = "SELECT log_class_id, lower(name) as name FROM log_class_table";
@@ -176,6 +174,9 @@ class cs_webdblogger extends cs_versionAbstract {
 	
 	
 	//=========================================================================
+	/**
+	 * Retrieve log_class_id value from the given name, or insert a new one.
+	 */
 	private function get_log_class_id($name) {
 		$name = strtolower($name);
 		
@@ -205,6 +206,10 @@ exit;
 	
 	
 	//=========================================================================
+	/**
+	 * Retrieve log_event_id based on the given class name & the internal 
+	 * logCategoryId value.
+	 */
 	function get_log_event_id($logClassName) {
 		$sqlArr = array(
 			'log_class_id'		=> $this->get_log_class_id($logClassName),
@@ -239,6 +244,11 @@ exit;
 	
 	
 	//=========================================================================
+	/**
+	 * The primary means of building log entries: use log_dberror() to log an 
+	 * error with a bit more capabilities; throws the details of the error as  
+	 * an exception.
+	 */
 	public function log_by_class($details, $className="error", $uid=NULL) {
 		//make sure there's a valid class name.
 		if(!strlen($className) || is_null($className)) {
@@ -305,6 +315,9 @@ exit;
 	
 	
 	//=========================================================================
+	/**
+	 * Logs an error like log_by_class(), but also throws an exception.
+	 */
 	public function log_dberror($details, $uid=NULL, $skipCurrentCatLog=FALSE) {
 		//set the error for the current category.
 		if(!$skipCurrentCatLog && ($this->logCategoryId !== $this->databaseCategory)) {
@@ -374,7 +387,10 @@ exit;
 	
 	
 	//=========================================================================
-	public function get_logs(array $criteria, array $orderBy=NULL, $limit=20, $excludeNavigation=TRUE) {
+	/**
+	 * Retrieves logs with the given criteria.
+	 */
+	public function get_logs(array $criteria, array $orderBy=NULL, $limit=20) {
 		//set a default for the limit.
 		if(!is_numeric($limit) || $limit < 1) {
 			//set it again.
@@ -474,9 +490,16 @@ exit;
 	
 	
 	//=========================================================================
-	public function get_recent_logs() {
+	/**
+	 * Uses arbitrary criteria to retrieve the last X log entries.
+	 */
+	public function get_recent_logs($numEntries=null) {
+		if(!is_numeric($numEntries) || $numEntries < 1) {
+			$numEntries = 20;
+		}
+		
 		//set the criteria so we only get the last few entries.
-		$retval = $this->get_logs(array(), NULL, 20);
+		$retval = $this->get_logs(array(), NULL, $numEntries);
 		return($retval);
 	}//end get_recent_logs()
 	//=========================================================================
@@ -484,6 +507,9 @@ exit;
 	
 	
 	//=========================================================================
+	/**
+	 * Retrieve log_category_id from the given name.
+	 */
 	private function get_log_category_id($catName) {
 		if(strlen($catName) && is_string($catName)) {
 			$catName = trim($catName);
@@ -522,6 +548,9 @@ exit;
 	
 	
 	//=========================================================================
+	/**
+	 * Create a log_category_id based on the given name.
+	 */
 	private function create_log_category($catName) {
 		$sql = "INSERT INTO log_category_table (name) VALUES ('". 
 			$this->gfObj->cleanString($catName, 'sql') ."')";
@@ -549,6 +578,9 @@ exit;
 	
 	
 	//=========================================================================
+	/**
+	 * Create a log_class_id based on the given name.
+	 */
 	private function create_log_class($className) {
 		$sql = "INSERT INTO log_class_table (name) VALUES ('". 
 			$this->gfObj->cleanString($className, 'sql') ."')";
@@ -577,6 +609,9 @@ exit;
 	
 	
 	//=========================================================================
+	/**
+	 * Retrieve class name from the given id.
+	 */
 	private function get_log_class_name($classId) {
 		if(is_numeric($classId)) {
 			$sql = "SELECT name FROM log_class_table WHERE log_class_id=". $classId;
@@ -609,6 +644,9 @@ exit;
 	
 	
 	//=========================================================================
+	/**
+	 * Retrieve category name from the given ID.
+	 */
 	private function get_log_category_name($categoryId) {
 		if(is_numeric($categoryId)) {
 			$sql = "SELECT name FROM log_category_table WHERE log_category_id=". $categoryId;
