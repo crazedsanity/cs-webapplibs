@@ -50,12 +50,6 @@ class cs_webdblogger extends cs_versionAbstract {
 	/** Category to use when logging a database error */
 	private $databaseCategory = 1;
 	
-	/** Last encountered error. */
-	private $lastError=null;
-	
-	/** Last result from db->numRows() */
-	private $lastNumrows = null;
-	
 	/** Last SQL file handled */
 	protected $lastSQLFile=null;
 	
