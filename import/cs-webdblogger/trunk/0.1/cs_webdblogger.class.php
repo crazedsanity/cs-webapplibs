@@ -32,7 +32,9 @@
 
 //NOTE::: this class **REQUIRES** cs-content for its "cs_phpDB" class.
 
-class cs_webdblogger {
+require_once(constant('LIBDIR') .'/cs-versionparse/cs_version.abstract.class.php');
+
+class cs_webdblogger extends cs_versionAbstract {
 	/** Database handle */
 	public $db;
 	
@@ -58,7 +60,7 @@ class cs_webdblogger {
 	protected $lastSQLFile=null;
 	
 	/** Global functions class from cs-content */
-	private $gfObj;
+	protected $gfObj;
 	
 	//=========================================================================
 	/**
@@ -68,13 +70,23 @@ class cs_webdblogger {
 		//assign the database object.
 		$this->db = $db;
 		
+		
+		$this->set_version_file_location(dirname(__FILE__) . '/VERSION');
+		
+		//Make sure the version of cs_phpDB is HIGHER THAN (not equal to) 1.0.0-ALPHA8, 
+		//	which added some methods that are required.
+		$mustBeHigherThan = '1.2-ALPHA8';
+		if(!$this->is_higher_version($mustBeHigherThan, $this->db->get_version())) {
+			throw new exception(__METHOD__ .": requires cs_phpDB of higher than v". $mustBeHigherThan,1);
+		}
+		
 		$this->gfObj = new cs_globalFunctions;
 		
 		//assign the log_category_id.
 		if(strlen($logCategory)) {
 			if(!is_numeric($logCategory)) {
-				//attempt to retreive the logCategoryId (assuming they passed a name).
-				$this->logCategoryId = $this->get_log_category_id($logCategory);
+				//attempt to retreive the logCategoryId (assuming they passed a name)
+				$this->set_log_category($logCategory);
 			}
 			else {
 				//it was numeric: set it!
@@ -99,29 +111,9 @@ class cs_webdblogger {
 	
 	
 	//=========================================================================
-	public function run_sql($sql) {
-		
-		if(strlen($sql)) {
-			$this->lastNumrows = $this->db->exec($sql);
-			$this->lastError = $this->db->errorMsg();
-			
-			if(!strlen($this->lastError) && $this->lastNumrows > 0) {
-				$retval = TRUE;
-			}
-			else {
-				if(strlen($this->lastError)) {
-					throw new exception(__METHOD__ .": ". $this->lastError ."<BR>\nSQL::: ". $sql);
-				}
-				$retval = FALSE;
-			}
-			
-		}
-		else {
-			throw new exception(__METHOD__ .": no sql to run (". $sql .")");
-		}
-		
-		return($retval);
-	}//end run_sql()
+	public function set_log_category($catName) {
+		$this->logCategoryId = $this->get_log_category_id($catName);
+	}//end set_log_category();
 	//=========================================================================
 	
 	
@@ -142,7 +134,7 @@ class cs_webdblogger {
 		$fileContents = $fsObj->read($filename);
 		$this->db->beginTrans(__METHOD__);
 		try {
-			$this->run_sql($fileContents);
+			$this->db->run_update($fileContents);
 			$this->db->commitTrans();
 			$retval = TRUE;
 		}
@@ -161,19 +153,22 @@ class cs_webdblogger {
 	private function build_cache() {
 		//build query, run it, check for errors.
 		$sql = "SELECT log_class_id, lower(name) as name FROM log_class_table";
-		$numrows = $this->db->exec($sql);
-		$dberror = $this->db->errorMsg();
 		
-		if(!strlen($dberror) && $numrows == 0) {
-			$this->logClassCache = array();
+		try {
+			$data = $this->db->run_query($sql, 'log_class_id', 'name');
+			
+			if(is_array($data)) {
+				$this->logClassCache = $data;
+			}
+			elseif($data == false) {
+				$this->logClassCache = array();
+			}
+			else {
+				throw new exception(__METHOD__ .": unknown data returned: ". $this->gfObj->debug_var_dump($data,0));
+			}
 		}
-		elseif(strlen($dberror) || $numrows < 0) {
-			//something bad happened.
-			throw new exception(__METHOD__ .": not enough data ($numrows) or database error:::\n$dberror");
-		}
-		else {
-			//got it.
-			$this->logClassCache = $this->db->farray_nvp('name', 'log_class_id');
+		catch(exception $e) {
+			throw new exception(__METHOD__ .": failed to build internal class cache::: ". $e->getMessage());
 		}
 	}//end build_cache()
 	//=========================================================================
@@ -191,8 +186,16 @@ class cs_webdblogger {
 		}
 		else {
 			//not available.  Try to create a new one & refresh the cache.
-			$retval = $this->create_log_class($name);
 			$this->build_cache();
+			if(isset($this->logClassCache[$name])) {
+				//set the id.
+				$retval = $this->logClassCache[$name];
+			}
+			else {
+$this->gfObj->debug_print($this->logClassCache,1);
+exit;
+				$retval = $this->create_log_class($name);
+			}
 		}
 		
 		return($retval);
@@ -209,21 +212,24 @@ class cs_webdblogger {
 		);
 		$sql = "SELECT log_event_id FROM log_event_table WHERE " .
 			$this->gfObj->string_from_array($sqlArr, 'select', NULL, 'numeric');
-		$numrows = $this->db->exec($sql);
-		$dberror = $this->db->errorMsg();
 		
-		if(!strlen($dberror) && $numrows == 0 && is_numeric($sqlArr['log_class_id'])) {
-			//no records & no error: create one.
-			$retval = $this->auto_insert_record($sqlArr['log_class_id']);
+		try {
+			$data = $this->db->run_query($sql);
+			
+			
+			if($data === false) {
+				//no records & no error: create one.
+				$retval = $this->auto_insert_record($sqlArr['log_class_id']);
+			}
+			elseif(is_array($data) && isset($data['log_event_id'])) {
+				$retval = $data['log_event_id'];
+			}
+			else {
+				throw new exception(__METHOD__ .": invalid data returned::: ". $this->gfObj->debug_var_dump($data,0));
+			}
 		}
-		elseif(strlen($dberror) || $numrows !== 1) {
-			//database error... DIE.
-			throw new exception(__METHOD__ .": database error:::\n$dberror\nSQL:::$sql");
-		}
-		else {
-			//get the data & return it.
-			$data = $this->db->farray();
-			$retval = $data[0];
+		catch(exception $e) {
+			throw new exception(__METHOD__ .": failed to retrieve log_event_id::: ". $e->getMessage());
 		}
 		
 		return($retval);
@@ -277,16 +283,19 @@ class cs_webdblogger {
 		
 		//build, run, error-checking.
 		$sql = "INSERT INTO log_table ". $this->gfObj->string_from_array($sqlArr, 'insert', NULL, $cleanStringArr, TRUE);
-		$numrows = $this->db->exec($sql);
-		$dberror = $this->db->errorMsg();
 		
-		if(strlen($dberror) || $numrows !== 1) {
-			//bad.
-			throw new exception(__METHOD__ .": no records created ($numrows) or database error:::\n$dberror\n$sql");
+		try {
+			$newId = $this->db->run_insert($sql, 'log_table_log_id_seq');
+			
+			if(is_numeric($newId) && $newId > 0) {
+				$retval = $newId;
+			}
+			else {
+				throw new exception(__METHOD__ .": failed to insert id or invalid return (". $this->gfObj->debug_var_dump($newId,0) .")");
+			}
 		}
-		else {
-			//good to go.
-			$retval = $this->get_last_inserted_id('log_table_log_id_seq');
+		catch(exception $e) {
+			throw new exception(__METHOD__ .": error while creating log::: ". $e->getMessage());
 		}
 		
 		return($retval);
@@ -310,9 +319,6 @@ class cs_webdblogger {
 		$this->logCategoryId = $originalCategoryId;
 		
 		throw new exception(__METHOD__ .": encountered error::: $details");
-		
-		//give 'em the result.
-		return($retval);
 	}//end log_dberror()
 	//=========================================================================
 	
@@ -345,16 +351,19 @@ class cs_webdblogger {
 			
 			//now run the insert.
 			$sql = 'INSERT INTO log_event_table '. $this->gfObj->string_from_array($sqlArr, 'insert');
-			$numrows = $this->db->exec($sql);
-			$dberror = $this->db->errorMsg();
 			
-			if(strlen($dberror) || $numrows !== 1) {
-				//terrible.  So close to auto-recovery.
-				throw new exception(__METHOD__ .": unable to recover, numrows=($numrows), dberror:::\n$dberror\n$sql");
+			try {
+				$newId = $this->db->run_insert($sql, 'log_event_table_log_event_id_seq');
+				
+				if(is_numeric($newId) && $newId > 0) {
+					$retval = $newId;
+				}
+				else {
+					throw new exception(__METHOD__ .": unable to insert id or bad return::: ". $this->gfObj->debug_var_dump($newId,0));
+				}
 			}
-			else {
-				//got it.  Retrieve the id.
-				$retval = $this->get_last_inserted_id('log_event_table_log_event_id_seq');
+			catch(exception $e) {
+				throw new exception(__METHOD__ .": failed to create record::: ". $e->getMessage());
 			}
 		}
 		
@@ -445,18 +454,17 @@ class cs_webdblogger {
 				"log_id DESC " .
 			"LIMIT ". $limit;
 		
-		//run it.
-		$numrows = $this->db->exec($sql);
-		$dberror = $this->db->errorMsg();
-		
-		$retval = array();
-		if(strlen($dberror) || $numrows < 0) {
-			//log the problem, and make sure it's not logged twice.
-			$this->log_dberror(__METHOD__ .": no rows ($numrows) or database error:::\n". $dberror, NULL, TRUE);
+		try {
+			//run it.
+			$data = $this->db->run_query($sql, 'log_id');
+			
+			$retval = array();
+			if(is_array($data)) {
+				$retval = $data;
+			}
 		}
-		elseif($numrows > 0) {
-			//retrieve the data.
-			$retval = $this->db->farray_fieldnames('log_id', NULL, 0);
+		catch(exception $e) {
+			throw new exception(__METHOD__ .": failed to retrieve logs::: ". $e->getMessage());
 		}
 		
 		return($retval);
@@ -476,41 +484,31 @@ class cs_webdblogger {
 	
 	
 	//=========================================================================
-	public function get_reports($startPeriod, $endPeriod, array $extraCrit=NULL) {
-		//build the query.
-		$timePeriod = array(
-			'start' => $startPeriod,
-			'end'	=> $endPeriod
-		);
-		
-		$criteria = $timePeriod;
-		if(is_array($extraCrit)) {
-			$criteria = $extraCrit;
-		}
-		$criteria['timeperiod'] = $timePeriod;
-		$criteria['log_class_id'] = 6;
-		
-		$myLogs = $this->get_logs($criteria,NULL,10);
-		
-		return($myLogs);
-	}//end get_reports()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
 	private function get_log_category_id($catName) {
 		if(strlen($catName) && is_string($catName)) {
 			$catName = trim($catName);
 			$sql = "SELECT log_category_id FROM log_category_table WHERE lower(name) = '". strtolower($catName) ."'";
-			if($this->run_sql($sql)) {
-				//got it!
-				$data = $this->db->farray();
-				$retval = $data[0];
+			
+			try {
+				
+				$data = $this->db->run_query($sql);
+				
+				$numrows = $this->db->numRows();
+				if($numrows == 1 && is_array($data) && isset($data['log_category_id']) && is_numeric($data['log_category_id'])) {
+					$retval = $data['log_category_id'];
+				}
+				elseif($data === false) {
+					$retval = $this->create_log_category($catName);
+				}
+				elseif($numrows > 1) {
+					throw new exception(__METHOD__ .": found too many records (". $numrows .")");
+				}
+				else {
+					throw new exception(__METHOD__ .": unknown error (bad data in array?)");
+				}
 			}
-			else {
-				//create the category & return the newly-inserted id.
-				$retval = $this->create_log_category($catName);
+			catch(exception $e) {
+				throw new exception(__METHOD__ .": encountered error::: ". $e->getMessage());
 			}
 		}
 		else {
@@ -527,12 +525,21 @@ class cs_webdblogger {
 	private function create_log_category($catName) {
 		$sql = "INSERT INTO log_category_table (name) VALUES ('". 
 			$this->gfObj->cleanString($catName, 'sql') ."')";
-		if($this->run_sql($sql)) {
-			//sweet.  Get the newly created record.
-			$retval = $this->get_last_inserted_id('log_category_table_log_category_id_seq');
+		
+		try {
+			$newId = $this->db->run_insert($sql, 'log_category_table_log_category_id_seq');
+			
+			if(is_numeric($newId) && $newId > 0) {
+				$retval = $newId;
+			}
+			else {
+				throw new exception(__METHOD__ .": invalid data returned for " .
+						"category::: ". $this->gfObj->debug_var_dump($newId,0));
+			}
 		}
-		else {
-			throw new exception(__METHOD__ .": failed to create new log_category (". $catName .")");
+		catch(exception $e) {
+			throw new exception(__METHOD__ .": error encountered while trying to " .
+					"create category::: ". $e->getMessage());
 		}
 		
 		return($retval);
@@ -545,12 +552,22 @@ class cs_webdblogger {
 	private function create_log_class($className) {
 		$sql = "INSERT INTO log_class_table (name) VALUES ('". 
 			$this->gfObj->cleanString($className, 'sql') ."')";
-		if($this->run_sql($sql)) {
-			//sweet.  Get the newly created record.
-			$retval = $this->get_last_inserted_id('log_class_table_log_class_id_seq');
+		
+		
+		try {
+			$newId = $this->db->run_insert($sql, 'log_class_table_log_class_id_seq');
+			
+			if(is_numeric($newId) && $newId > 0) {
+				$retval = $newId;
+			}
+			else {
+				throw new exception(__METHOD__ .": failed to insert class or invalid " .
+						"id::: ". $this->gfObj->debug_var_dump($newId,0));
+			}
 		}
-		else {
-			throw new exception(__METHOD__ .": failed to create new log_class");
+		catch(exception $e) {
+			throw new exception(__METHOD__ .": error encountered while creating log " .
+					"class::: ". $e->getMessage());
 		}
 		
 		return($retval);
@@ -560,41 +577,26 @@ class cs_webdblogger {
 	
 	
 	//=========================================================================
-	/**
-	 * Returns ID of the last inserted record.  Added for future compatibility 
-	 * with other database types (mysql doesn't need to know what the sequence
-	 * name was, but pgsql does, future DB implementations may need different 
-	 * information to do the same thing).
-	 */
-	private function get_last_inserted_id($sequence) {
-		$myId = $this->db->lastID($sequence);
-		
-		if(!is_numeric($myId) || $myId < 1) {
-			throw new exception(__METHOD__ .": failed to retrieve valid id (". $myId .")");
-		}
-		
-		return($myId);
-	}//end get_last_inserted_id()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
 	private function get_log_class_name($classId) {
 		if(is_numeric($classId)) {
 			$sql = "SELECT name FROM log_class_table WHERE log_class_id=". $classId;
-			$res = $this->run_sql($sql);
-			if($res) {
-				$data = $this->db->farray();
-				$className = $data[0];
+			
+			try {
+				$data = $this->db->run_query($sql);
 				
-				if(strlen($className) < 2) {
-					throw new exception(__METHOD__ .": invalid class name returned (". $className .")");
+				if(is_array($data) && isset($data['name']) && $this->db->numRows() == 1) {
+					$className = $data['name'];
+				}
+				else {
+					throw new exception(__METHOD__ .": failed to retrieve class " .
+							"name, or invalid return data::: ". $this->gfObj->debug_print($data,0));
 				}
 			}
-			else {
-				throw new exception(__METHOD__ .": failed to retrieve class name data for id=(". $classId .") - res=(". $res .")");
+			catch(exception $e) {
+				throw new exception(__METHOD__ .": error encountered while " .
+						"retrieving class name::: ". $e->getMessage());
 			}
+			
 		}
 		else {
 			throw new exception(__METHOD__ .": invalid class ID (". $classId .")");
@@ -610,16 +612,21 @@ class cs_webdblogger {
 	private function get_log_category_name($categoryId) {
 		if(is_numeric($categoryId)) {
 			$sql = "SELECT name FROM log_category_table WHERE log_category_id=". $categoryId;
-			if($this->run_sql($sql)) {
-				$data = $this->db->farray();
-				$categoryName = $data[0];
+			
+			try {
+				$data = $this->db->run_query($sql);
 				
-				if(strlen($categoryName) < 2) {
-					throw new exception(__METHOD__ .": invalid category name returned (". $categoryName .")");
+				if(is_array($data) && isset($data['name']) && $this->db->numRows() == 1) {
+					$categoryName = $data['name'];
+				}
+				else {
+					throw new exception(__METHOD__ .": failed to retrieve " .
+							"category name::: ". $this->gfObj->debug_var_dump($data,0));
 				}
 			}
-			else {
-				throw new exception(__METHOD__ .": failed to retrieve category name data for id=(". $categoryId .")");
+			catch(exception $e) {
+				throw new exception(__METHOD__ .": error encountered while " .
+						"retrieving class name::: ". $e->getMessage());
 			}
 		}
 		else {
