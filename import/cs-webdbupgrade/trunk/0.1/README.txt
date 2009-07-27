@@ -19,11 +19,12 @@ against it.  It was built using PostgreSQL, which has a rock solid transaction
 system: if the upgrade fails, everything rolls-back and it is up to a developer
 to figure out what went wrong--but the system is left in a CONSISTENT STATE. 
 With MySQL, this will only work with InnoDB tables--and only if ALL AFFECTED 
-TABLES ARE InnoDB!  On a database that doesn't use transaction-ready tables 
-(i.e. InnoDB tables), part of the upgrade could succeed, but another part 
-could fail, leaving the system in an inconsistent state... and this time, it 
-is up to you to fix those problems before removing the lock file that keeps 
-the site from working.
+TABLES ARE InnoDB.  There are also many things that will cause an implicit 
+commit, meaning the code will think its in a transaction after that point, but 
+it actually isn't (which is possibly worse than not having transactional 
+capabilities at all).
+
+MySQL TRANSACTION INFO::: http://dev.mysql.com/doc/refman/5.0/en/implicit-commit.html
 
 WORK FLOW:
 
