@@ -269,35 +269,47 @@ class cs_webdbupgrade {
 				$this->get_database_version();
 				
 				//check for version conflicts.
-				$this->check_for_version_conflict();
+				$versionConflictInfo = $this->check_for_version_conflict();
+				
+				
+				if($versionConflictInfo !== false) {
+					$this->logsObj->log_by_class("Upgrading ". $versionConflictInfo ." versions, from " .
+							"(". $this->databaseVersion .") to (". $this->versionFileVersion .")", 'info');
+				}
 				
 				$upgradeList = $this->get_upgrade_list();
 				
-				$i=0;
-				$this->logsObj->log_by_class(__METHOD__ .": starting to run through the upgrade list, starting at (". $this->databaseVersion .")...", 'debug');
-				$this->db->beginTrans(__METHOD__);
-				foreach($upgradeList as $fromVersion=>$toVersion) {
+				try {
+					$i=0;
+					$this->logsObj->log_by_class(__METHOD__ .": starting to run through the upgrade list, starting at (". $this->databaseVersion .")...", 'debug');
+					$this->db->beginTrans(__METHOD__);
+					foreach($upgradeList as $fromVersion=>$toVersion) {
+						
+						$details = __METHOD__ .": upgrading from ". $fromVersion ." to ". $toVersion ."... ";
+						$this->logsObj->log_by_class($details, 'system');
+						$this->do_single_upgrade($fromVersion);
+						$this->get_database_version();
+						$i++;
+						
+						$details = __METHOD__ .": finished upgrade #". $i .", now at version (". $this->databaseVersion .")";
+						$this->logsObj->log_by_class($details, 'system');
+					}
 					
-					$details = __METHOD__ .": upgrading from ". $fromVersion ." to ". $toVersion ."... ";
-					$this->logsObj->log_by_class($details, 'system');
-					$this->do_single_upgrade($fromVersion);
-					$this->get_database_version();
-					$i++;
+					if($this->databaseVersion == $this->versionFileVersion) {
+						$this->logsObj->log_by_class(__METHOD__ .": finished upgrading after performing (". $i .") upgrades", 'debug');
+						$this->newVersion = $this->databaseVersion;
+					}
+					else {
+						$this->error_handler(__METHOD__ .": finished upgrade, but version wasn't updated (expecting '". $this->versionFileVersion ."', got '". $this->databaseVersion ."')!!!");
+					}
+					$this->remove_lockfile();
 					
-					$details = __METHOD__ .": finished upgrade #". $i .", now at version (". $this->databaseVersion .")";
-					$this->logsObj->log_by_class($details, 'system');
+					$this->db->commitTrans();
 				}
-				
-				if($this->databaseVersion == $this->versionFileVersion) {
-					$this->logsObj->log_by_class(__METHOD__ .": finished upgrading after performing (". $i .") upgrades", 'debug');
-					$this->newVersion = $this->databaseVersion;
+				catch(exception $e) {
+					$this->error_handler(__METHOD__ .": upgrade aborted:::". $e->getMessage());
+					$this->db->rollbackTrans();
 				}
-				else {
-					$this->error_handler(__METHOD__ .": finished upgrade, but version wasn't updated (expecting '". $this->versionFileVersion ."', got '". $this->databaseVersion ."')!!!");
-				}
-				$this->remove_lockfile();
-				
-				$this->db->commitTrans();
 			}
 		}
 	}//end perform_upgrade()
@@ -420,10 +432,6 @@ class cs_webdbupgrade {
 			}
 		}
 		
-		if($retval !== false) {
-			$this->logsObj->log_by_class("Upgrading ". $retval ." versions, from (". $this->databaseVersion .") to (". $this->versionFileVersion .")", 'debug');
-		}
-		
 		return($retval);
 	}//end check_for_version_conflict()
 	//=========================================================================
@@ -502,7 +510,7 @@ class cs_webdbupgrade {
 				$this->error_handler(__METHOD__ .": target version not specified, unable to proceed with upgrade for ". $versionIndex);
 			}
 		}
-		$this->logsObj->log_by_class("Finished upgrade to ". $targetVersion);
+		$this->logsObj->log_by_class("Finished upgrade to ". $targetVersion, 'system');
 	}//end do_single_upgrade()
 	//=========================================================================
 	
