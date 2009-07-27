@@ -281,7 +281,8 @@ class cs_webdbupgrade {
 				
 				try {
 					$i=0;
-					$this->logsObj->log_by_class(__METHOD__ .": starting to run through the upgrade list, starting at (". $this->databaseVersion .")...", 'debug');
+					$this->logsObj->log_by_class(__METHOD__ .": starting to run through the upgrade list, starting at (". $this->databaseVersion ."), " .
+							"total number of upgrades to perform: ". count($upgradeList), 'debug');
 					$this->db->beginTrans(__METHOD__);
 					foreach($upgradeList as $fromVersion=>$toVersion) {
 						
@@ -295,12 +296,18 @@ class cs_webdbupgrade {
 						$this->logsObj->log_by_class($details, 'system');
 					}
 					
-					if($this->databaseVersion == $this->versionFileVersion) {
-						$this->logsObj->log_by_class(__METHOD__ .": finished upgrading after performing (". $i .") upgrades", 'debug');
-						$this->newVersion = $this->databaseVersion;
+					if($i < count($upgradeList)) {
+						$this->logsObj->log_by_class(__METHOD__ .": completed upgrade ". $i ." of ". count($upgradeList), 'debug');
 					}
 					else {
-						$this->error_handler(__METHOD__ .": finished upgrade, but version wasn't updated (expecting '". $this->versionFileVersion ."', got '". $this->databaseVersion ."')!!!");
+						if($this->databaseVersion == $this->versionFileVersion) {
+							$this->logsObj->log_by_class(__METHOD__ .": finished upgrading after performing (". $i .") upgrades", 'debug');
+							$this->newVersion = $this->databaseVersion;
+						}
+						else {
+							$this->logsObj->log_by_class(__METHOD__ .": upgradeList::: ". $this->gfObj->debug_print($upgradeList,0), 'debug');
+							$this->error_handler(__METHOD__ .": finished upgrade, but version wasn't updated (expecting '". $this->versionFileVersion ."', got '". $this->databaseVersion ."')!!!");
+						}
 					}
 					$this->remove_lockfile();
 					
@@ -510,7 +517,7 @@ class cs_webdbupgrade {
 				$this->error_handler(__METHOD__ .": target version not specified, unable to proceed with upgrade for ". $versionIndex);
 			}
 		}
-		$this->logsObj->log_by_class("Finished upgrade to ". $targetVersion, 'system');
+		$this->logsObj->log_by_class("Finished upgrade to ". $upgradeData['TARGET_VERSION'], 'system');
 	}//end do_single_upgrade()
 	//=========================================================================
 	
@@ -767,9 +774,9 @@ class cs_webdbupgrade {
 		if(!$this->is_higher_version($dbVersion, $newVersion)) {
 			$this->error_handler(__METHOD__ .": version (". $newVersion .") isn't higher than (". $dbVersion .")... something is broken");
 		}
-		elseif(is_array($this->config['MATCHING'])) {
+		elseif(is_array($this->config['UPGRADELIST']['MATCHING'])) {
 			$lastVersion = $dbVersion;
-			foreach($this->config['MATCHING'] as $matchVersion=>$data) {
+			foreach($this->config['UPGRADELIST']['MATCHING'] as $matchVersion=>$data) {
 				
 				$matchVersion = preg_replace('/^V/', '', $matchVersion);
 				if($matchVersion == $data['TARGET_VERSION']) {
