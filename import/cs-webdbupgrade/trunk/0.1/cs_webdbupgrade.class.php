@@ -517,7 +517,7 @@ class cs_webdbupgrade {
 				$this->error_handler(__METHOD__ .": target version not specified, unable to proceed with upgrade for ". $versionIndex);
 			}
 		}
-		$this->logsObj->log_by_class("Finished upgrade to ". $upgradeData['TARGET_VERSION'], 'system');
+		$this->logsObj->log_by_class("Finished upgrade to ". $this->newVersion, 'system');
 	}//end do_single_upgrade()
 	//=========================================================================
 	
