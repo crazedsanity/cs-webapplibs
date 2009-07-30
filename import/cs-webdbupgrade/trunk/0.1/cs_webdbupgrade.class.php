@@ -329,16 +329,13 @@ class cs_webdbupgrade {
 	
 	//=========================================================================
 	public function upgrade_in_progress($makeItSo=FALSE) {
-		$retval = FALSE;
 		if($makeItSo === TRUE) {
 			$this->get_database_version();
 			$details = $this->projectName .': Upgrade from '. $this->databaseVersion .' started at '. date('Y-m-d H:i:s');
 			$this->create_lockfile($details);
 			$retval = TRUE;
 		}
-		elseif(preg_match('/^upgrade/i', $this->mainConfig['WORKINGONIT'])) {
-			$retval = TRUE;
-		}
+		$retval = $this->check_lockfile();
 		
 		return($retval);
 	}//end upgrade_in_progress()
