@@ -256,6 +256,8 @@ class cs_webdbupgrade {
 			$lockConfig = $this->upgrade_in_progress(TRUE);
 			$this->fsObj->cd("/");
 			
+			$this->logsObj->log_by_class("Starting upgrade process...", 'begin');
+			
 			//TODO: not only should the "create_file()" method be run, but also do a sanity check by calling lock_file_exists().
 			if($lockConfig === 0) {
 				//can't create the lockfile.  Die.
@@ -288,7 +290,7 @@ class cs_webdbupgrade {
 						
 						$details = __METHOD__ .": upgrading from ". $fromVersion ." to ". $toVersion ."... ";
 						$this->logsObj->log_by_class($details, 'system');
-						$this->do_single_upgrade($fromVersion);
+						$this->do_single_upgrade($fromVersion, $toVersion);
 						$this->get_database_version();
 						$i++;
 						
@@ -317,6 +319,7 @@ class cs_webdbupgrade {
 					$this->error_handler(__METHOD__ .": upgrade aborted:::". $e->getMessage());
 					$this->db->rollbackTrans();
 				}
+				$this->logsObj->log_by_class("Upgrade process complete", 'end');
 			}
 		}
 	}//end perform_upgrade()
@@ -488,13 +491,13 @@ class cs_webdbupgrade {
 	
 	
 	//=========================================================================
-	private function do_single_upgrade($targetVersion) {
+	private function do_single_upgrade($fromVersion, $toVersion=null) {
 		//Use the "matching_syntax" data in the upgrade.xml file to determine the filename.
-		$versionIndex = "V". $this->get_full_version_string($targetVersion);
+		$versionIndex = "V". $this->get_full_version_string($fromVersion);
 		if(!isset($this->config['UPGRADELIST']['MATCHING'][$versionIndex])) {
 			//version-only upgrade.
-			$this->newVersion = $this->versionFileVersion;
-			$this->update_database_version($this->versionFileVersion);
+			$this->newVersion = $toVersion;
+			$this->update_database_version($toVersion);
 		}
 		else {
 			//scripted upgrade...
