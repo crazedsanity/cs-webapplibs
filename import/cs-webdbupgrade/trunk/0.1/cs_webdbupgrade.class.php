@@ -12,13 +12,15 @@
  * 
  */
 
-class cs_webdbupgrade {
+require_once(constant('LIBDIR') .'/cs-versionparse/cs_version.abstract.class.php');
+
+class cs_webdbupgrade extends cs_versionAbstract {
 	
 	/** cs_fileSystem{} object: for filesystem read/write operations. */
 	private $fsObj;
 	
 	/** cs_globalFunctions{} object: debugging, array, and string operations. */
-	private $gfObj;
+	protected $gfObj;
 	
 	/** Array of configuration parameters. */
 	private $config = NULL;
@@ -43,6 +45,9 @@ class cs_webdbupgrade {
 	
 	/** Name (absolute location) of *.lock file that indicates an upgrade is running. */
 	private $lockfile;
+	
+	/**  */
+	private $allowNoDBVersion=true;
 	
 	/** List of acceptable suffixes; example "1.0.0-BETA3" -- NOTE: these MUST be in 
 	 * an order that reflects newest -> oldest; "ALPHA happens before BETA, etc. */
@@ -143,8 +148,46 @@ class cs_webdbupgrade {
 			$this->error_handler(__METHOD__ .": upgrade in progress: ". $this->fsObj->read($this->lockfile));
 		}
 		
+		$this->check_internal_upgrades();
+		
 		$this->check_versions(false);
 	}//end __construct()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	/**
+	 * Determine if there are any upgrades that need to be performed...
+	 */
+	private function check_internal_upgrades() {
+		$oldVersionFileLocation = $this->versionFileLocation;
+		$oldUpgradeConfigFile = $this->config['UPGRADE_CONFIG_FILE'];
+		$this->config['UPGRADE_CONFIG_FILE'] = dirname(__FILE__) .'/upgrades/upgrade.xml';
+		
+		//do stuff here...
+		$this->versionFileLocation = dirname(__FILE__) .'/VERSION';
+		$this->read_version_file();
+		
+		$this->gfObj->debug_print($this->parse_version_string($this->versionFileVersion),1);
+		
+		//if there is an error, then... uh... yeah.
+		try {
+			$this->get_database_version();
+		}
+		catch(exception $e) {
+			#throw new exception(__METHOD__ .": error while retrieving database version: ". $e->getMessage());
+			
+			//try creating the version.
+			$this->load_initial_version();
+		}
+		
+		//reset internal vars.
+		$this->versionFileLocation = $oldVersionFileLocation;
+		$this->config['UPGRADE_CONFIG_FILE'] = $oldUpgradeConfigFile;
+		$this->read_version_file();
+		
+	}//end check_internal_upgrades()
 	//=========================================================================
 	
 	
@@ -172,6 +215,9 @@ class cs_webdbupgrade {
 			//okay, all files present: check the version in the VERSION file.
 			$versionFileVersion = $this->read_version_file();
 			$dbVersion = $this->get_database_version();
+			if(!is_array($dbVersion)) {
+				$this->load_initial_version();
+			}
 			
 			$versionsDiffer = TRUE;
 			$retval = FALSE;
@@ -347,10 +393,14 @@ class cs_webdbupgrade {
 	//=========================================================================
 	public function upgrade_in_progress($makeItSo=FALSE) {
 		if($makeItSo === TRUE) {
-			$this->get_database_version();
-			$details = $this->projectName .': Upgrade from '. $this->databaseVersion .' started at '. date('Y-m-d H:i:s');
-			$this->create_lockfile($details);
-			$retval = TRUE;
+			if(strlen($this->databaseVersion)) {
+				$details = $this->projectName .': Upgrade from '. $this->databaseVersion .' started at '. date('Y-m-d H:i:s');
+				$this->create_lockfile($details);
+				$retval = TRUE;
+			}
+			else {
+				$this->error_handler(__METHOD__ .": missing internal databaseVersion (". $this->databaseVersion .")");
+			}
 		}
 		$retval = $this->check_lockfile();
 		
@@ -486,6 +536,14 @@ class cs_webdbupgrade {
 				else {
 					$this->error_handler(__METHOD__ .": no table in database, failed to create one... ORIGINAL " .
 						"ERROR: ". $dberror .", SCHEMA LOAD ERROR::: ". $loadTableResult);
+				}
+			}
+			elseif(!strlen($dberror) && $numrows == 0) {
+				if($this->allowNoDBVersion) {
+					$retval = false;
+				}
+				else {
+					$this->error_handler(__METHOD__ .": no version data found for (". $this->projectName .")");
 				}
 			}
 			else {
@@ -667,103 +725,12 @@ class cs_webdbupgrade {
 	
 	
 	//=========================================================================
-	protected function is_higher_version($version, $checkIfHigher) {
-		$retval = FALSE;
-		if(!is_string($version) || !is_string($checkIfHigher)) {
-			$this->error_handler(__METHOD__ .": didn't get strings... ". debug_print(func_get_args(),0));
+	public function is_higher_version($version, $checkIfHigher) {
+		try {
+			$retval = parent::is_higher_version($version, $checkIfHigher);
 		}
-		elseif($version == $checkIfHigher) {
-			$retval = FALSE;
-		}
-		else {
-			$curVersionArr = $this->parse_version_string($version);
-			$checkVersionArr = $this->parse_version_string($checkIfHigher);
-			
-			unset($curVersionArr['version_string'], $checkVersionArr['version_string']);
-			
-			
-			$curVersionSuffix = $curVersionArr['version_suffix'];
-			$checkVersionSuffix = $checkVersionArr['version_suffix'];
-			
-			
-			unset($curVersionArr['version_suffix']);
-			
-			foreach($curVersionArr as $index=>$versionNumber) {
-				$checkThis = $checkVersionArr[$index];
-				
-				if(is_numeric($checkThis) && is_numeric($versionNumber)) {
-					//set them as integers.
-					settype($versionNumber, 'int');
-					settype($checkThis, 'int');
-					
-					if($checkThis > $versionNumber) {
-						$retval = TRUE;
-						break;
-					}
-					elseif($checkThis == $versionNumber) {
-						//they're equal...
-					}
-					else {
-						//TODO: should there maybe be an option to throw an exception (freak out) here?
-						$this->logsObj->log_by_class(__METHOD__ .": while checking ". $index .", realized the new version (". $checkIfHigher .") is LOWER than current (". $version .")",'debug');
-					}
-				}
-				else {
-					$this->error_handler(__METHOD__ .": ". $index ." is not numeric in one of the strings " .
-						"(versionNumber=". $versionNumber .", checkThis=". $checkThis .")");
-				}
-			}
-			
-			//now deal with those damnable suffixes, but only if the versions are so far identical: if 
-			//	the "$checkIfHigher" is actually higher, don't bother (i.e. suffixes don't matter when
-			//	we already know there's a major, minor, or maintenance version that's also higher.
-			if($retval === FALSE) {
-				//EXAMPLE: $version="1.0.0-BETA3", $checkIfHigher="1.1.0"
-				// Moving from a non-suffixed version to a suffixed version isn't supported, but the inverse is:
-				//		i.e. (1.0.0-BETA3 to 1.0.0) is okay, but (1.0.0 to 1.0.0-BETA3) is NOT.
-				//		Also: (1.0.0-BETA3 to 1.0.0-BETA4) is okay, but (1.0.0-BETA4 to 1.0.0-BETA3) is NOT.
-				if(strlen($curVersionSuffix) && strlen($checkVersionSuffix) && $curVersionSuffix == $checkVersionSuffix) {
-					//matching suffixes.
-				}
-				elseif(strlen($curVersionSuffix) || strlen($checkVersionSuffix)) {
-					//we know the suffixes are there and DO match.
-					if(strlen($curVersionSuffix) && strlen($checkVersionSuffix)) {
-						//okay, here's where we do some crazy things...
-						$curVersionData = $this->parse_suffix($curVersionSuffix);
-						$checkVersionData = $this->parse_suffix($checkVersionSuffix);
-						
-						if($curVersionData['type'] == $checkVersionData['type']) {
-							//got the same suffix type (like "BETA"), check the number.
-							if($checkVersionData['number'] > $curVersionData['number']) {
-								$retval = TRUE;
-							}
-							elseif($checkVersionData['number'] == $curVersionData['number']) {
-								$retval = FALSE;
-							}
-							else {
-								//umm... they're identical???  LOGIC HAS FAILED ME ALTOGETHER!!!
-								$retval = FALSE;
-							}
-						}
-						else {
-							//not the same suffix... see if the new one is higher.
-							$suffixValues = array_flip($this->suffixList);
-							if($suffixValues[$checkVersionData['type']] > $suffixValues[$curVersionData['type']]) {
-								$retval = TRUE;
-							}
-						}
-						
-					}
-					elseif(strlen($curVersionSuffix) && !strlen($checkVersionSuffix)) {
-						//i.e. "1.0.0-BETA1" to "1.0.0" --->>> OKAY!
-						$retval = TRUE;
-					}
-					elseif(!strlen($curVersionSuffix) && strlen($checkVersionSuffix)) {
-						//i.e. "1.0.0" to "1.0.0-BETA1" --->>> NOT ACCEPTABLE!
-						$this->logsObj->log_by_class(__METHOD__ .": from (". $version .") to (". $checkIfHigher .") isn't acceptable...?", 'debug');
-					}
-				}
-			}
+		catch(exception $e) {
+			$this->error_handler($e->getMessage());
 		}
 		
 		return($retval);
@@ -937,33 +904,20 @@ class cs_webdbupgrade {
 		$loadTableResult = $this->db->errorMsg();
 		if(!strlen($loadTableResult)) {
 			$loadTableResult = true;
-			$logRes = 'Successfully loaded ';
+			$logRes = 'Successfully loaded';
 			$logType = 'initialize';
 			
 			//now set the initial version information...
 			if(strlen($this->projectName) && strlen($this->versionFileVersion)) {
-				
-				//if there's an INITIAL_VERSION in the upgrade config file, use that.
-				$this->read_upgrade_config_file();
-				if(isset($this->config['UPGRADELIST']['INITIALVERSION'])) {
-					$insertData = $this->parse_version_string($this->config['UPGRADELIST']['INITIALVERSION']);
-				}
-				else {
-					$insertData = $this->parse_version_string($this->versionFileVersion);
-				}
-				$insertData['project_name'] = $this->projectName;
-				
-				$sql = 'INSERT INTO '. $this->config['DB_TABLE'] . $this->gfObj->string_from_array($insertData, 'insert');
-				if($this->db->run_insert($sql, $this->sequenceName)) {
-					$this->logsObj->log_by_class('Created initial version info ('. $insertData['version_string'] .')', $logType);
-				}
-				else {
-					$this->logsObj->log_by_class('Failed to create version info ('. $insertData['version_string'] .')', 'error');
-				}
+				$this->load_initial_version();
+			}
+			else {
+				throw new exception(__METHOD__ .": missing projectName (". $this->projectName .") " .
+						"or versionFileVersion (". $this->versionFileVersion ."), cannot load data");
 			}
 		}
 		else {
-			$logRes = 'Failed to load ';
+			$logRes = 'Failed to load';
 			$logType = 'error';
 		}
 		$this->logsObj->log_by_class($logRes .' table ('. $this->config['DB_TABLE'] .') into ' .
@@ -1067,6 +1021,35 @@ class cs_webdbupgrade {
 		//now throw an exception so other code can catch it.
 		throw new exception($details);
 	}//end error_handler()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function load_initial_version() {
+		//if there's an INITIAL_VERSION in the upgrade config file, use that.
+		$this->read_upgrade_config_file();
+		if(isset($this->config['UPGRADELIST']['INITIALVERSION'])) {
+			$insertData = $this->parse_version_string($this->config['UPGRADELIST']['INITIALVERSION']);
+		}
+		else {
+			$insertData = $this->parse_version_string($this->versionFileVersion);
+		}
+		$insertData['project_name'] = $this->projectName;
+		
+		$sql = 'INSERT INTO '. $this->config['DB_TABLE'] . $this->gfObj->string_from_array($insertData, 'insert');
+		
+		$this->gfObj->debug_print(__METHOD__ .": SQL::: ". $sql,1);
+		if($this->db->run_insert($sql, $this->sequenceName)) {
+			$loadRes = true;
+			$this->logsObj->log_by_class("Created data for '". $this->projectName ."' with version '". $insertData['version_string'] ."'", 'initialize');
+		}
+		else {
+			$this->error_handler(__METHOD__ .": failed to load initial version::: ". $e->getMessage());
+		}
+		
+		return($loadRes);
+	}//end load_initial_version()
 	//=========================================================================
 	
 	
