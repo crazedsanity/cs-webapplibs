@@ -128,7 +128,10 @@ class cs_webdbupgrade {
 		$this->db = new cs_phpDB(constant('DBTYPE'));
 		try {
 			$this->db->connect($this->config['DBPARAMS']);
-			$this->logsObj = new cs_webdblogger($this->db, "Upgrade");
+			
+			$loggerDb = new cs_phpDB(constant('DBTYPE'));
+			$loggerDb->connect($this->config['DBPARAMS'], true);
+			$this->logsObj = new cs_webdblogger($loggerDb, "Upgrade");
 		}
 		catch(exception $e) {
 			$this->gfObj->debug_print($this->config,1);
@@ -235,7 +238,12 @@ class cs_webdbupgrade {
 	 * Read information from our config file, so we know what to expect.
 	 */
 	private function read_upgrade_config_file() {
-		$xmlString = $this->fsObj->read($this->config['UPGRADE_CONFIG_FILE']);
+		try {
+			$xmlString = $this->fsObj->read($this->config['UPGRADE_CONFIG_FILE']);
+		}
+		catch(exception $e) {
+			throw new exception(__METHOD__ .": failed to read upgrade config file::: ". $e->getMessage());
+		}
 		
 		//parse the file.
 		$xmlParser = new cs_phpxmlParser($xmlString);
@@ -934,7 +942,15 @@ class cs_webdbupgrade {
 			
 			//now set the initial version information...
 			if(strlen($this->projectName) && strlen($this->versionFileVersion)) {
-				$insertData = $this->parse_version_string($this->versionFileVersion);
+				
+				//if there's an INITIAL_VERSION in the upgrade config file, use that.
+				$this->read_upgrade_config_file();
+				if(isset($this->config['UPGRADELIST']['INITIALVERSION'])) {
+					$insertData = $this->parse_version_string($this->config['UPGRADELIST']['INITIALVERSION']);
+				}
+				else {
+					$insertData = $this->parse_version_string($this->versionFileVersion);
+				}
 				$insertData['project_name'] = $this->projectName;
 				
 				$sql = 'INSERT INTO '. $this->config['DB_TABLE'] . $this->gfObj->string_from_array($insertData, 'insert');
