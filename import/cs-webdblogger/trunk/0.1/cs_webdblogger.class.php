@@ -48,7 +48,11 @@ class cs_webdblogger extends cs_versionAbstract {
 	private $defaultUid = 0;
 	
 	/** Category to use when logging a database error */
+	//TODO: make SURE this category is correct...
 	private $databaseCategory = 1;
+	
+	/** Check to see if setup has been performed (avoids running it multiple times) **/
+	private $setupComplete=false;
 	
 	/** Last SQL file handled */
 	protected $lastSQLFile=null;
@@ -123,7 +127,7 @@ class cs_webdblogger extends cs_versionAbstract {
 		$fileContents = $fsObj->read($filename);
 		$this->db->beginTrans(__METHOD__);
 		try {
-			$this->db->run_update($fileContents);
+			$this->db->run_update($fileContents, true);
 			$this->db->commitTrans();
 			$retval = TRUE;
 		}
@@ -520,7 +524,21 @@ class cs_webdblogger extends cs_versionAbstract {
 				}
 			}
 			catch(exception $e) {
-				throw new exception(__METHOD__ .": encountered error::: ". $e->getMessage());
+				if($this->setupComplete === true) {
+					throw new exception(__METHOD__ .": encountered error::: ". $e->getMessage());
+				}
+				else {
+					$mySchemaFile = dirname(__FILE__) .'/setup/schema.'. $this->db->get_dbtype() .'.sql';
+					if(file_exists($mySchemaFile)) {
+						$this->setupComplete = true;
+						$this->run_sql_file($mySchemaFile);
+						
+						$this->get_log_category_id($catName);
+					}
+					else {
+						throw new exception(__METHOD__ .": missing schema file (". $mySchemaFile ."), can't run setup");
+					}
+				}
 			}
 		}
 		else {
