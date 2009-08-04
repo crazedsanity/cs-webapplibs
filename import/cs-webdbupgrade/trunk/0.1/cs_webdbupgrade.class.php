@@ -23,6 +23,9 @@ class cs_webdbupgrade {
 	/** Array of configuration parameters. */
 	private $config = NULL;
 	
+	/** Name of primary key sequence of main table (for handling inserts with PostgreSQL) */
+	private $sequenceName;
+	
 	/** Database object. */
 	protected $db;
 	
@@ -103,6 +106,11 @@ class cs_webdbupgrade {
 			$this->gfObj->debugPrintOpt = constant('DEBUGPRINTOPT');
 		}
 		
+		if(!isset($this->config['DB_PRIMARYKEY']) || !isset($this->config['DB_TABLE'])) {
+			throw new exception(__METHOD__ .": no setting for DB_TABLE or DB_PRIMARYKEY, cannot continue");
+		}
+		$this->sequenceName = $this->config['DB_TABLE'] .'_'. $this->config['DB_PRIMARYKEY'] .'_seq';
+		
 		if(!defined('DBTYPE')) {
 			throw new exception(__METHOD__ .": required constant 'DBTYPE' not set");
 		}
@@ -123,6 +131,7 @@ class cs_webdbupgrade {
 			$this->logsObj = new cs_webdblogger($this->db, "Upgrade");
 		}
 		catch(exception $e) {
+			$this->gfObj->debug_print($this->config,1);
 			throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
 		}
 		
@@ -458,7 +467,7 @@ class cs_webdbupgrade {
 		
 		if(strlen($dberror) || $numrows != 1) {
 			//
-			if(preg_match('/doesn\'t exist/', $dberror)) {
+			if(preg_match('/doesn\'t exist/', $dberror) || preg_match('/does not exist/', $dberror)) {
 				//add the table...
 				$loadTableResult = $this->load_table();
 				if($loadTableResult === TRUE) {
@@ -914,6 +923,7 @@ class cs_webdbupgrade {
 		$schemaFileLocation = dirname(__FILE__) .'/schema/schema.sql';
 		$schema = file_get_contents($schemaFileLocation);
 		$schema = str_replace('{tableName}', $this->config['DB_TABLE'], $schema);
+		$schema = str_replace('{primaryKey}', $this->config['DB_PRIMARYKEY'], $schema);
 		$this->db->exec($schema);
 		
 		$loadTableResult = $this->db->errorMsg();
@@ -928,7 +938,7 @@ class cs_webdbupgrade {
 				$insertData['project_name'] = $this->projectName;
 				
 				$sql = 'INSERT INTO '. $this->config['DB_TABLE'] . $this->gfObj->string_from_array($insertData, 'insert');
-				if($this->db->run_insert($sql)) {
+				if($this->db->run_insert($sql, $this->sequenceName)) {
 					$this->logsObj->log_by_class('Created initial version info ('. $insertData['version_string'] .')', $logType);
 				}
 				else {
