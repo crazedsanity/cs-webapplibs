@@ -133,13 +133,8 @@ class cs_webdbupgrade extends cs_versionAbstract {
 		$this->db = new cs_phpDB(constant('DBTYPE'));
 		try {
 			$this->db->connect($this->config['DBPARAMS']);
-			
-			$loggerDb = new cs_phpDB(constant('DBTYPE'));
-			$loggerDb->connect($this->config['DBPARAMS'], true);
-			$this->logsObj = new cs_webdblogger($loggerDb, "Upgrade");
 		}
 		catch(exception $e) {
-			$this->gfObj->debug_print($this->config,1);
 			throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
 		}
 		
@@ -149,6 +144,12 @@ class cs_webdbupgrade extends cs_versionAbstract {
 		}
 		
 		$this->check_internal_upgrades();
+		try {	
+			$this->connect_logger("Upgrade");
+		}
+		catch(exception $e) {
+			throw new exception(__METHOD__ .": failed to create logger::: ". $e->getMessage());
+		}
 		
 		$this->check_versions(false);
 	}//end __construct()
@@ -165,11 +166,19 @@ class cs_webdbupgrade extends cs_versionAbstract {
 		$oldUpgradeConfigFile = $this->config['UPGRADE_CONFIG_FILE'];
 		$this->config['UPGRADE_CONFIG_FILE'] = dirname(__FILE__) .'/upgrades/upgrade.xml';
 		
+		
+		//connect the logger...
+		try {
+			$this->connect_logger("Internal Upgrade");
+		}
+		catch(exception $e) {
+			$this->error_handler($e->getMessage());
+		}
+		
+		
 		//do stuff here...
 		$this->versionFileLocation = dirname(__FILE__) .'/VERSION';
 		$this->read_version_file();
-		
-		$this->gfObj->debug_print($this->parse_version_string($this->versionFileVersion),1);
 		
 		//if there is an error, then... uh... yeah.
 		try {
@@ -181,6 +190,12 @@ class cs_webdbupgrade extends cs_versionAbstract {
 			//try creating the version.
 			$this->load_initial_version();
 		}
+		
+		//do upgrades here...
+		$this->check_versions(true);
+		
+		
+		
 		
 		//reset internal vars.
 		$this->versionFileLocation = $oldVersionFileLocation;
@@ -1039,7 +1054,6 @@ class cs_webdbupgrade extends cs_versionAbstract {
 		
 		$sql = 'INSERT INTO '. $this->config['DB_TABLE'] . $this->gfObj->string_from_array($insertData, 'insert');
 		
-		$this->gfObj->debug_print(__METHOD__ .": SQL::: ". $sql,1);
 		if($this->db->run_insert($sql, $this->sequenceName)) {
 			$loadRes = true;
 			$this->logsObj->log_by_class("Created data for '". $this->projectName ."' with version '". $insertData['version_string'] ."'", 'initialize');
@@ -1050,6 +1064,16 @@ class cs_webdbupgrade extends cs_versionAbstract {
 		
 		return($loadRes);
 	}//end load_initial_version()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	private function connect_logger($logCategory) {
+		$loggerDb = new cs_phpDB(constant('DBTYPE'));
+		$loggerDb->connect($this->config['DBPARAMS'], true);
+		$this->logsObj = new cs_webdblogger($loggerDb, $logCategory);
+	}//end connect_logger()
 	//=========================================================================
 	
 	
