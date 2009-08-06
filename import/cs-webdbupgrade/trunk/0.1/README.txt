@@ -1,7 +1,7 @@
 
 $Id$
 
-This system is built to make upgrading a database-driven app seemless.  No need
+This system is built to make upgrading a database-driven app seamless.  No need
 to coordinate SQL or schema changes with the code updates: previously, one would 
 have to take the entire website down, run the schema/SQL change, update the code, 
 and (if you're lucky) check a "test" website to ensure it works before unleashing
@@ -23,6 +23,15 @@ TABLES ARE InnoDB.  There are also many things that will cause an implicit
 commit, meaning the code will think its in a transaction after that point, but 
 it actually isn't (which is possibly worse than not having transactional 
 capabilities at all).
+
+The first time this system is implemented, you need to be aware that it will 
+look for an "INITIAL_VERSION" value in your upgrade.xml file.  This version 
+determines where it should start, so intermediary upgrade scripts will run. It 
+is important to realize, however, that this setting can cause grief in and of 
+itself: if you give the wrong version, scripts might run that shouldn't.  This 
+is especially important for long-running projects that are expected to be able 
+to be installed at any version: subsequent releases should update this initial 
+version (or remove it) as necessary.
 
 MySQL TRANSACTION INFO::: http://dev.mysql.com/doc/refman/5.0/en/implicit-commit.html
 
