@@ -619,17 +619,12 @@ class cs_webdbupgrade extends cs_versionAbstract {
 	 * so the version there is consistent with all the others.
 	 */
 	protected function update_database_version($newVersionString) {
-		$versionArr = $this->parse_version_string($newVersionString);
+		$versionInfo = $this->parse_version_string($newVersionString);
 		
-		$queryArr = array();
-		foreach($versionArr as $index=>$value) {
-			$queryArr[$index] = "SELECT internal_data_set_value('". $index ."', '". $value ."');";
-		}
-		
-		$updateData = $versionArr;
-		$sql = "UPDATE ". $this->config['DB_TABLE'] ." SET ". 
-				$this->gfObj->string_from_array($updateData, 'update', null, 'sql') ." WHERE " .
-				"project_name='". $this->gfObj->cleanString($this->projectName, 'sql') ."'";
+		$sql = "UPDATE ". $this->config['DB_TABLE'] ." SET version_string='". 
+				$this->gfObj->cleanString($versionInfo['version_string'], 'sql') 
+				."' WHERE project_name='". 
+				$this->gfObj->cleanString($this->projectName, 'sql') ."'";
 		
 		
 		$updateRes = $this->db->run_update($sql,false);
