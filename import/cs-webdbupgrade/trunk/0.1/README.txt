@@ -25,7 +25,7 @@ it actually isn't (which is possibly worse than not having transactional
 capabilities at all).
 
 The first time this system is implemented, you need to be aware that it will 
-look for an "INITIAL_VERSION" value in your upgrade.xml file.  This version 
+look for an "INITIALVERSION" value in your upgrade.xml file.  This version 
 determines where it should start, so intermediary upgrade scripts will run. It 
 is important to realize, however, that this setting can cause grief in and of 
 itself: if you give the wrong version, scripts might run that shouldn't.  This 
