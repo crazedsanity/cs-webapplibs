@@ -21,13 +21,8 @@
  * too many id's that might need to be changed later.  Yay, dynamic code!
  * 
  * QUERY TO GET LAST COUPLE OF LOGS::::
- * select l.log_id, l.creation::date, lclas.name as class_name, lcat.name as category_name, e.description, 
- * u.username as user, u2.username as affected_user, l.details FROM log_table AS l INNER JOIN log_event_table 
- * AS e ON (l.log_event_id=e.log_event_id) INNER JOIN user_table AS u ON (l.uid=u.uid) INNER JOIN user_table 
- * AS u2 ON (l.affected_uid=u2.uid) INNER JOIN log_category_table AS lcat ON (e.log_category_id=lcat.log_category_id) 
- * INNER JOIN log_class_table AS lclas ON (e.log_class_id=lclas.log_class_id) WHERE e.log_category_id <> 10 
- * ORDER BY log_id DESC limit 5;
- * 
+ SELECT l.log_id as id, l.creation, l.event_id as lid, le.description AS event, l.details 
+ FROM cswdbl_log_table AS l INNER JOIN cswdbl_event_table AS le USING (event_id) ORDER BY log_id DESC LIMIT 25;
  */
 
 //NOTE::: this class **REQUIRES** cs-content for its "cs_phpDB" class.
@@ -38,10 +33,10 @@ class cs_webdblogger extends cs_versionAbstract {
 	/** Database handle */
 	public $db;
 	
-	/** Cache of all records in the log_class_table */
+	/** Cache of all records in the class_table */
 	private $logClassCache = array();
 	
-	/** The log_category_id value to use, set on class creation. */
+	/** The category_id value to use, set on class creation. */
 	private $logCategoryId = null;
 	
 	/** Default uid (users.id) to log under when no uid is available */
@@ -60,11 +55,31 @@ class cs_webdblogger extends cs_versionAbstract {
 	/** Global functions class from cs-content */
 	protected $gfObj;
 	
+	/** List of tables keyed off an internal reference name. */
+	protected $tables = array(
+		'category'	=> 'cswdbl_category_table',
+		'class'		=> 'cswdbl_class_table',
+		'event'		=> 'cswdbl_event_table',
+		'log'		=> 'cswdbl_log_table',
+		'attrib'	=> 'cswdbl_attribute_table',
+		'logAttrib'	=> 'cswdbl_log_attribute_table'
+	);
+	
+	/** List of sequences keyed off an internal reference name (MUST match references above) */
+	protected $seqs = array(
+		'category'		=> "cswdbl_category_table_category_id_seq",
+		'class'			=> "cswdbl_class_table_class_id_seq",
+		'event'			=> "cswdbl_event_table_event_id_seq",
+		'log'			=> "cswdbl_log_table_log_id_seq",
+		'attrib'		=> "cswdbl_attribute_table_attribute_id_seq",
+		'logAttrib'		=> "cswdbl_log_attribute_table_log_attribute_id_seq"
+	);
+	
 	//=========================================================================
 	/**
 	 * The constructor.
 	 */
-	public function __construct(cs_phpDB &$db, $logCategory) {
+	public function __construct(cs_phpDB &$db, $logCategory, $checkForUpgrades=true) {
 		//assign the database object.
 		$this->db = $db;
 		
@@ -80,11 +95,17 @@ class cs_webdblogger extends cs_versionAbstract {
 		
 		$this->gfObj = new cs_globalFunctions;
 		
-		//assign the log_category_id.
+		//see if there's an upgrade to perform...
+		if($checkForUpgrades === true) {
+			$upgObj = new cs_webdbupgrade($this->versionFileLocation, dirname(__FILE__) .'/upgrades/upgrade.xml');
+			$upgObj->check_versions(true);
+		}
+		
+		//assign the category_id.
 		if(strlen($logCategory)) {
 			if(!is_numeric($logCategory)) {
 				//attempt to retreive the logCategoryId (assuming they passed a name)
-				$this->logCategoryId = $this->get_log_category_id($logCategory);
+				$this->logCategoryId = $this->get_category_id($logCategory);
 			}
 			else {
 				//it was numeric: set it!
@@ -99,6 +120,11 @@ class cs_webdblogger extends cs_versionAbstract {
 		if(is_numeric($_SESSION['uid'])) {
 			//got an ID in the session.
 			$this->defaultUid = $_SESSION['uid'];
+		}
+		
+		
+		if(!is_numeric($this->logCategoryId) || $this->logCategoryId < 1) {
+			throw new exception(__METHOD__ .": FATAL: invalid logCategoryId (". $this->logCategoryId .")");
 		}
 		
 		//build our cache.
@@ -148,10 +174,10 @@ class cs_webdblogger extends cs_versionAbstract {
 	 */
 	private function build_cache() {
 		//build query, run it, check for errors.
-		$sql = "SELECT log_class_id, lower(name) as name FROM log_class_table";
+		$sql = "SELECT class_id, lower(class_name) as name FROM ". $this->tables['class'];
 		
 		try {
-			$data = $this->db->run_query($sql, 'name', 'log_class_id');
+			$data = $this->db->run_query($sql, 'name', 'class_id');
 			
 			if(is_array($data)) {
 				$this->logClassCache = $data;
@@ -175,7 +201,7 @@ class cs_webdblogger extends cs_versionAbstract {
 	/**
 	 * Retrieve log_class_id value from the given name, or insert a new one.
 	 */
-	private function get_log_class_id($name) {
+	private function get_class_id($name) {
 		$name = strtolower($name);
 		
 		//get the id.
@@ -185,12 +211,12 @@ class cs_webdblogger extends cs_versionAbstract {
 		}
 		else {
 			//create the class & then rebuild cache.
-			$retval = $this->create_log_class($name);
+			$retval = $this->create_class($name);
 			$this->build_cache();
 		}
 		
 		return($retval);
-	}//end get_log_class_id()
+	}//end get_class_id()
 	//=========================================================================
 	
 	
@@ -200,12 +226,12 @@ class cs_webdblogger extends cs_versionAbstract {
 	 * Retrieve log_event_id based on the given class name & the internal 
 	 * logCategoryId value.
 	 */
-	function get_log_event_id($logClassName) {
+	function get_event_id($logClassName) {
 		$sqlArr = array(
-			'log_class_id'		=> $this->get_log_class_id($logClassName),
-			'log_category_id'	=> $this->logCategoryId
+			'class_id'		=> $this->get_class_id($logClassName),
+			'category_id'	=> $this->logCategoryId
 		);
-		$sql = "SELECT log_event_id FROM log_event_table WHERE " .
+		$sql = "SELECT event_id FROM ". $this->tables['event'] ." WHERE " .
 			$this->gfObj->string_from_array($sqlArr, 'select', NULL, 'numeric');
 		
 		try {
@@ -214,21 +240,21 @@ class cs_webdblogger extends cs_versionAbstract {
 			
 			if($data === false) {
 				//no records & no error: create one.
-				$retval = $this->auto_insert_record($sqlArr['log_class_id']);
+				$retval = $this->auto_insert_record($sqlArr['class_id']);
 			}
-			elseif(is_array($data) && isset($data['log_event_id'])) {
-				$retval = $data['log_event_id'];
+			elseif(is_array($data) && isset($data['event_id'])) {
+				$retval = $data['event_id'];
 			}
 			else {
 				throw new exception(__METHOD__ .": invalid data returned::: ". $this->gfObj->debug_var_dump($data,0));
 			}
 		}
 		catch(exception $e) {
-			throw new exception(__METHOD__ .": failed to retrieve log_event_id::: ". $e->getMessage());
+			throw new exception(__METHOD__ .": failed to retrieve event_id::: ". $e->getMessage());
 		}
 		
 		return($retval);
-	}//end get_log_event_id()
+	}//end get_event_id()
 	//=========================================================================
 	
 	
@@ -253,7 +279,7 @@ class cs_webdblogger extends cs_versionAbstract {
 		
 		//determine the log_event_id.
 		try {
-			$logEventId = $this->get_log_event_id($className);
+			$logEventId = $this->get_event_id($className);
 		}
 		catch(Exception $e) {
 			throw new exception(__METHOD__ .": while attempting to retrieve logEventId, encountered an " .
@@ -261,7 +287,7 @@ class cs_webdblogger extends cs_versionAbstract {
 		}
 		
 		//check to see what uid to use.
-		$myUid = $_SESSION['user_ID'];
+		$myUid = $_SESSION['uid'];
 		if(!is_numeric($myUid)) {
 			//use the internal default uid.
 			$myUid = $this->defaultUid;
@@ -269,23 +295,23 @@ class cs_webdblogger extends cs_versionAbstract {
 		
 		//okay, setup an array of all the data we need.
 		$cleanStringArr = array(
-			'log_event_id'	=> 'numeric',
+			'event_id'		=> 'numeric',
 			'uid'			=> 'numeric',
 			'affected_uid'	=> 'numeric',
 			'details'		=> 'sql'
 		);
 		$sqlArr = array (
-			'log_event_id'	=> $this->gfObj->cleanString($logEventId, 'numeric'),
+			'event_id'	=> $this->gfObj->cleanString($logEventId, 'numeric'),
 			'uid'			=> $myUid,
 			'affected_uid'	=> $uid,
 			'details'		=> $details
 		);
 		
 		//build, run, error-checking.
-		$sql = "INSERT INTO log_table ". $this->gfObj->string_from_array($sqlArr, 'insert', NULL, $cleanStringArr, TRUE);
+		$sql = "INSERT INTO ". $this->tables['log'] ." ". $this->gfObj->string_from_array($sqlArr, 'insert', NULL, $cleanStringArr, TRUE);
 		
 		try {
-			$newId = $this->db->run_insert($sql, 'log_table_log_id_seq');
+			$newId = $this->db->run_insert($sql, $this->seqs['log']);
 			
 			if(is_numeric($newId) && $newId > 0) {
 				$retval = $newId;
@@ -334,29 +360,29 @@ class cs_webdblogger extends cs_versionAbstract {
 	private function auto_insert_record($logClassId) {
 		//generate a default name
 		
-		$className = $this->get_log_class_name($logClassId);
-		$categoryName = $this->get_log_category_name($this->logCategoryId);
+		$className = $this->get_class_name($logClassId);
+		$categoryName = $this->get_category_name($this->logCategoryId);
 		
 		$details = ucwords($categoryName) .": ". ucwords($className);
 		
 		if(strlen($details) <= 4) {
 			//something bad happened (i.e. details="0: 0")
-			throw new exception(__METHOD__ .": failed to recover with log_class_id=(". $logClassId .") " .
-					"AND log_category_id=(". $this->logCategoryId ."), details=(". $details .")");
+			throw new exception(__METHOD__ .": failed to recover with class_id=(". $logClassId .") " .
+					"AND category_id=(". $this->logCategoryId ."), details=(". $details .")");
 		}
 		else {
 			//create the sql array.
 			$sqlArr = array (
-				'log_class_id'		=> $logClassId,
-				'log_category_id'	=> $this->logCategoryId,
+				'class_id'		=> $logClassId,
+				'category_id'	=> $this->logCategoryId,
 				'description'		=> "'". $this->gfObj->cleanString($details, 'sql') ."'"
 			);
 			
 			//now run the insert.
-			$sql = 'INSERT INTO log_event_table '. $this->gfObj->string_from_array($sqlArr, 'insert');
+			$sql = 'INSERT INTO '. $this->tables['event'] .' '. $this->gfObj->string_from_array($sqlArr, 'insert');
 			
 			try {
-				$newId = $this->db->run_insert($sql, 'log_event_table_log_event_id_seq');
+				$newId = $this->db->run_insert($sql, $this->seqs['event']);
 				
 				if(is_numeric($newId) && $newId > 0) {
 					$retval = $newId;
@@ -396,8 +422,8 @@ class cs_webdblogger extends cs_versionAbstract {
 		
 		//set the fields that can be used, along with what alias for the table & cleaning type to use on the data.
 		$allowedCritFields = array(
-			'log_class_id'		=> array('cl',	'numeric'),
-			'log_category_id'	=> array('ca',	'numeric'),
+			'class_id'			=> array('cl',	'numeric'),
+			'category_id'		=> array('ca',	'numeric'),
 			'uid'				=> array('l',	'numeric'),
 			'affected_uid'		=> array('l',	'numeric'),
 			'creation'			=> array('l',	'sql')
@@ -431,7 +457,7 @@ class cs_webdblogger extends cs_versionAbstract {
 		
 		
 		//build the criteria.
-		$sqlArr['ca.log_category_id'] = '>0';
+		$sqlArr['ca.category_id'] = '>0';
 		$critString = $this->gfObj->string_from_array($sqlArr, 'select');
 		
 		//check if "timeperiod" is in there (it's special)
@@ -447,14 +473,14 @@ class cs_webdblogger extends cs_versionAbstract {
 				"l.creation, " .
 				"l.log_id, " .
 				"l.uid, " .
-				"cl.name AS class_name, " .
-				"ca.name AS category_name, " .
+				"cl.class_name, " .
+				"ca.category_name, " .
 				"ev.description, " .
 				"l.details " .
 			"FROM log_table AS l " .
-				"INNER JOIN log_event_table AS ev ON (l.log_event_id=ev.log_event_id) " .
-				"INNER JOIN log_class_table AS cl ON (cl.log_class_id=ev.log_class_id) " .
-				"INNER JOIN log_category_table AS ca ON (ca.log_category_id=ev.log_category_id) " .
+				"INNER JOIN cswdbl_event_table AS ev ON (l.event_id=ev.event_id) " .
+				"INNER JOIN cswdbl_class_table AS cl ON (cl.class_id=ev.class_id) " .
+				"INNER JOIN cswdbl_category_table AS ca ON (ca.category_id=ev.category_id) " .
 			"WHERE " . $critString . " " .
 			"ORDER BY " .
 				"log_id DESC " .
@@ -498,20 +524,20 @@ class cs_webdblogger extends cs_versionAbstract {
 	
 	//=========================================================================
 	/**
-	 * Retrieve log_category_id from the given name.
+	 * Retrieve category_id from the given name.
 	 */
-	private function get_log_category_id($catName) {
+	private function get_category_id($catName) {
 		if(strlen($catName) && is_string($catName)) {
 			$catName = trim($catName);
-			$sql = "SELECT log_category_id FROM log_category_table WHERE lower(name) = '". strtolower($catName) ."'";
+			$sql = "SELECT category_id FROM ". $this->tables['category'] ." WHERE lower(category_name) = '". strtolower($catName) ."'";
 			
 			try {
 				
 				$data = $this->db->run_query($sql);
 				
 				$numrows = $this->db->numRows();
-				if($numrows == 1 && is_array($data) && isset($data['log_category_id']) && is_numeric($data['log_category_id'])) {
-					$retval = $data['log_category_id'];
+				if($numrows == 1 && is_array($data) && isset($data['category_id']) && is_numeric($data['category_id'])) {
+					$retval = $data['category_id'];
 				}
 				elseif($data === false) {
 					$retval = $this->create_log_category($catName);
@@ -533,7 +559,7 @@ class cs_webdblogger extends cs_versionAbstract {
 						$this->setupComplete = true;
 						$this->run_sql_file($mySchemaFile);
 						
-						$this->get_log_category_id($catName);
+						$retval = $this->create_log_category($catName);
 					}
 					else {
 						throw new exception(__METHOD__ .": missing schema file (". $mySchemaFile ."), can't run setup");
@@ -542,25 +568,25 @@ class cs_webdblogger extends cs_versionAbstract {
 			}
 		}
 		else {
-			throw new exception(__METHOD__ .": log_category name (". $catName .") is invalid");
+			throw new exception(__METHOD__ .": category name (". $catName .") is invalid");
 		}
 		
 		return($retval);
-	}//end get_log_category_id()
+	}//end get_category_id()
 	//=========================================================================
 	
 	
 	
 	//=========================================================================
 	/**
-	 * Create a log_category_id based on the given name.
+	 * Create a category_id based on the given name.
 	 */
 	private function create_log_category($catName) {
-		$sql = "INSERT INTO log_category_table (name) VALUES ('". 
+		$sql = "INSERT INTO ". $this->tables['category'] ." (category_name) VALUES ('". 
 			$this->gfObj->cleanString($catName, 'sql') ."')";
 		
 		try {
-			$newId = $this->db->run_insert($sql, 'log_category_table_log_category_id_seq');
+			$newId = $this->db->run_insert($sql, $this->seqs['category']);
 			
 			if(is_numeric($newId) && $newId > 0) {
 				$retval = $newId;
@@ -585,13 +611,13 @@ class cs_webdblogger extends cs_versionAbstract {
 	/**
 	 * Create a log_class_id based on the given name.
 	 */
-	private function create_log_class($className) {
-		$sql = "INSERT INTO log_class_table (name) VALUES ('". 
+	private function create_class($className) {
+		$sql = "INSERT INTO ". $this->tables['class'] ." (class_name) VALUES ('". 
 			$this->gfObj->cleanString($className, 'sql') ."')";
 		
 		
 		try {
-			$newId = $this->db->run_insert($sql, 'log_class_table_log_class_id_seq');
+			$newId = $this->db->run_insert($sql, $this->seqs['class']);
 			
 			if(is_numeric($newId) && $newId > 0) {
 				$retval = $newId;
@@ -607,7 +633,7 @@ class cs_webdblogger extends cs_versionAbstract {
 		}
 		
 		return($retval);
-	}//end create_log_class()
+	}//end create_class()
 	//=========================================================================
 	
 	
@@ -616,15 +642,15 @@ class cs_webdblogger extends cs_versionAbstract {
 	/**
 	 * Retrieve class name from the given id.
 	 */
-	private function get_log_class_name($classId) {
+	private function get_class_name($classId) {
 		if(is_numeric($classId)) {
-			$sql = "SELECT name FROM log_class_table WHERE log_class_id=". $classId;
+			$sql = "SELECT class_name FROM ". $this->tables['class'] ." WHERE class_id=". $classId;
 			
 			try {
 				$data = $this->db->run_query($sql);
 				
-				if(is_array($data) && isset($data['name']) && $this->db->numRows() == 1) {
-					$className = $data['name'];
+				if(is_array($data) && isset($data['class_name']) && $this->db->numRows() == 1) {
+					$className = $data['class_name'];
 				}
 				else {
 					throw new exception(__METHOD__ .": failed to retrieve class " .
@@ -642,7 +668,7 @@ class cs_webdblogger extends cs_versionAbstract {
 		}
 		
 		return($className);
-	}//end get_log_class_name()
+	}//end get_class_name()
 	//=========================================================================
 	
 	
@@ -651,15 +677,15 @@ class cs_webdblogger extends cs_versionAbstract {
 	/**
 	 * Retrieve category name from the given ID.
 	 */
-	private function get_log_category_name($categoryId) {
+	private function get_category_name($categoryId) {
 		if(is_numeric($categoryId)) {
-			$sql = "SELECT name FROM log_category_table WHERE log_category_id=". $categoryId;
+			$sql = "SELECT category_name FROM ". $this->tables['category'] ." WHERE category_id=". $categoryId;
 			
 			try {
 				$data = $this->db->run_query($sql);
 				
-				if(is_array($data) && isset($data['name']) && $this->db->numRows() == 1) {
-					$categoryName = $data['name'];
+				if(is_array($data) && isset($data['category_name']) && $this->db->numRows() == 1) {
+					$categoryName = $data['category_name'];
 				}
 				else {
 					throw new exception(__METHOD__ .": failed to retrieve " .
@@ -668,7 +694,7 @@ class cs_webdblogger extends cs_versionAbstract {
 			}
 			catch(exception $e) {
 				throw new exception(__METHOD__ .": error encountered while " .
-						"retrieving class name::: ". $e->getMessage());
+						"retrieving category name::: ". $e->getMessage());
 			}
 		}
 		else {
@@ -676,7 +702,7 @@ class cs_webdblogger extends cs_versionAbstract {
 		}
 		
 		return($categoryName);
-	}//end get_log_category_name()
+	}//end get_category_name()
 	//=========================================================================
 	
 	
