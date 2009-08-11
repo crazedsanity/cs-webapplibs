@@ -74,6 +74,14 @@ abstract class cs_versionAbstract {
 	
 	
 	//=========================================================================
+	public function __get($var) {
+		return($this->$var);
+	}//end __get()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
 	final public function get_project() {
 		$retval = NULL;
 		$this->auto_set_version_file();
