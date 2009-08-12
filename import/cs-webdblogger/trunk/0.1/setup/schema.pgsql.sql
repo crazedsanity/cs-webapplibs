@@ -9,8 +9,6 @@
 --
 
 
-begin;
-
 --
 -- The category is the high-level view of the affected system.  If this were 
 --	a project management system with projects and issues, then there would 

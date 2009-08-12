@@ -55,6 +55,9 @@ class cs_webdblogger extends cs_versionAbstract {
 	/** Global functions class from cs-content */
 	protected $gfObj;
 	
+	protected $pendingLogs;
+	private $suspendLogging=false;
+	
 	/** List of tables keyed off an internal reference name. */
 	protected $tables = array(
 		'category'	=> 'cswdbl_category_table',
@@ -83,7 +86,6 @@ class cs_webdblogger extends cs_versionAbstract {
 		//assign the database object.
 		$this->db = $db;
 		
-		
 		$this->set_version_file_location(dirname(__FILE__) . '/VERSION');
 		
 		//Make sure the version of cs_phpDB is HIGHER THAN (not equal to) 1.0.0-ALPHA8, 
@@ -97,8 +99,11 @@ class cs_webdblogger extends cs_versionAbstract {
 		
 		//see if there's an upgrade to perform...
 		if($checkForUpgrades === true) {
-			$upgObj = new cs_webdbupgrade($this->versionFileLocation, dirname(__FILE__) .'/upgrades/upgrade.xml');
+			$this->suspendLogging = true;
+			$upgObj = new cs_webdbupgrade(dirname(__FILE__) . '/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml');
 			$upgObj->check_versions(true);
+			$this->suspendLogging = false;
+			$this->handle_suspended_logs();
 		}
 		
 		//assign the category_id.
@@ -117,10 +122,7 @@ class cs_webdblogger extends cs_versionAbstract {
 		}
 		
 		//check for a uid in the session.
-		if(is_numeric($_SESSION['uid'])) {
-			//got an ID in the session.
-			$this->defaultUid = $_SESSION['uid'];
-		}
+		$this->defaultUid = $this->get_uid();
 		
 		
 		if(!is_numeric($this->logCategoryId) || $this->logCategoryId < 1) {
@@ -266,62 +268,69 @@ class cs_webdblogger extends cs_versionAbstract {
 	 * an exception.
 	 */
 	public function log_by_class($details, $className="error", $uid=NULL) {
-		//make sure there's a valid class name.
-		if(!strlen($className) || is_null($className)) {
-			$className = 'error';
+		
+		if($this->suspendLogging === true) {
+			$this->pendingLogs[] = func_get_args();
+			$retval = count($this->pendingLogs) -1;
 		}
-		
-		//make sure we've got a uid to log under.
-		if(is_null($uid) || !is_numeric($uid)) {
-			//set it.
-			$uid = $this->defaultUid;
-		}
-		
-		//determine the log_event_id.
-		try {
-			$logEventId = $this->get_event_id($className);
-		}
-		catch(Exception $e) {
-			throw new exception(__METHOD__ .": while attempting to retrieve logEventId, encountered an " .
-			"exception:::\n". $e->getMessage() ."\n\nCLASS: $className\nDETAILS: $details");
-		}
-		
-		//check to see what uid to use.
-		$myUid = $_SESSION['uid'];
-		if(!is_numeric($myUid)) {
-			//use the internal default uid.
-			$myUid = $this->defaultUid;
-		}
-		
-		//okay, setup an array of all the data we need.
-		$cleanStringArr = array(
-			'event_id'		=> 'numeric',
-			'uid'			=> 'numeric',
-			'affected_uid'	=> 'numeric',
-			'details'		=> 'sql'
-		);
-		$sqlArr = array (
-			'event_id'	=> $this->gfObj->cleanString($logEventId, 'numeric'),
-			'uid'			=> $myUid,
-			'affected_uid'	=> $uid,
-			'details'		=> $details
-		);
-		
-		//build, run, error-checking.
-		$sql = "INSERT INTO ". $this->tables['log'] ." ". $this->gfObj->string_from_array($sqlArr, 'insert', NULL, $cleanStringArr, TRUE);
-		
-		try {
-			$newId = $this->db->run_insert($sql, $this->seqs['log']);
+		else {
+			if(count($this->pendingLogs)) {
+				$this->handle_suspended_logs();
+			}
 			
-			if(is_numeric($newId) && $newId > 0) {
-				$retval = $newId;
+			//make sure there's a valid class name.
+			if(!strlen($className) || is_null($className)) {
+				$className = 'error';
 			}
-			else {
-				throw new exception(__METHOD__ .": failed to insert id or invalid return (". $this->gfObj->debug_var_dump($newId,0) .")");
+			
+			//make sure we've got a uid to log under.
+			if(is_null($uid) || !is_numeric($uid)) {
+				//set it.
+				$uid = $this->defaultUid;
 			}
-		}
-		catch(exception $e) {
-			throw new exception(__METHOD__ .": error while creating log::: ". $e->getMessage());
+			
+			//determine the log_event_id.
+			try {
+				$logEventId = $this->get_event_id($className);
+			}
+			catch(Exception $e) {
+				throw new exception(__METHOD__ .": while attempting to retrieve logEventId, encountered an " .
+				"exception:::\n". $e->getMessage() ."\n\nCLASS: $className\nDETAILS: $details");
+			}
+			
+			//check to see what uid to use.
+			$myUid = $this->get_uid();
+			
+			//okay, setup an array of all the data we need.
+			$cleanStringArr = array(
+				'event_id'		=> 'numeric',
+				'uid'			=> 'numeric',
+				'affected_uid'	=> 'numeric',
+				'details'		=> 'sql'
+			);
+			$sqlArr = array (
+				'event_id'	=> $this->gfObj->cleanString($logEventId, 'numeric'),
+				'uid'			=> $myUid,
+				'affected_uid'	=> $uid,
+				'details'		=> $details
+			);
+			
+			//build, run, error-checking.
+			$sql = "INSERT INTO ". $this->tables['log'] ." ". $this->gfObj->string_from_array($sqlArr, 'insert', NULL, $cleanStringArr, TRUE);
+			
+			try {
+				$newId = $this->db->run_insert($sql, $this->seqs['log']);
+				
+				if(is_numeric($newId) && $newId > 0) {
+					$retval = $newId;
+				}
+				else {
+					throw new exception(__METHOD__ .": failed to insert id or invalid return (". $this->gfObj->debug_var_dump($newId,0) .")");
+				}
+			}
+			catch(exception $e) {
+				throw new exception(__METHOD__ .": error while creating log::: ". $e->getMessage());
+			}
 		}
 		
 		return($retval);
@@ -703,6 +712,74 @@ class cs_webdblogger extends cs_versionAbstract {
 		
 		return($categoryName);
 	}//end get_category_name()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function __get($var) {
+		return($this->$var);
+	}//end __get()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function __set($var, $newVal) {
+		$res = false;
+		switch($var) {
+			case 'suspendLogging':
+				$this->$var = $newVal;
+				$res = true;
+				break;
+			
+			case 'logCategory':
+			case 'logCategoryId':
+				$this->logCategoryId = $this->get_category_id($newVal);
+				$res = true;
+				break;
+		}
+		return($res);
+	}//end __set()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function handle_suspended_logs() {
+		$retval = 0;
+		$debugThis = array();
+		if($this->suspendLogging === false && count($this->pendingLogs)) {
+			$this->gfObj->debug_print(__METHOD__ .": handling pending logs (". count($this->pendingLogs) .")",1);
+			$myLogs = $this->pendingLogs;
+			$this->pendingLogs = array();
+			foreach($myLogs as $i=>$args) {
+				//this is potentially deadly: call self recursively to log the items prevously suspended.
+				$newId = call_user_func_array(array($this, 'log_by_class'), $args);
+				
+				$debugThis[$newId] = $args;
+				$retval++;
+			}
+			
+			$this->gfObj->debug_print($debugThis,1);
+		}
+		cs_debug_backtrace(1);
+		$this->gfObj->debug_print(__METHOD__ .": handled (". $retval .") suspended logs",1);
+	}//end handle_suspended_logs()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function get_uid() {
+		$myUid = $this->defaultUid;
+		//check for a uid in the session.
+		if(is_array($_SESSION) && isset($_SESSION['uid']) && is_numeric($_SESSION['uid'])) {
+			//got an ID in the session.
+			$myUid = $_SESSION['uid'];
+		}
+		return($myUid);
+	}//end get_uid()
 	//=========================================================================
 	
 	
