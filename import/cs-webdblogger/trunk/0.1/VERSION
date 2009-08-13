@@ -1,5 +1,5 @@
 ## Stores the current version of the cs-webdblogger system, and it's source.  Please do NOT modify this file.
 
-VERSION: 0.2.0
+VERSION: 0.1-ALPHA1
 PROJECT: cs-webdblogger
 $HeadURL$
