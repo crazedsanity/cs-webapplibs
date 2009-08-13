@@ -99,13 +99,11 @@ class cs_webdblogger extends cs_versionAbstract {
 		
 		//see if there's an upgrade to perform...
 		if($checkForUpgrades === true) {
-			$this->gfObj->debug_print("<b><font color='red'>". __METHOD__ ."</font></b>: checking for upgrades...",1);
 			$this->suspendLogging = true;
 			$upgObj = new cs_webdbupgrade(dirname(__FILE__) . '/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml');
-			$checkVersionRes = $upgObj->check_versions(true);
+			$upgObj->check_versions(true);
 			$this->suspendLogging = false;
 			$this->handle_suspended_logs();
-			$this->gfObj->debug_print("<b><font color='red'>". __METHOD__ ."</font></b>: DONE with upgrades (". $checkVersionRes .") ",1);
 		}
 		
 		//assign the category_id.
@@ -158,6 +156,7 @@ class cs_webdblogger extends cs_versionAbstract {
 			if($doTrans) {
 				$this->db->commitTrans();
 			}
+			$this->build_cache();
 			$retval = TRUE;
 		}
 		catch(exception $e) {
@@ -216,6 +215,7 @@ class cs_webdblogger extends cs_versionAbstract {
 		}
 		else {
 			//create the class & then rebuild cache.
+			$this->gfObj->debug_print(__METHOD__ .": no class_id for (". $name .")::: ". $this->gfObj->debug_print($this->logClassCache,0),1);
 			$retval = $this->create_class($name);
 			$this->build_cache();
 		}
@@ -732,7 +732,6 @@ class cs_webdblogger extends cs_versionAbstract {
 	
 	//=========================================================================
 	public function __set($var, $newVal) {
-		$this->gfObj->debug_print(__METHOD__ .": var=(". $var ."), newVal=(". $newVal ."), BACKTRACE::: <BR>\n". cs_debug_backtrace(0),1);
 		$res = false;
 		switch($var) {
 			case 'suspendLogging':
@@ -760,8 +759,8 @@ class cs_webdblogger extends cs_versionAbstract {
 		$retval = 0;
 		$debugThis = array();
 		if($this->suspendLogging === false && count($this->pendingLogs)) {
-			$this->gfObj->debug_print(__METHOD__ .": suspendLogging=(". $this->gfObj->interpret_bool($this->suspendLogging, array(0,1)) ."),  handling pending logs (". count($this->pendingLogs) .")",1);
 			$myLogs = $this->pendingLogs;
+			$this->build_cache();
 			$this->pendingLogs = array();
 			foreach($myLogs as $i=>$args) {
 				//this is potentially deadly: call self recursively to log the items prevously suspended.
@@ -773,8 +772,6 @@ class cs_webdblogger extends cs_versionAbstract {
 			
 			$this->gfObj->debug_print($debugThis,1);
 		}
-		cs_debug_backtrace(1);
-		$this->gfObj->debug_print(__METHOD__ .": <b><font color='red'>DONE</font></b> - handled (". $retval .") suspended logs",1);
 	}//end handle_suspended_logs()
 	//=========================================================================
 	

@@ -32,19 +32,23 @@ class upgrade_to_0_2_0 {
 		$tables = array(
 			'cat'	=> array(
 						'cswdbl_category_table',
-						'log_category_table'
+						'log_category_table',
+						'category_id'
 					),
 			'class'	=> array(
 						'cswdbl_class_table',
 						'log_class_table',
+						'class_id'
 					),
 			'event'	=> array(
 						'cswdbl_event_table',
-						'log_event_table'
+						'log_event_table',
+						'event_id'
 					),
 			'log'	=> array(
 						'cswdbl_log_table',
-						'log_table'
+						'log_table',
+						'log_id'
 					)
 			);
 		
@@ -66,6 +70,12 @@ class upgrade_to_0_2_0 {
 				if($num1 === $num2) {
 					$totalSynced++;
 					$this->db->run_update("DROP TABLE ". $tables[1] ." CASCADE", true);
+					
+					if($this->db->get_dbtype() == 'pgsql') {
+						//Update the sequence...
+						$seq = $tables[0] .'_'. $tables[2] .'_seq';
+						$this->db->run_update("SELECT setval('". $seq ."', (SELECT max(". $tables[2] .") FROM ". $tables[0] ."))",true);
+					}
 				}
 				else {
 					throw new exception(__METHOD__ .": failed to sync ". $tables[0] ." with ". $tables[1] ." (". $num1 ." != ". $num2 .")");
