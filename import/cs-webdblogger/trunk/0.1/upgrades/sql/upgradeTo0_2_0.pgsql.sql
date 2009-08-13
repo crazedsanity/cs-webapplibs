@@ -1,17 +1,16 @@
 --
--- List of distinct attribute names.
---
-CREATE TABLE cswdbl_attribute_table (
-	attribute_id serial NOT NULL PRIMARY KEY,
-	attribute_name text NOT NULL UNIQUE
-);
+-- The assumption is that cs-webdblogger{} already created the new tables: this simply copies data into 
+--	those new tables & then drops the old ones.
 
---
--- Linkage for attributes to logs.
---
-CREATE TABLE cswdbl_log_attribute_table (
-	log_attribute_id serial NOT NULL PRIMARY KEY,
-	log_id int NOT NULL REFERENCES cswdbl_log_table(log_id),
-	attribute_id int NOT NULL REFERENCES cswdbl_attribute_table(attribute_id),
-	value_text text
-);
+
+INSERT INTO cswdbl_category_table (category_id,     category_name) 
+                            SELECT log_category_id, name          FROM log_category_table 
+                            WHERE log_category_id NOT IN (SELECT category_id FROM cswdbl_category_table)
+                            ORDER BY log_category_id;
+INSERT INTO cswdbl_class_table (class_id, class_name) 
+        SELECT log_class_id, name FROM log_class_table ORDER BY log_class_id;
+INSERT INTO cswdbl_event_table (event_id,     category_id,     class_id,     description) 
+                         SELECT log_event_id, log_category_id, log_class_id, description FROM log_event_table ORDER BY log_event_id;
+INSERT INTO cswdbl_log_table (log_id, creation, event_id,     uid, affected_uid, details) 
+                       SELECT log_id, creation, log_event_id, uid, affected_uid, details FROM log_table;
+                       

@@ -1,40 +1,16 @@
-
--- 
--- Table structure for table `cswdbl_log_attribute_table`
--- 
-
-CREATE TABLE `cswdbl_log_attribute_table` (
-  `log_attribute_id` int(11) NOT NULL auto_increment,
-  `log_id` int(11) NOT NULL,
-  `attribute_id` int(11) NOT NULL,
-  `value_text` text NOT NULL,
-  PRIMARY KEY  (`log_attribute_id`),
-  KEY `cswdbl_log_attribute_table_log_id_fkey` (`log_id`),
-  KEY `cswdbl_log_attribute_table_attribute_id_fkey` (`attribute_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
-
--- --------------------------------------------------------
-
--- 
--- Table structure for table `cswdbl_log_table`
--- 
-
-CREATE TABLE `cswdbl_log_table` (
-  `log_id` int(11) NOT NULL auto_increment,
-  `creation` timestamp NOT NULL default CURRENT_TIMESTAMP,
-  `event_id` int(11) NOT NULL,
-  `uid` int(11) NOT NULL,
-  `affected_uid` int(11) NOT NULL,
-  `details` text NOT NULL,
-  PRIMARY KEY  (`log_id`),
-  KEY `cswdbl_log_table_event_id_fkey` (`event_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+--
+-- The assumption is that cs-webdblogger{} already created the new tables: this simply copies data into 
+--	those new tables & then drops the old ones.
 
 
-
--- 
--- Constraints for table `cswdbl_log_attribute_table`
--- 
-ALTER TABLE `cswdbl_log_attribute_table`
-  ADD CONSTRAINT `cswdbl_log_attribute_table_attribute_id_fkey` FOREIGN KEY (`attribute_id`) REFERENCES `cswdbl_attribute_table` (`attribute_id`),
-  ADD CONSTRAINT `cswdbl_log_attribute_table_log_id_fkey` FOREIGN KEY (`log_id`) REFERENCES `cswdbl_log_table` (`log_id`);
+INSERT INTO cswdbl_category_table (category_id,     category_name) 
+                            SELECT log_category_id, name          FROM log_category_table 
+                            WHERE log_category_id NOT IN (SELECT category_id FROM cswdbl_category_table)
+                            ORDER BY log_category_id;
+INSERT INTO cswdbl_class_table (class_id, class_name) 
+        SELECT log_class_id, name FROM log_class_table ORDER BY log_class_id;
+INSERT INTO cswdbl_event_table (event_id,     category_id,     class_id,     description) 
+                         SELECT log_event_id, log_category_id, log_class_id, description FROM log_event_table ORDER BY log_event_id;
+INSERT INTO cswdbl_log_table (log_id, creation, event_id,     uid, affected_uid, details) 
+                       SELECT log_id, creation, log_event_id, uid, affected_uid, details FROM log_table;
+                       

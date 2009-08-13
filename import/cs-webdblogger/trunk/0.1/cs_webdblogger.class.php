@@ -82,7 +82,7 @@ class cs_webdblogger extends cs_versionAbstract {
 	/**
 	 * The constructor.
 	 */
-	public function __construct(cs_phpDB &$db, $logCategory, $checkForUpgrades=true) {
+	public function __construct(cs_phpDB &$db, $logCategory=null, $checkForUpgrades=true) {
 		//assign the database object.
 		$this->db = $db;
 		
@@ -99,11 +99,13 @@ class cs_webdblogger extends cs_versionAbstract {
 		
 		//see if there's an upgrade to perform...
 		if($checkForUpgrades === true) {
+			$this->gfObj->debug_print("<b><font color='red'>". __METHOD__ ."</font></b>: checking for upgrades...",1);
 			$this->suspendLogging = true;
 			$upgObj = new cs_webdbupgrade(dirname(__FILE__) . '/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml');
-			$upgObj->check_versions(true);
+			$checkVersionRes = $upgObj->check_versions(true);
 			$this->suspendLogging = false;
 			$this->handle_suspended_logs();
+			$this->gfObj->debug_print("<b><font color='red'>". __METHOD__ ."</font></b>: DONE with upgrades (". $checkVersionRes .") ",1);
 		}
 		
 		//assign the category_id.
@@ -117,17 +119,10 @@ class cs_webdblogger extends cs_versionAbstract {
 				$this->logCategoryId = $logCategory;
 			}
 		}
-		else {
-			throw new exception(__METHOD__ .": FATAL: no logCategoryId passed");
-		}
 		
 		//check for a uid in the session.
 		$this->defaultUid = $this->get_uid();
 		
-		
-		if(!is_numeric($this->logCategoryId) || $this->logCategoryId < 1) {
-			throw new exception(__METHOD__ .": FATAL: invalid logCategoryId (". $this->logCategoryId .")");
-		}
 		
 		//build our cache.
 		$this->build_cache();
@@ -153,14 +148,22 @@ class cs_webdblogger extends cs_versionAbstract {
 		$this->lastSQLFile = $filename;
 		
 		$fileContents = $fsObj->read($filename);
-		$this->db->beginTrans(__METHOD__);
+		$doTrans = false;
+		if($this->db->get_transaction_status() !== 0) {
+			$this->db->beginTrans(__METHOD__);
+			$doTrans = true;
+		}
 		try {
 			$this->db->run_update($fileContents, true);
-			$this->db->commitTrans();
+			if($doTrans) {
+				$this->db->commitTrans();
+			}
 			$retval = TRUE;
 		}
 		catch(exception $e) {
-			$this->db->rollbackTrans();
+			if($doTrans) {
+				$this->db->rollbackTrans();
+			}
 			$retval = FALSE;
 		}
 		
@@ -568,6 +571,9 @@ class cs_webdblogger extends cs_versionAbstract {
 						$this->setupComplete = true;
 						$this->run_sql_file($mySchemaFile);
 						
+						//Create the default category.
+						$this->create_log_category('Database');
+						
 						$retval = $this->create_log_category($catName);
 					}
 					else {
@@ -726,10 +732,14 @@ class cs_webdblogger extends cs_versionAbstract {
 	
 	//=========================================================================
 	public function __set($var, $newVal) {
+		$this->gfObj->debug_print(__METHOD__ .": var=(". $var ."), newVal=(". $newVal ."), BACKTRACE::: <BR>\n". cs_debug_backtrace(0),1);
 		$res = false;
 		switch($var) {
 			case 'suspendLogging':
 				$this->$var = $newVal;
+				if($newVal === false) {
+					#$this->handle_suspended_logs();
+				}
 				$res = true;
 				break;
 			
@@ -750,7 +760,7 @@ class cs_webdblogger extends cs_versionAbstract {
 		$retval = 0;
 		$debugThis = array();
 		if($this->suspendLogging === false && count($this->pendingLogs)) {
-			$this->gfObj->debug_print(__METHOD__ .": handling pending logs (". count($this->pendingLogs) .")",1);
+			$this->gfObj->debug_print(__METHOD__ .": suspendLogging=(". $this->gfObj->interpret_bool($this->suspendLogging, array(0,1)) ."),  handling pending logs (". count($this->pendingLogs) .")",1);
 			$myLogs = $this->pendingLogs;
 			$this->pendingLogs = array();
 			foreach($myLogs as $i=>$args) {
@@ -764,7 +774,7 @@ class cs_webdblogger extends cs_versionAbstract {
 			$this->gfObj->debug_print($debugThis,1);
 		}
 		cs_debug_backtrace(1);
-		$this->gfObj->debug_print(__METHOD__ .": handled (". $retval .") suspended logs",1);
+		$this->gfObj->debug_print(__METHOD__ .": <b><font color='red'>DONE</font></b> - handled (". $retval .") suspended logs",1);
 	}//end handle_suspended_logs()
 	//=========================================================================
 	
