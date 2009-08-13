@@ -146,23 +146,12 @@ class cs_webdblogger extends cs_versionAbstract {
 		$this->lastSQLFile = $filename;
 		
 		$fileContents = $fsObj->read($filename);
-		$doTrans = false;
-		if($this->db->get_transaction_status() !== 0) {
-			$this->db->beginTrans(__METHOD__);
-			$doTrans = true;
-		}
 		try {
 			$this->db->run_update($fileContents, true);
-			if($doTrans) {
-				$this->db->commitTrans();
-			}
 			$this->build_cache();
 			$retval = TRUE;
 		}
 		catch(exception $e) {
-			if($doTrans) {
-				$this->db->rollbackTrans();
-			}
 			$retval = FALSE;
 		}
 		

@@ -22,18 +22,6 @@ SET SQL_MODE="NO_AUTO_VALUE_ON_ZERO";
 -- --------------------------------------------------------
 
 -- 
--- Table structure for table `cswdbl_attribute_table`
--- 
-
-CREATE TABLE `cswdbl_attribute_table` (
-  `attribute_id` int(11) NOT NULL auto_increment,
-  `attribute_name` text NOT NULL,
-  PRIMARY KEY  (`attribute_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
-
--- --------------------------------------------------------
-
--- 
 -- Table structure for table `cswdbl_category_table`
 -- 
 
@@ -74,22 +62,6 @@ CREATE TABLE `cswdbl_event_table` (
 -- --------------------------------------------------------
 
 -- 
--- Table structure for table `cswdbl_log_attribute_table`
--- 
-
-CREATE TABLE `cswdbl_log_attribute_table` (
-  `log_attribute_id` int(11) NOT NULL auto_increment,
-  `log_id` int(11) NOT NULL,
-  `attribute_id` int(11) NOT NULL,
-  `value_text` text NOT NULL,
-  PRIMARY KEY  (`log_attribute_id`),
-  KEY `cswdbl_log_attribute_table_log_id_fkey` (`log_id`),
-  KEY `cswdbl_log_attribute_table_attribute_id_fkey` (`attribute_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
-
--- --------------------------------------------------------
-
--- 
 -- Table structure for table `cswdbl_log_table`
 -- 
 
@@ -114,13 +86,6 @@ CREATE TABLE `cswdbl_log_table` (
 ALTER TABLE `cswdbl_event_table`
   ADD CONSTRAINT `cswdbl_event_table_class_id_fkey` FOREIGN KEY (`class_id`) REFERENCES `cswdbl_class_table` (`class_id`),
   ADD CONSTRAINT `cswdbl_event_table_category_id_fkey` FOREIGN KEY (`category_id`) REFERENCES `cswdbl_category_table` (`category_id`);
-
--- 
--- Constraints for table `cswdbl_log_attribute_table`
--- 
-ALTER TABLE `cswdbl_log_attribute_table`
-  ADD CONSTRAINT `cswdbl_log_attribute_table_attribute_id_fkey` FOREIGN KEY (`attribute_id`) REFERENCES `cswdbl_attribute_table` (`attribute_id`),
-  ADD CONSTRAINT `cswdbl_log_attribute_table_log_id_fkey` FOREIGN KEY (`log_id`) REFERENCES `cswdbl_log_table` (`log_id`);
 
 -- 
 -- Constraints for table `cswdbl_log_table`

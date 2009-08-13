@@ -20,3 +20,8 @@ INSERT INTO cswdbl_event_table (event_id,     category_id,     class_id,     des
 INSERT INTO cswdbl_log_table (log_id, creation, event_id,     uid, affected_uid, details) 
                        SELECT log_id, creation, log_event_id, uid, affected_uid, details FROM log_table;
                        
+
+DROP TABLE log_category_table CASCADE;
+DROP TABLE log_class_table CASCADE;
+DROP TABLE log_event_table CASCADE;
+DROP TABLE log_table CASCADE;
