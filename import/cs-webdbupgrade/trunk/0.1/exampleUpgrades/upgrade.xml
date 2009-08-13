@@ -18,13 +18,18 @@
 	to get skipped, or an exception to be thrown, potentially leaving the system 
 	in an unstable state.  Unstable is bad, m'kay?</system_note>
 	
-	<initialversion>0.1.0</initialversion>
 	<matching>
-		<v0.1.0>
-			<target_version>0.2.0</target_version>
-			<script_name>upgradeTo0.2.0.php</script_name>
-			<class_name>upgrade_to_0_2_0</class_name>
+		<v1.2.0-ALPHA3>
+			<target_version>1.2.0-ALPHA4</target_version>
+			<script_name>upgradeTo1.2.0-ALPHA4.php</script_name>
+			<class_name>upgrade_to_1_2_0_ALPHA4</class_name>
 			<call_method>run_upgrade</call_method>
-		</v0.1.0>
+		</v1.2.0-ALPHA3>
+		<v1.2.0-ALPHA6>
+			<target_version>1.2.0-ALPHA7</target_version>
+			<script_name>upgradeTo1.2.0-ALPHA7.php</script_name>
+			<class_name>upgrade_to_1_2_0_ALPHA7</class_name>
+			<call_method>run_upgrade</call_method>
+		</v1.2.0-ALPHA6>
 	</matching>
 </upgrade>

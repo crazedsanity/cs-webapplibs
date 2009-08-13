@@ -15,7 +15,7 @@
 -- "DB_TABLE" setting.
 CREATE TABLE {tableName} (
 	{primaryKey} serial NOT NULL PRIMARY KEY,
-	project_name varchar(30) NOT NULL UNIQUE,
+	project_name varchar(30) NOT NULL,
 	version_string varchar(50) NOT NULL,
 	version_major integer NOT NULL,
 	version_minor integer NOT NULL,
