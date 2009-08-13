@@ -130,7 +130,7 @@ class cs_webdbupgrade extends cs_versionAbstract {
 		else {
 			$this->config['RWDIR'] = constant(__CLASS__ .'-RWDIR');
 		}
-		if(!is_string($lockFile)) {
+		if(is_null($lockFile) || !strlen($lockFile)) {
 			$lockFile = 'upgrade.lock';
 		}
 		$this->lockfile = $this->config['RWDIR'] .'/'. $lockFile;
@@ -148,19 +148,17 @@ class cs_webdbupgrade extends cs_versionAbstract {
 			throw new exception(__METHOD__ .": upgrade in progress: ". $this->fsObj->read($this->lockfile));
 		}
 		
-$this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectName ." - ". $this->versionFileLocation .") -- CONFIG::: ". $this->gfObj->debug_print($this->config,0),1);
-		
 		$this->check_internal_upgrades();
 		
-$this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectName ." - ". $this->versionFileLocation .") -- CONFIG::: ". $this->gfObj->debug_print($this->config,0),1);
-		try {	
-			$this->connect_logger();
+		try {
+			$loggerDb = new cs_phpDB(constant('DBTYPE'));
+			$loggerDb->connect($this->config['DBPARAMS'], true);
+			$this->logsObj = new cs_webdblogger($loggerDb, "Upgrade ". $this->projectName, false);
 		}
 		catch(exception $e) {
 			throw new exception(__METHOD__ .": failed to create logger::: ". $e->getMessage());
 		}
 		
-		$this->gfObj->debug_print($this,1);
 		$this->check_versions(false);
 	}//end __construct()
 	//=========================================================================
@@ -172,22 +170,18 @@ $this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectN
 	 * Determine if there are any upgrades that need to be performed...
 	 */
 	private function check_internal_upgrades() {
-$this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectName ." - ". $this->versionFileLocation .") -- CONFIG::: ". $this->gfObj->debug_print($this->config,0),1);
 		$oldVersionFileLocation = $this->versionFileLocation;
 		$oldUpgradeConfigFile = $this->config['UPGRADE_CONFIG_FILE'];
 		$this->config['UPGRADE_CONFIG_FILE'] = dirname(__FILE__) .'/upgrades/upgrade.xml';
-$this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectName ." - ". $this->versionFileLocation .") -- CONFIG::: ". $this->gfObj->debug_print($this->config,0),1);
 		
 		
 		//set a status flag so we can store log messages (for now).
 		$this->internalUpgradeInProgress = true;
 		
-$this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectName ." - ". $this->versionFileLocation .") -- CONFIG::: ". $this->gfObj->debug_print($this->config,0),1);
 		
 		//do stuff here...
 		$this->set_version_file_location(dirname(__FILE__) .'/VERSION');
 		$this->read_version_file();
-$this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectName ." - ". $this->versionFileLocation .") -- CONFIG::: ". $this->gfObj->debug_print($this->config,0),1);
 		
 		//if there is an error, then... uh... yeah.
 		try {
@@ -201,22 +195,16 @@ $this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectN
 		}
 		
 		//do upgrades here...
-$this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectName ." - ". $this->versionFileLocation .") -- CONFIG::: ". $this->gfObj->debug_print($this->config,0),1);
 		$this->check_versions(true);
-$this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectName ." - ". $this->versionFileLocation .") -- CONFIG::: ". $this->gfObj->debug_print($this->config,0),1);
 		$this->internalUpgradeInProgress = false;
-$this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectName ." - ". $this->versionFileLocation .") -- CONFIG::: ". $this->gfObj->debug_print($this->config,0),1);
 		
 		
 		
 		
 		//reset internal vars.
 		$this->set_version_file_location($oldVersionFileLocation);
-$this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectName ." - ". $this->versionFileLocation .") -- CONFIG::: ". $this->gfObj->debug_print($this->config,0),1);
 		$this->config['UPGRADE_CONFIG_FILE'] = $oldUpgradeConfigFile;
-$this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectName ." - ". $this->versionFileLocation .") -- CONFIG::: ". $this->gfObj->debug_print($this->config,0),1);
 		$this->read_version_file();
-$this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectName ." - ". $this->versionFileLocation .") -- CONFIG::: ". $this->gfObj->debug_print($this->config,0),1);
 		
 	}//end check_internal_upgrades()
 	//=========================================================================
@@ -341,6 +329,7 @@ $this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectN
 	
 	//=========================================================================
 	private function perform_upgrade() {
+		$this->logsObj->suspendLogging=true;
 		//make sure there's not already a lockfile.
 		if($this->upgrade_in_progress()) {
 			//ew.  Can't upgrade.
@@ -409,12 +398,17 @@ $this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectN
 					$this->db->commitTrans();
 				}
 				catch(exception $e) {
-					$this->error_handler(__METHOD__ .": upgrade aborted:::". $e->getMessage());
+					$transactionStatus = $this->db->get_transaction_status(false);
+					$this->error_handler(__METHOD__ .": transaction status=(". $transactionStatus ."), upgrade aborted:::". $e->getMessage());
 					$this->db->rollbackTrans();
 				}
+				$this->logsObj->suspendLogging=false;
 				$this->do_log("Upgrade process complete", 'end');
 			}
 		}
+		$this->logsObj->suspendLogging=false;
+		$logsHandled = $this->logsObj->handle_suspended_logs();
+		$this->gfObj->debug_print(__METHOD__ .": done, handled (". $logsHandled .") logs that had been suspended... ",1);
 	}//end perform_upgrade()
 	//=========================================================================
 	
@@ -1037,14 +1031,8 @@ $this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectN
 	//=========================================================================
 	public function error_handler($details) {
 		//log the error.
-		$this->gfObj->debug_print($this->debugLogs,1);
 		if(!is_object($this->logsObj)) {
-			if($this->internalUpgradeInProgress === true) {
-				throw new exception(__METHOD__ .": error while running an internal upgrade::: ". $details);
-			}
-			else {
-				$this->connect_logger();
-			}
+			throw new exception(__METHOD__ .": error while running an internal upgrade::: ". $details);
 		}
 		if($this->internalUpgradeInProgress === false) {
 			$this->do_log($details, 'exception in code');
@@ -1091,24 +1079,8 @@ $this->gfObj->debug_print(__METHOD__ .": line#". __LINE__ ." (". $this->projectN
 	
 	
 	//=========================================================================
-	private function connect_logger($logCategory=null) {
-		
-		cs_debug_backtrace(1);
-		
-		if(is_null($logCategory) || !strlen($logCategory)) {
-			$logCategory = "Upgrade ". $this->projectName;
-		}
-		
-		$loggerDb = new cs_phpDB(constant('DBTYPE'));
-		$loggerDb->connect($this->config['DBPARAMS'], true);
-		$this->logsObj = new cs_webdblogger($loggerDb, $logCategory, false);
-	}//end connect_logger()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
 	protected function do_log($message, $type) {
+		$this->gfObj->debug_print(__METHOD__ .": loggerSuspend=(". $this->logsObj->suspendLogging ."), type=(". $type ."), MESSAGE::: ". $message,1);
 		$this->debugLogs[] = array('project'=>$this->projectName,'upgradeFile'=>$this->config['UPGRADE_CONFIG_FILE'],'message'=>$message,'type'=>$type);
 		if($this->internalUpgradeInProgress === true) {
 			$this->storedLogs[] = func_get_args();
