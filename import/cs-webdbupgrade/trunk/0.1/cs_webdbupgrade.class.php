@@ -408,7 +408,6 @@ class cs_webdbupgrade extends cs_versionAbstract {
 		}
 		$this->logsObj->suspendLogging=false;
 		$logsHandled = $this->logsObj->handle_suspended_logs();
-		$this->gfObj->debug_print(__METHOD__ .": done, handled (". $logsHandled .") logs that had been suspended... ",1);
 	}//end perform_upgrade()
 	//=========================================================================
 	
@@ -1080,7 +1079,6 @@ class cs_webdbupgrade extends cs_versionAbstract {
 	
 	//=========================================================================
 	protected function do_log($message, $type) {
-		$this->gfObj->debug_print(__METHOD__ .": loggerSuspend=(". $this->logsObj->suspendLogging ."), type=(". $type ."), MESSAGE::: ". $message,1);
 		$this->debugLogs[] = array('project'=>$this->projectName,'upgradeFile'=>$this->config['UPGRADE_CONFIG_FILE'],'message'=>$message,'type'=>$type);
 		if($this->internalUpgradeInProgress === true) {
 			$this->storedLogs[] = func_get_args();
