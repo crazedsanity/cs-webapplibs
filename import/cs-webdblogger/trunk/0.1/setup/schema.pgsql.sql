@@ -10,13 +10,17 @@
 
 
 --
+-- TODO: add prefix to these tables...
+-- 
+
+--
 -- The category is the high-level view of the affected system.  If this were 
 --	a project management system with projects and issues, then there would 
 --	be a category for "project" and for "issue".
 --
-CREATE TABLE cswdbl_category_table (
-	category_id serial NOT NULL PRIMARY KEY,
-	category_name text NOT NULL
+CREATE TABLE log_category_table (
+	log_category_id serial NOT NULL PRIMARY KEY,
+	name text NOT NULL
 );
 
 
@@ -25,9 +29,9 @@ CREATE TABLE cswdbl_category_table (
 --	that was created, "project" would be the category (see above) and the 
 --	class would then be "create".
 --
-CREATE TABLE cswdbl_class_table (
-	class_id serial NOT NULL PRIMARY KEY,
-	class_name text NOT NULL
+CREATE TABLE log_class_table (
+	log_class_id serial NOT NULL PRIMARY KEY,
+	name text NOT NULL
 );
 
 
@@ -38,12 +42,12 @@ CREATE TABLE cswdbl_class_table (
 --	and make the description for that event more useful, especially if the 
 --	logs are going to be displayed in any sort of useful manner.
 --
-CREATE TABLE cswdbl_event_table (
-	event_id serial NOT NULL PRIMARY KEY,
-	class_id integer NOT NULL REFERENCES cswdbl_class_table(class_id),
-	category_id integer NOT NULL REFERENCES cswdbl_category_table(category_id),
+CREATE TABLE log_event_table (
+	log_event_id serial NOT NULL PRIMARY KEY,
+	log_class_id integer NOT NULL REFERENCES log_class_table(log_class_id),
+	log_category_id integer NOT NULL REFERENCES log_category_table(log_category_id),
 	description text NOT NULL
-);
+)
 
 
 --
@@ -54,30 +58,12 @@ CREATE TABLE cswdbl_event_table (
 --	(zero) for logging non-authenticated things, and a 1 (one) for activities 
 --	performed by the system itself.
 --
-CREATE TABLE cswdbl_log_table (
+CREATE TABLE log_table (
 	log_id serial NOT NULL PRIMARY KEY,
 	creation timestamp NOT NULL DEFAULT NOW(),
-	event_id integer NOT NULL REFERENCES cswdbl_event_table(event_id),
+	log_event_id integer NOT NULL REFERENCES log_event_table(log_event_id),
 	uid integer NOT NULL,
 	affected_uid integer NOT NULL,
 	details text NOT NULL
-);
-
---
--- List of distinct attribute names.
---
-CREATE TABLE cswdbl_attribute_table (
-	attribute_id serial NOT NULL PRIMARY KEY,
-	attribute_name text NOT NULL UNIQUE
-);
-
---
--- Linkage for attributes to logs.
---
-CREATE TABLE cswdbl_log_attribute_table (
-	log_attribute_id serial NOT NULL PRIMARY KEY,
-	log_id int NOT NULL REFERENCES cswdbl_log_table(log_id),
-	attribute_id int NOT NULL REFERENCES cswdbl_attribute_table(attribute_id),
-	value_text text
 );
 
