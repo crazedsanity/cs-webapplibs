@@ -17,8 +17,8 @@ INSERT INTO cswdbl_event_table (event_id,     category_id,     class_id,     des
                          FROM log_event_table 
                          WHERE log_event_id NOT IN (SELECT event_id FROM cswdbl_event_table)
                          ORDER BY log_event_id;
-INSERT INTO cswdbl_log_table (log_id, creation, event_id,     uid, affected_uid, details) 
-                       SELECT log_id, creation, log_event_id, uid, affected_uid, details FROM log_table;
+INSERT INTO cswdbl_log_table (creation, event_id,     uid, affected_uid, details) 
+                       SELECT creation, log_event_id, uid, affected_uid, details FROM log_table;
                        
 
 DROP TABLE log_category_table CASCADE;
