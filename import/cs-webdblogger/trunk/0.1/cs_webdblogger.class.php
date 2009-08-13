@@ -215,7 +215,6 @@ class cs_webdblogger extends cs_versionAbstract {
 		}
 		else {
 			//create the class & then rebuild cache.
-			$this->gfObj->debug_print(__METHOD__ .": no class_id for (". $name .")::: ". $this->gfObj->debug_print($this->logClassCache,0),1);
 			$retval = $this->create_class($name);
 			$this->build_cache();
 		}
@@ -769,9 +768,8 @@ class cs_webdblogger extends cs_versionAbstract {
 				$debugThis[$newId] = $args;
 				$retval++;
 			}
-			
-			$this->gfObj->debug_print($debugThis,1);
 		}
+		return($retval);
 	}//end handle_suspended_logs()
 	//=========================================================================
 	
