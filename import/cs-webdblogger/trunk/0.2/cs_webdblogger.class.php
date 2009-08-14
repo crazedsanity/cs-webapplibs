@@ -477,10 +477,10 @@ class cs_webdblogger extends cs_versionAbstract {
 				"ca.category_name, " .
 				"ev.description, " .
 				"l.details " .
-			"FROM log_table AS l " .
-				"INNER JOIN cswdbl_event_table AS ev ON (l.event_id=ev.event_id) " .
-				"INNER JOIN cswdbl_class_table AS cl ON (cl.class_id=ev.class_id) " .
-				"INNER JOIN cswdbl_category_table AS ca ON (ca.category_id=ev.category_id) " .
+			"FROM ". $this->tables['log'] ." AS l " .
+				"INNER JOIN ". $this->tables['event'] ." AS ev ON (l.event_id=ev.event_id) " .
+				"INNER JOIN ". $this->tables['class'] ." AS cl ON (cl.class_id=ev.class_id) " .
+				"INNER JOIN ". $this->tables['category'] ." AS ca ON (ca.category_id=ev.category_id) " .
 			"WHERE " . $critString . " " .
 			"ORDER BY " .
 				"log_id DESC " .
