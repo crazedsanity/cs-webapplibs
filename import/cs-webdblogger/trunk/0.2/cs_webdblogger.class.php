@@ -33,8 +33,11 @@ class cs_webdblogger extends cs_versionAbstract {
 	/** Database handle */
 	public $db;
 	
-	/** Cache of all records in the class_table */
+	/** Cache of all records in the class table */
 	private $logClassCache = array();
+	
+	/** Cache of all records in the attribute table */
+	private $attributeCache=array();
 	
 	/** The category_id value to use, set on class creation. */
 	private $logCategoryId = null;
@@ -185,6 +188,26 @@ class cs_webdblogger extends cs_versionAbstract {
 		catch(exception $e) {
 			throw new exception(__METHOD__ .": failed to build internal class cache::: ". $e->getMessage());
 		}
+		
+		//now build cache for attributes.
+		$sql = "SELECT attribute_id, lower(attribute_name) AS attribute_name FROM ". $this->tables['attrib'];
+		
+		try {
+			$data = $this->db->run_query($sql, 'attribute_name', 'attribute_id');
+			
+			if(is_array($data)) {
+				$this->attributeCache = $data;
+			}
+			elseif($data == false) {
+				$this->attributeCache = array();
+			}
+			else {
+				throw new exception(__METHOD__ .": unknown data returned: ". $this->gfObj->debug_var_dump($data,0));
+			}
+		}
+		catch(exception $e) {
+			throw new exception(__METHOD__ .": error occurred while retrieving attribute cache::: ". $e->getMessage());
+		}
 	}//end build_cache()
 	//=========================================================================
 	
@@ -258,7 +281,7 @@ class cs_webdblogger extends cs_versionAbstract {
 	 * error with a bit more capabilities; throws the details of the error as  
 	 * an exception.
 	 */
-	public function log_by_class($details, $className="error", $uid=NULL) {
+	public function log_by_class($details, $className="error", $uid=NULL, array $logAttribs=NULL) {
 		
 		if($this->suspendLogging === true) {
 			$this->pendingLogs[] = func_get_args();
@@ -314,6 +337,10 @@ class cs_webdblogger extends cs_versionAbstract {
 				
 				if(is_numeric($newId) && $newId > 0) {
 					$retval = $newId;
+					
+					if(is_array($logAttribs) && count($logAttribs)) {
+						$this->create_log_attributes($newId, $logAttribs);
+					}
 				}
 				else {
 					throw new exception(__METHOD__ .": failed to insert id or invalid return (". $this->gfObj->debug_var_dump($newId,0) .")");
@@ -774,6 +801,62 @@ class cs_webdblogger extends cs_versionAbstract {
 		}
 		return($myUid);
 	}//end get_uid()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	private function create_attribute($attribName, $buildCache=true) {
+		
+		$myId = null;
+		if(isset($this->attributeCache[strtolower($attribName)])) {
+			$myId = $this->attributeCache[strtolower($attribName)];
+		}
+		else {
+			$sql = "INSERT INTO ". $this->tables['attrib'] ." (attribute_name) " .
+					"VALUES ('". $this->gfObj->cleanString($attribName, 'sql_insert') ."')";
+			
+			try {
+				$myId = $this->db->run_insert($sql, $this->seqs['attrib']);
+			}
+			catch(exception $e) {
+				throw new exception(__METHOD__ .": fatal error while creating attribute (". $attribName .")::: ". $e->getMessage());
+			}
+		}
+		
+		if($buildCache) {
+			$this->build_cache();
+		}
+		
+		return($myId);
+	}//end create_attribute()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	private function create_log_attributes($logId, array $attribs) {
+		$myIds = array();
+		foreach($attribs as $name=>$val) {
+			$insertData = array(
+				'log_id'		=> $logId,
+				'attribute_id'	=> $this->create_attribute($name, false),
+				'value_text'	=> $val
+			);
+			$sql = "INSERT INTO ". $this->tables['logAttrib'] ." ". 
+					$this->gfObj->string_from_array($insertData, 'insert');
+			
+			try {
+				$myIds[$name][] = $this->db->run_insert($sql, $this->seqs['logAttrib']);
+			}
+			catch(exception $e) {
+				throw new exception(__METHOD__ .": fatal error while creating log attribute " .
+						"(". $name .")::: ". $e->getMessage());
+			}
+		}
+		$this->build_cache();
+		
+	}//end create_log_attributes()
 	//=========================================================================
 	
 	
