@@ -63,3 +63,16 @@ CREATE TABLE cswdbl_log_table (
 	details text NOT NULL
 );
 
+-- This table create statement MUST work in PostgreSQL v8.2.x+ AND MySQL v5.0.x+: 
+-- otherwise separate schema files have to be created and the code will have to 
+-- do extra checking...
+CREATE TABLE cs_version_table (
+	version_id serial NOT NULL PRIMARY KEY,
+	project_name varchar(30) NOT NULL UNIQUE,
+	version_string varchar(50) NOT NULL,
+	version_major integer NOT NULL,
+	version_minor integer NOT NULL,
+	version_maintenance integer NOT NULL,
+	version_suffix varchar(20) NOT NULL
+);
+
