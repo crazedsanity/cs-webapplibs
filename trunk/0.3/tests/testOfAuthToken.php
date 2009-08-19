@@ -71,7 +71,14 @@ class testOfCSAuthToken extends UnitTestCase {
 		$db = $this->create_db();
 		$tok = new cs_authToken($db);
 		
-		
+		//Generic test to ensure we get the appropriate data back.
+		$tokenData = $tok->create_token(0, 'test', 'abc123');
+		$this->assertTrue(is_array($tokenData));
+		$this->assertTrue((count($tokenData) == 2));
+		$this->assertTrue(isset($tokenData['id']));
+		$this->assertTrue(isset($tokenData['hash']));
+		$this->assertTrue(($tokenData['id'] > 0));
+		$this->assertTrue((strlen($tokenData['hash']) == 32));
 	}//end test_basics()
 	//--------------------------------------------------------------------------
 }
