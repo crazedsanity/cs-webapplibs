@@ -15,6 +15,6 @@ CREATE TABLE cswal_auth_token_table (
 	token text NOT NULL,
 	max_uses integer DEFAULT NULL,
 	total_uses integer NOT NULL DEFAULT 0,
-	creation date NOT NULL DEFAULT NOW(),
-	duration interval NOT NULL DEFAULT '1 day'::interval
+	creation timestamp NOT NULL DEFAULT NOW(),
+	expiration timestamp NOT NULL DEFAULT NOW() + '1 day'::interval
 );

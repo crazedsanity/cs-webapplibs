@@ -111,7 +111,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 			'token'		=> '____INCOMPLETE____'
 		);
 		if(!is_null($lifetime) && strlen($lifetime)) {
-			$insertData['duration'] = $lifetime;
+			$insertData['expiration'] = strftime('%Y-%m-%d %T', strtotime($lifetime));
 		}
 		if(!is_null($maxUses) && is_numeric($maxUses) && $maxUses > 0) {
 			$insertData['max_uses'] = $maxUses;
@@ -282,7 +282,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 	protected function get_token_data($tokenId) {
 		try {
 			$data = $this->db->run_query("SELECT * FROM ". $this->table ." WHERE auth_token_id=". $tokenId
-					." AND (creation + duration)::date >= CURRENT_DATE", 'auth_token_id');
+					." AND expiration::date >= CURRENT_DATE", 'auth_token_id');
 			if(is_array($data) && count($data) == 1) {
 				$tokenData = $data;
 			}
