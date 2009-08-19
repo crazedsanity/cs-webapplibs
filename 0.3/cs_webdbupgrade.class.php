@@ -12,10 +12,10 @@
  * 
  */
 
-require_once(constant('LIBDIR') .'/cs-versionparse/cs_version.abstract.class.php');
-require_once(constant('LIBDIR') .'/cs_debug.php');
+require_once(dirname(__FILE__) .'/cs_webapplibs.abstract.class.php');
+		require_once(dirname(__FILE__) .'/cs_webdblogger.class.php');
 
-class cs_webdbupgrade extends cs_versionAbstract {
+class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	/** cs_fileSystem{} object: for filesystem read/write operations. */
 	private $fsObj;
@@ -89,7 +89,6 @@ class cs_webdbupgrade extends cs_versionAbstract {
 		require_once(constant('LIBDIR') .'/cs-content/cs_globalFunctions.class.php');
 		require_once(constant('LIBDIR') .'/cs-content/cs_fileSystem.class.php');
 		require_once(constant('LIBDIR') .'/cs-content/cs_phpDB.class.php');
-		require_once(constant('LIBDIR') .'/cs-webdblogger/cs_webdblogger.class.php');
 		require_once(constant('LIBDIR') .'/cs-phpxml/cs_phpxmlParser.class.php');
 		require_once(constant('LIBDIR') .'/cs-phpxml/cs_phpxmlCreator.class.php');
 		require_once(constant('LIBDIR') .'/cs-phpxml/cs_arrayToPath.class.php');
