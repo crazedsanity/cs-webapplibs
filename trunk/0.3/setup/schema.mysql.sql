@@ -92,3 +92,20 @@ ALTER TABLE `cswdbl_event_table`
 -- 
 ALTER TABLE `cswdbl_log_table`
   ADD CONSTRAINT `cswdbl_log_table_event_id_fkey` FOREIGN KEY (`event_id`) REFERENCES `cswdbl_event_table` (`event_id`);
+  
+  
+-- This table create statement MUST work in PostgreSQL v8.2.x+ AND MySQL v5.0.x+: 
+-- otherwise separate schema files have to be created and the code will have to 
+-- do extra checking...
+-- 
+-- The "{tableName}" portion will be replaced with the value of the configured 
+-- "DB_TABLE" setting.
+CREATE TABLE cs_version_table (
+	version_id int NOT NULL PRIMARY KEY,
+	project_name varchar(30) NOT NULL UNIQUE,
+	version_string varchar(50) NOT NULL,
+	version_major integer NOT NULL,
+	version_minor integer NOT NULL,
+	version_maintenance integer NOT NULL,
+	version_suffix varchar(20) NOT NULL
+);
