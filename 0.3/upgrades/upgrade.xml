@@ -1,0 +1,29 @@
+<upgrade>
+	<system_note>To determine which section in matching to use, heed only the information 
+	beneath the tag that indicates the current database version (for 5.2.4, 
+	you would find information under matching for "v5.2.4").  This section 
+	indicates the version that it should upgrade the database to 
+	("target_version"), the name of the script ("script_name"), the class name 
+	("class_name"), and the name of the method within that class ("call_method") 
+	to call in order to perform the upgrade.  The method should return TRUE on 
+	success: anything else would indicate failure.  Upgrade failure may leave 
+	the system in an inconsistent state.
+	
+	IMPORTANT: in order to facilitate doing multiple version upgrades, the name 
+	of the class must be UNIQUE to all the other classes.  For this reason, the 
+	class name should be something like "v1_0_0_ALPHA1__to__v1_0_0_ALPHA2".
+	
+	REMEMBER: the "target_version" should NEVER be higher than the next item 
+	beneath matching; this will cause horrible logic errors, causing an upgsrade 
+	to get skipped, or an exception to be thrown, potentially leaving the system 
+	in an unstable state.  Unstable is bad, m'kay?</system_note>
+	
+	<matching>
+		<v0.2.0>
+			<target_version>0.2.1</target_version>
+			<script_name>upgradeTo0.2.1.php</script_name>
+			<class_name>upgrade_to_0_2_1</class_name>
+			<call_method>run_upgrade</call_method>
+		</v0.2.0>
+	</matching>
+</upgrade>
