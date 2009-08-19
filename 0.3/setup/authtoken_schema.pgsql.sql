@@ -13,6 +13,8 @@ CREATE TABLE cswal_auth_token_table (
 	uid integer NOT NULL DEFAULT 0,
 	checksum text NOT NULL,
 	token text NOT NULL,
+	use_limit integer DEFAULT NULL,
+	total_uses integer NOT NULL DEFAULT 0,
 	creation date NOT NULL DEFAULT NOW(),
 	duration interval NOT NULL DEFAULT '1 day'::interval
 );
