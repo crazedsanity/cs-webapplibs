@@ -28,6 +28,9 @@ class cs_authToken extends cs_webapplibsAbstract {
 	private $seq = 'cswal_auth_token_table_auth_token_id_seq';
 	
 	//=========================================================================
+	/**
+	 * The CONSTRUCTOR.  Sets internal properties & such.
+	 */
 	public function __construct(cs_phpDB $db) {
 		
 		if($db->is_connected()) {
@@ -44,6 +47,9 @@ class cs_authToken extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
+	/**
+	 * Load table into the database...
+	 */
 	public function load_table() {
 		$file = dirname(__FILE__) .'/setup/authtoken_schema.'. $this->db->get_dbtype() .'.sql';
 		
@@ -64,6 +70,17 @@ class cs_authToken extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
+	/**
+	 * Standardized method of creating a hash from a string.
+	 * 
+	 * @param $tokenId			(int) matches auth_token_id column....
+	 * @param $uid				(int) matches uid column...
+	 * @param $checksum			(str) This is the value that can be used by the 
+	 * 								calling code to see if the given uid matches 
+	 * 								this data (i.e. using an email address/username).
+	 * @param $stringToHash		(str) Data used to help create a hash, usually 
+	 * 								something very unique.
+	 */
 	protected function create_hash_string($tokenId, $uid, $checksum, $stringToHash=NULL) {
 		return(md5($tokenId ."_". $uid ."_". $checksum ."_". $stringToHash));
 	}//end create_hash_string()
@@ -72,6 +89,20 @@ class cs_authToken extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
+	/**
+	 * Build a token record in the database that can be authenticated against later.
+	 * 
+	 * @param $uid			(int) matches uid column...
+	 * @param $checksum		(str) matches checksum column...
+	 * @param $stringToHash	(str) unique value to help build hash from.
+	 * @param $lifetime		(str,optional) string (interval) representing how 
+	 * 							long the token should last.
+	 * @param $maxUses		(int,optional) Number of times it can be authenticated 
+	 * 							against before being removed.
+	 * 
+	 * @return (array)		PASS: contains id & hash for the token.
+	 * @return (exception)	FAIL: exception contains error details.
+	 */
 	public function create_token($uid, $checksum, $stringToHash, $lifetime=null, $maxUses=null) {
 		
 		$insertData = array(
@@ -112,6 +143,15 @@ class cs_authToken extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
+	/**
+	 * Update the number of times the given token has been used (even if the 
+	 * maximum uses hasn't been set).
+	 * 
+	 * @param $tokenId		(int) auth_token_id to look up.
+	 * 
+	 * @return (int)		PASS: updated this many records (should always be 1)
+	 * @return (exception)	FAIL: exception denotes problem
+	 */
 	protected function update_token_uses($tokenId) {
 		
 		try {
@@ -129,6 +169,14 @@ class cs_authToken extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
+	/**
+	 * Deletes the given token ID from the database.
+	 * 
+	 * @param $tokenId		(int) auth_token_id to delete
+	 * 
+	 * @return (int)		PASS: this many were deleted (should always be 1)
+	 * @return (exception)	FAIL: exception contains error details
+	 */
 	protected function destroy_token($tokenId) {
 		try {
 			$sql = "DELETE FROM ". $this->table ." WHERE auth_token_id=". $tokenId;
@@ -162,22 +210,23 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 * if($tokenUid == $realUid) {
 	 *	      //token is truly authentic
 	 * }
+	 * 
+	 * @param $tokenId		(int) auth_token_id to check against
+	 * @param $checksum		(str) required 'checksum' value.
+	 * @param $hash			(str) required 'token' value.
 	 */
 	public function authenticate_token($tokenId, $checksum, $hash) {
 		
 		$authTokenRes = null;
 		
 		if(is_numeric($tokenId) && strlen($checksum) && strlen($hash) == 32) {
-			$sql = "SELECT * FROM ". $this->table ." WHERE auth_token_id=". $tokenId
-					." AND (creation + duration)::date >= CURRENT_DATE";
-			
 			try {
-				$data = $this->db->run_query($sql, 'auth_token_id');
+				$data = $this->get_token_data($tokenId);
 				
 				if(count($data) == 1 && isset($data[$tokenId]) && is_array($data[$tokenId])) {
 					$data = $data[$tokenId];
 					
-					if($data['token'] == $hash && $data['checksum'] == $checksum) {
+					if($data['token'] == $hash && $data['checksum']) {
 						
 						$methodCall = 'update_token_uses';
 						if(is_numeric($data['max_uses'])) {
@@ -220,15 +269,34 @@ class cs_authToken extends cs_webapplibsAbstract {
 	//=========================================================================
 	
 	
+	
 	//=========================================================================
+	/**
+	 * Retrieve data for the given ID.
+	 * 
+	 * @param $tokenId		(int) auth_token_id to look up.
+	 * 
+	 * @return (array)		PASS: contains data about the given ID
+	 * @return (exception)	FAIL: exception contains error details.
+	 */
 	protected function get_token_data($tokenId) {
 		try {
-			$data = $this->db->run_query("SELECT * FROM ". $this->table ." WHERE auth_token_id=". $tokenId);
+			$data = $this->db->run_query("SELECT * FROM ". $this->table ." WHERE auth_token_id=". $tokenId
+					." AND (creation + duration)::date >= CURRENT_DATE", 'auth_token_id');
+			if(is_array($data) && count($data) == 1) {
+				$tokenData = $data;
+			}
+			elseif($data === false) {
+				$tokenData = false;
+			}
+			else {
+				throw new exception("too many records returned (". count($data) .")");
+			}
 		}
 		catch(exception $e) {
 			throw new exception(__METHOD__ .": failed to retrieve tokenId (". $tokenId .")::: ". $e->getMessage());
 		}
-		return($data);
+		return($tokenData);
 	}//end get_token_data();
 	//=========================================================================
 	
