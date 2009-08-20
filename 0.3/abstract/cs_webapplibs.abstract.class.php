@@ -10,7 +10,7 @@
  * Last Updated:::::::: $Date$
  */
 
-require_once(dirname(__FILE__) .'/cs_version.abstract.class.php');
+require_once(constant('LIBDIR') .'/cs-content/abstract/cs_version.abstract.class.php');
 
 
 abstract class cs_webapplibsAbstract extends cs_versionAbstract {
