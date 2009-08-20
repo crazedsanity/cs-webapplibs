@@ -98,14 +98,19 @@ ALTER TABLE `cswdbl_log_table`
 -- otherwise separate schema files have to be created and the code will have to 
 -- do extra checking...
 -- 
--- The "{tableName}" portion will be replaced with the value of the configured 
--- "DB_TABLE" setting.
-CREATE TABLE cs_version_table (
+CREATE TABLE cswal_version_table (
 	version_id int NOT NULL PRIMARY KEY,
 	project_name varchar(30) NOT NULL UNIQUE,
-	version_string varchar(50) NOT NULL,
-	version_major integer NOT NULL,
-	version_minor integer NOT NULL,
-	version_maintenance integer NOT NULL,
-	version_suffix varchar(20) NOT NULL
+	version_string varchar(50) NOT NULL
+);
+
+CREATE TABLE cswal_auth_token_table (
+	auth_token_id serial NOT NULL PRIMARY KEY,
+	uid integer NOT NULL DEFAULT 0,
+	checksum text NOT NULL,
+	token text NOT NULL,
+	max_uses integer DEFAULT NULL,
+	total_uses integer NOT NULL DEFAULT 0,
+	creation timestamp NOT NULL DEFAULT NOW(),
+	expiration timestamp NOT NULL
 );

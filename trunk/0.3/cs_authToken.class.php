@@ -48,29 +48,6 @@ class cs_authToken extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	/**
-	 * Load table into the database...
-	 */
-	public function load_table() {
-		$file = dirname(__FILE__) .'/setup/authtoken_schema.'. $this->db->get_dbtype() .'.sql';
-		
-		if(file_exists($file)) {
-			try {
-				$this->db->run_update(file_get_contents($file), true);
-			}
-			catch(exception $e) {
-				throw new exception(__METHOD__ .": error while trying to load table::: ". $e->getMessage());
-			}
-		}
-		else {
-			throw new exception(__METHOD__ .": unsupported database type (". $this->db->get_dbtype() .")");
-		}
-	}//end load_table()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	/**
 	 * Standardized method of creating a hash from a string.
 	 * 
 	 * @param $tokenId			(int) matches auth_token_id column....
@@ -110,6 +87,8 @@ class cs_authToken extends cs_webapplibsAbstract {
 			'checksum'	=> $checksum,
 			'token'		=> '____INCOMPLETE____'
 		);
+		
+		$insertData['expiration'] = strftime('%Y-%m-%d %T', strtotime('1 day'));
 		if(!is_null($lifetime) && strlen($lifetime)) {
 			$insertData['expiration'] = strftime('%Y-%m-%d %T', strtotime($lifetime));
 		}
