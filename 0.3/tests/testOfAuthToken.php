@@ -38,35 +38,6 @@ class testOfCSAuthToken extends UnitTestCase {
 	
 	
 	//--------------------------------------------------------------------------
-	function tearDown() {
-		$db = $this->create_db();
-		try {
-			$db->run_update('DROP TABLE cswal_auth_token_table', true);
-		}
-		catch(exception $e) {
-		}
-	}//end
-	//--------------------------------------------------------------------------
-	
-	
-	
-	//--------------------------------------------------------------------------
-	private function create_db() {
-		$dbParams = array(
-			'host'		=> constant('DB_PG_HOST'),
-			'dbname'	=> constant('DB_PG_DBNAME'),
-			'user'		=> constant('DB_PG_DBUSER'),
-			'password'	=> constant('DB_PG_DBPASS'),
-			'port'		=> constant('DB_PG_PORT')
-		);
-		$db = new cs_phpDB(constant('DBTYPE'));
-		$db->connect($dbParams);
-		return($db);
-	}//end create_db()
-	//--------------------------------------------------------------------------
-	
-	
-	//--------------------------------------------------------------------------
 	function test_basics() {
 		$db = $this->create_db();
 		$tok = new authTokenTester($db);

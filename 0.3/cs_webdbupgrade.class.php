@@ -99,13 +99,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			$this->gfObj->debugPrintOpt = constant('DEBUGPRINTOPT');
 		}
 		
-		if(!defined(__CLASS__ .'-DB_PRIMARYKEY') || !defined(__CLASS__ .'-DB_TABLE')) {
-			throw new exception(__METHOD__ .": no setting for DB_TABLE or DB_PRIMARYKEY, cannot continue");
-		}
-		else {
-			$this->config['DB_TABLE'] = constant(__CLASS__ .'-DB_TABLE');
-			$this->config['DB_PRIMARYKEY'] = constant(__CLASS__ .'-DB_PRIMARYKEY');
-		}
+		$this->config['DB_TABLE'] = 'cswal_version_table';
+		$this->config['DB_PRIMARYKEY'] = 'version_id';
 		$this->sequenceName = $this->config['DB_TABLE'] .'_'. $this->config['DB_PRIMARYKEY'] .'_seq';
 		
 		if(!defined('DBTYPE')) {
@@ -908,7 +903,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	public function load_table() {
-		$schemaFileLocation = dirname(__FILE__) .'/schema/schema.sql';
+		$schemaFileLocation = dirname(__FILE__) .'/setup/schema.'. $this->db->get_dbtype() .'.sql';
 		$schema = file_get_contents($schemaFileLocation);
 		$schema = str_replace('{tableName}', $this->config['DB_TABLE'], $schema);
 		$schema = str_replace('{primaryKey}', $this->config['DB_PRIMARYKEY'], $schema);
