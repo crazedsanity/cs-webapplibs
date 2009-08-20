@@ -103,6 +103,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 			$tokenId = $this->db->run_insert($sql, $this->seq);
 			
 			//now that we have the ID, let's create the real has string.
+			$stringToHash .= microtime(true) ."__". rand(1000, 9999999);
 			$finalHash = $this->create_hash_string($tokenId, $uid, $checksum, $stringToHash);
 			
 			$this->_generic_update($tokenId, "token='". $finalHash ."'");
@@ -199,10 +200,9 @@ class cs_authToken extends cs_webapplibsAbstract {
 			try {
 				$data = $this->get_token_data($tokenId);
 				
-				if(count($data) == 1 && isset($data[$tokenId]) && is_array($data[$tokenId])) {
-					$data = $data[$tokenId];
+				if(count($data) == 9 && is_array($data) && isset($data['auth_token_id'])) {
 					
-					if($data['token'] == $hash && $data['checksum']) {
+					if($data['token'] == $hash && $data['checksum'] == $checksum) {
 						
 						$methodCall = 'update_token_uses';
 						if(is_numeric($data['max_uses'])) {
@@ -265,7 +265,12 @@ class cs_authToken extends cs_webapplibsAbstract {
 			$data = $this->db->run_query($sql, 'auth_token_id');
 			
 			if(is_array($data) && count($data) == 1) {
-				$tokenData = $data;
+				if(isset($data[$tokenId])) {
+					$tokenData = $data[$tokenId];
+				}
+				else {
+					throw new exception("missing sub-array for tokenId (". $tokenId .")");
+				}
 			}
 			elseif($data === false) {
 				$tokenData = false;

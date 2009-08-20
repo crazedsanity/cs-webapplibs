@@ -165,6 +165,19 @@ class testOfCSWebAppLibs extends UnitTestCase {
 				$this->assertEqual($uniq, ($numTests -1));
 			}
 		}
+		
+		//make sure the hash string isn't guessable, even if they can access our super-secret encryption algorithm. ;)
+		{
+			$uid = rand(1,99999);
+			$checksum = "my birfday";
+			$hashThis = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque ut.";
+			
+			$tokenData = $tok->create_token($uid, $checksum, $hashThis);
+			$this->basic_token_tests($tokenData, $uid, $checksum);
+			
+			$this->assertNotEqual($tokenData['hash'], $tok->doHash($tokenData['id'], $uid, $checksum, $hashThis), 
+					"hash is guessable");
+		}
 	}//end test_token_basics()
 	//--------------------------------------------------------------------------
 	
@@ -193,6 +206,9 @@ class authTokenTester extends cs_authToken {
 	
 	public function tokenData($id, $onlyNonExpired=true) {
 		return($this->get_token_data($id, $onlyNonExpired));
+	}
+	public function doHash($tokenId, $uid, $checksum, $hash) {
+		return($this->create_hash_string($tokenId, $uid, $checksum, $hash));
 	}
 }
 ?>
