@@ -193,7 +193,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 			$this->assertTrue(isset($tokenData['id']));
 			$this->assertTrue(isset($tokenData['hash']));
 			$this->assertTrue(($tokenData['id'] > 0));
-			$this->assertTrue((strlen($tokenData['hash']) == 32));
+			$this->assertTrue((strlen($tokenData['hash']) == 40));
 		}
 		
 	}//end basic_token_tests()
