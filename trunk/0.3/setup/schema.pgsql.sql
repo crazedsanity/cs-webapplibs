@@ -63,6 +63,25 @@ CREATE TABLE cswdbl_log_table (
 	details text NOT NULL
 );
 
+
+--
+-- List of distinct attribute names.
+--
+CREATE TABLE cswdbl_attribute_table (
+	attribute_id serial NOT NULL PRIMARY KEY,
+	attribute_name text NOT NULL UNIQUE
+);
+
+--
+-- Linkage for attributes to logs.
+--
+CREATE TABLE cswdbl_log_attribute_table (
+	log_attribute_id serial NOT NULL PRIMARY KEY,
+	log_id int NOT NULL REFERENCES cswdbl_log_table(log_id),
+	attribute_id int NOT NULL REFERENCES cswdbl_attribute_table(attribute_id),
+	value_text text
+);
+
 -- This table create statement MUST work in PostgreSQL v8.2.x+ AND MySQL v5.0.x+: 
 -- otherwise separate schema files have to be created and the code will have to 
 -- do extra checking...
