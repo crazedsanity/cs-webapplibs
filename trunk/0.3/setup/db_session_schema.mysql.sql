@@ -14,4 +14,4 @@ CREATE TABLE `test`.`sess_tmp` (
   `session_data` LONGTEXT  NOT NULL,
   PRIMARY KEY (`session_store_id`)
 )
-ENGINE = MyISAM;
+ENGINE = InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
