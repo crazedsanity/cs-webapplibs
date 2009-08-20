@@ -61,7 +61,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 * 								something very unique.
 	 */
 	protected function create_hash_string($tokenId, $uid, $checksum, $stringToHash=NULL) {
-		return(md5($tokenId ."_". $uid ."_". $checksum ."_". $stringToHash));
+		return(sha1($tokenId ."_". $uid ."_". $checksum ."_". $stringToHash));
 	}//end create_hash_string()
 	//=========================================================================
 	
@@ -196,7 +196,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 		
 		$authTokenRes = null;
 		
-		if(is_numeric($tokenId) && strlen($checksum) && strlen($hash) == 32) {
+		if(is_numeric($tokenId) && strlen($checksum) && strlen($hash) == 40) {
 			try {
 				$data = $this->get_token_data($tokenId);
 				
