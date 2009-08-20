@@ -164,6 +164,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 	//--------------------------------------------------------------------------
 	
 	
+	
 	//--------------------------------------------------------------------------
 	function test_token_basics() {
 		$db = $this->create_dbconn();
@@ -185,12 +186,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 		{
 			//Generic test to ensure we get the appropriate data back.
 			$tokenData = $tok->create_token(1, 'test', 'abc123', null, 1);
-			$this->assertTrue(is_array($tokenData));
-			$this->assertTrue((count($tokenData) == 2));
-			$this->assertTrue(isset($tokenData['id']));
-			$this->assertTrue(isset($tokenData['hash']));
-			$this->assertTrue(($tokenData['id'] > 0));
-			$this->assertTrue((strlen($tokenData['hash']) == 32));
+			$this->basic_token_tests($tokenData, 1, 'test');
 			
 			if(!$this->assertEqual($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']), 1)) {
 				$this->gfObj->debug_print($tok->tokenData($tokenData['id']),1);
@@ -205,12 +201,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 		{
 			//Generic test to ensure we get the appropriate data back.
 			$tokenData = $tok->create_token(1, 'test', 'abc123', '2 years');
-			$this->assertTrue(is_array($tokenData));
-			$this->assertTrue((count($tokenData) == 2));
-			$this->assertTrue(isset($tokenData['id']));
-			$this->assertTrue(isset($tokenData['hash']));
-			$this->assertTrue(($tokenData['id'] > 0));
-			$this->assertTrue((strlen($tokenData['hash']) == 32));
+			$this->basic_token_tests($tokenData, 1, 'test');
 			
 			$this->assertEqual($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']), 1);
 		}
@@ -218,16 +209,42 @@ class testOfCSWebAppLibs extends UnitTestCase {
 		//try to create a token with max_uses of 0.
 		{
 			$tokenData = $tok->create_token(2, 'test', 'xxxxyyyyyxxxx', null, 0);
+			$this->basic_token_tests($tokenData, 2, 'test');
 			$checkData = $tok->tokenData($tokenData['id']);
 			$checkData = $checkData[$tokenData['id']];
 			
 			$this->assertTrue(is_array($checkData));
-			if(!$this->assertEqual($tokenData['id'], $checkData['auth_token_id'])) {
-				$this->gfObj->debug_print($checkData);
-			}
+			$this->assertEqual($tokenData['id'], $checkData['auth_token_id']);
 			$this->assertEqual($checkData['max_uses'], null);
 		}
+		
+		//try creating a token that is purposely expired, make sure it exists, then make sure authentication fails.
+		{
+			$tokenData = $tok->create_token(88, 'test', 'This is a big old TEST', '-3 days');
+			if($this->assertTrue(is_array($tokenData))) {
+				$this->basic_token_tests($tokenData, 88, 'This is a big old TEST');
+				$this->assertFalse($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']));
+			}
+		}
 	}//end test_token_basics()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	private function basic_token_tests(array $tokenData, $uid, $checksum) {
+		
+		if($this->assertTrue(is_array($tokenData)) && $this->assertTrue(is_numeric($uid)) && $this->assertTrue(strlen($checksum))) {
+			
+			$this->assertTrue(is_array($tokenData));
+			$this->assertTrue((count($tokenData) == 2));
+			$this->assertTrue(isset($tokenData['id']));
+			$this->assertTrue(isset($tokenData['hash']));
+			$this->assertTrue(($tokenData['id'] > 0));
+			$this->assertTrue((strlen($tokenData['hash']) == 32));
+		}
+		
+	}//end basic_token_tests()
 	//--------------------------------------------------------------------------
 }
 
