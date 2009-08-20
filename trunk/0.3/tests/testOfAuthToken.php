@@ -25,16 +25,19 @@ class testOfCSAuthToken extends UnitTestCase {
 	
 	
 	//--------------------------------------------------------------------------
-	function setUp() {
-		$tok = new cs_authToken($this->create_db());
-		try {
-			$tok->load_table();
-		}
-		catch(exception $e) {
-		}
-	}//end setUp()
+	private function create_db() {
+		$dbParams = array(
+			'host'		=> constant('DB_PG_HOST'),
+			'dbname'	=> constant('DB_PG_DBNAME'),
+			'user'		=> constant('DB_PG_DBUSER'),
+			'password'	=> constant('DB_PG_DBPASS'),
+			'port'		=> constant('DB_PG_PORT')
+		);
+		$db = new cs_phpDB(constant('DBTYPE'));
+		$db->connect($dbParams);
+		return($db);
+	}//end create_db()
 	//--------------------------------------------------------------------------
-	
 	
 	
 	//--------------------------------------------------------------------------
