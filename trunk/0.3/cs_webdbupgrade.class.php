@@ -13,7 +13,8 @@
  */
 
 require_once(dirname(__FILE__) .'/abstract/cs_webapplibs.abstract.class.php');
-		require_once(dirname(__FILE__) .'/cs_webdblogger.class.php');
+require_once(dirname(__FILE__) .'/cs_webdblogger.class.php');
+require_once(dirname(__FILE__) .'/cs_phpDB.class.php');
 
 class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
@@ -88,7 +89,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		
 		require_once(constant('LIBDIR') .'/cs-content/cs_globalFunctions.class.php');
 		require_once(constant('LIBDIR') .'/cs-content/cs_fileSystem.class.php');
-		require_once(constant('LIBDIR') .'/cs-content/cs_phpDB.class.php');
 		require_once(constant('LIBDIR') .'/cs-phpxml/cs_phpxmlParser.class.php');
 		require_once(constant('LIBDIR') .'/cs-phpxml/cs_phpxmlCreator.class.php');
 		require_once(constant('LIBDIR') .'/cs-phpxml/cs_arrayToPath.class.php');
