@@ -18,12 +18,5 @@
 	to get skipped, or an exception to be thrown, potentially leaving the system 
 	in an unstable state.  Unstable is bad, m'kay?</system_note>
 	
-	<matching>
-		<v0.2.0>
-			<target_version>0.2.1</target_version>
-			<script_name>upgradeTo0.2.1.php</script_name>
-			<class_name>upgrade_to_0_2_1</class_name>
-			<call_method>run_upgrade</call_method>
-		</v0.2.0>
-	</matching>
+	<matching />
 </upgrade>
