@@ -41,6 +41,8 @@ class cs_authToken extends cs_webapplibsAbstract {
 		}
 		$this->gfObj = new cs_globalFunctions();
 		
+		$upg = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml');
+		$upg->check_versions(true);
 	}//end __construct()
 	//=========================================================================
 	
