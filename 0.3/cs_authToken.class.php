@@ -105,9 +105,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 			//now that we have the ID, let's create the real has string.
 			$finalHash = $this->create_hash_string($tokenId, $uid, $checksum, $stringToHash);
 			
-			$this->db->run_update("UPDATE ". $this->table ." SET token='". $finalHash ."' WHERE " .
-					"auth_token_id=". $tokenId);
-			
+			$this->_generic_update($tokenId, "token='". $finalHash ."'");
 			$tokenInfo = array(
 				'id'	=> $tokenId,
 				'hash'	=> $finalHash
@@ -134,11 +132,8 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 * @return (exception)	FAIL: exception denotes problem
 	 */
 	protected function update_token_uses($tokenId) {
-		
 		try {
-			$sql = "UPDATE ". $this->table ." SET total_uses= total_uses+1 " .
-					"WHERE auth_token_id=". $tokenId;
-			$updateRes = $this->db->run_update($sql);
+			$updateRes = $this->_generic_update($tokenId, "total_uses= total_uses+1");
 		}
 		catch(exception $e) {
 			throw new exception(__METHOD__ .": failed to update usage count::: ". $e->getMessage());
@@ -260,10 +255,15 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 * @return (array)		PASS: contains data about the given ID
 	 * @return (exception)	FAIL: exception contains error details.
 	 */
-	protected function get_token_data($tokenId) {
+	protected function get_token_data($tokenId, $onlyNonExpired=true) {
 		try {
-			$data = $this->db->run_query("SELECT * FROM ". $this->table ." WHERE auth_token_id=". $tokenId
-					." AND expiration::date >= CURRENT_DATE", 'auth_token_id');
+			$sql = "SELECT * FROM ". $this->table ." WHERE auth_token_id=". $tokenId;
+			if($onlyNonExpired === true) {
+				$sql .= " AND expiration::date >= CURRENT_DATE";
+			}
+			
+			$data = $this->db->run_query($sql, 'auth_token_id');
+			
 			if(is_array($data) && count($data) == 1) {
 				$tokenData = $data;
 			}
@@ -279,6 +279,50 @@ class cs_authToken extends cs_webapplibsAbstract {
 		}
 		return($tokenData);
 	}//end get_token_data();
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	/**
+	 * Deletes any tokens that are past expiration (does not test for total vs. 
+	 * max uses; authenticate_token() does that).
+	 * 
+	 * @param (null)		(void)
+	 */
+	public function remove_expired_tokens() {
+		$sql = "SELECT * FROM ". $this->table ." WHERE NOW() > expiration";
+		
+		try {
+			$data = $this->db->run_query($sql, 'auth_token_id');
+			
+			if(is_array($data)) {
+				foreach($data as $tokenId => $tokenData) {
+					//TODO: add logging here?
+					$this->destroy_token($tokenId);
+				}
+			}
+		}
+		catch(exception $e) {
+			throw new exception(__METHOD__ .": error encountered while expiring tokens::: ". $e->getMessage());
+		}
+	}//end remove_expired_tokens()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	private function _generic_update($tokenId, $updateString) {
+		try {
+			$sql = "UPDATE ". $this->table ." SET ". $updateString .", last_updated=NOW() " .
+					"WHERE auth_token_id=". $tokenId;
+			$updateRes = $this->db->run_update($sql);
+		}
+		catch(exception $e) {
+			throw new exception("failed to update token::: ". $e->getMessage());
+		}
+		return($updateRes);
+	}//end generic_update()
 	//=========================================================================
 	
 }

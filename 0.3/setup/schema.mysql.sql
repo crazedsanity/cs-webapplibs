@@ -156,5 +156,6 @@ CREATE TABLE cswal_auth_token_table (
 	max_uses integer DEFAULT NULL,
 	total_uses integer NOT NULL DEFAULT 0,
 	creation timestamp NOT NULL DEFAULT NOW(),
+	last_updated timestamp,
 	expiration timestamp NOT NULL
 );
