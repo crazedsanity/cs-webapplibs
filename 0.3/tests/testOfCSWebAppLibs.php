@@ -121,7 +121,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 		{
 			$tokenData = $tok->create_token(88, 'test', 'This is a big old TEST', '-3 days');
 			if($this->assertTrue(is_array($tokenData))) {
-				$this->basic_token_tests($tokenData, 88, 'This is a big old TEST');
+				$this->basic_token_tests($tokenData, 88, 'test');
 				$this->assertFalse($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']));
 			}
 		}
