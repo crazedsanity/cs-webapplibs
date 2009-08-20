@@ -71,15 +71,21 @@ class testOfCSWebAppLibs extends UnitTestCase {
 		$tok = new authTokenTester($db);
 		
 		//Generic test to ensure we get the appropriate data back.
-		$tokenData = $tok->create_token(1, 'test', 'abc123');
-		$this->assertTrue(is_array($tokenData));
-		$this->assertTrue((count($tokenData) == 2));
-		$this->assertTrue(isset($tokenData['id']));
-		$this->assertTrue(isset($tokenData['hash']));
-		$this->assertTrue(($tokenData['id'] > 0));
-		$this->assertTrue((strlen($tokenData['hash']) == 32));
-		
-		$this->assertEqual($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']), 1);
+		{
+			$tokenData = $tok->create_token(1, 'test', 'abc123');
+			$this->basic_token_tests($tokenData, 1, 'test');
+			
+			$this->assertEqual($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']), 1);
+			$this->assertFalse($tok->authenticate_token($tokenData['id'], 'testx', $tokenData['hash']));
+			$this->assertFalse($tok->authenticate_token($tokenData['id'], 'test', 'abcdefg'));
+			$this->assertFalse($tok->authenticate_token($tokenData['id'], 'test', '12345678901234567890123456789012'));
+			$this->assertFalse($tok->authenticate_token(99999, 'test', '12345678901234567890123456789012'));
+			
+			//check to make sure the data within this token shows only ONE attempt.
+			$checkData = $tok->tokenData($tokenData['id']);
+			$this->assertEqual($checkData['auth_token_id'], $tokenData['id']);
+			$this->assertEqual($checkData['total_uses'], 1);
+		}
 		
 		//create a token with only 1 available use and try to authenticate it twice.
 		{
@@ -87,22 +93,30 @@ class testOfCSWebAppLibs extends UnitTestCase {
 			$tokenData = $tok->create_token(1, 'test', 'abc123', null, 1);
 			$this->basic_token_tests($tokenData, 1, 'test');
 			
-			if(!$this->assertEqual($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']), 1)) {
-				$this->gfObj->debug_print($tok->tokenData($tokenData['id']),1);
-			}
-			if(!$this->assertTrue(($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']) === null), "Able to authenticate twice on a token with only 1 use")) {
-				$this->gfObj->debug_print($tok->tokenData($tokenData['id']));
-			}
+			$this->assertEqual($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']), 1);
+			$this->assertTrue(($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']) === null), 
+					"Able to authenticate twice on a token with only 1 use");
+			$this->assertFalse($tok->tokenData($tokenData['id'], true));
+			$this->assertFalse($tok->tokenData($tokenData['id'], false));
 		}
 		
 		
-		//now create a token with a maximum lifetime...
+		//now create a token with a maximum lifetime (make sure we can call it a ton of times)
 		{
 			//Generic test to ensure we get the appropriate data back.
 			$tokenData = $tok->create_token(1, 'test', 'abc123', '2 years');
 			$this->basic_token_tests($tokenData, 1, 'test');
 			
 			$this->assertEqual($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']), 1);
+			$checkAttempts = 100;
+			$successAttempts = 0;
+			for($i=0; $i < 100; $i++) {
+				$id = $tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']);
+				if($this->assertEqual($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']), 1)) {
+					$successAttempts++;
+				}
+			}
+			$this->assertEqual($checkAttempts, $successAttempts);
 		}
 		
 		//try to create a token with max_uses of 0.
@@ -110,7 +124,6 @@ class testOfCSWebAppLibs extends UnitTestCase {
 			$tokenData = $tok->create_token(2, 'test', 'xxxxyyyyyxxxx', null, 0);
 			$this->basic_token_tests($tokenData, 2, 'test');
 			$checkData = $tok->tokenData($tokenData['id']);
-			$checkData = $checkData[$tokenData['id']];
 			
 			$this->assertTrue(is_array($checkData));
 			$this->assertEqual($tokenData['id'], $checkData['auth_token_id']);
@@ -123,6 +136,33 @@ class testOfCSWebAppLibs extends UnitTestCase {
 			if($this->assertTrue(is_array($tokenData))) {
 				$this->basic_token_tests($tokenData, 88, 'test');
 				$this->assertFalse($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']));
+			}
+		}
+		
+		//make sure we don't get the same hash when creating multiple tokens with the same data.
+		//NOTE: this pushes the number of tests up pretty high, but I think it is required to help ensure hash uniqueness.
+		{
+			$uid=rand(1,999999);
+			$checksum = 'multiple ToKEN check';
+			$hashThis = "Lorem ipsum dolor sit amet. ";
+			
+			$numTests = 30;
+			$numPass = 0;
+			$tokenList = array();
+			for($i=0;$i<$numTests;$i++) {
+				$tokenList[$i] = $tok->create_token($uid, $checksum, $hashThis);
+			}
+			$lastItem = ($numTests -1);
+			for($i=0;$i<$numTests;$i++) {
+				$checkHash = $tokenList[$i]['hash'];
+				$uniq=0;
+				foreach($tokenList as $k=>$a) {
+					//check against everything BUT itself.
+					if($i != $k && $this->assertNotEqual($checkHash, $a['hash'])) {
+						$uniq++;
+					}
+				}
+				$this->assertEqual($uniq, ($numTests -1));
 			}
 		}
 	}//end test_token_basics()
@@ -151,8 +191,8 @@ class testOfCSWebAppLibs extends UnitTestCase {
 class authTokenTester extends cs_authToken {
 	public $isTest=true;
 	
-	public function tokenData($id) {
-		return($this->get_token_data($id));
+	public function tokenData($id, $onlyNonExpired=true) {
+		return($this->get_token_data($id, $onlyNonExpired));
 	}
 }
 ?>
