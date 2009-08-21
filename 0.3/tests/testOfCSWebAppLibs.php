@@ -73,7 +73,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 		//Generic test to ensure we get the appropriate data back.
 		{
 			$tokenData = $tok->create_token(1, 'test', 'abc123');
-			$this->basic_token_tests($tokenData, 1, 'test');
+			$this->do_tokenTest($tokenData, 1, 'test');
 			
 			$this->assertEqual($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']), 1);
 			$this->assertFalse($tok->authenticate_token($tokenData['id'], 'testx', $tokenData['hash']));
@@ -91,7 +91,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 		{
 			//Generic test to ensure we get the appropriate data back.
 			$tokenData = $tok->create_token(1, 'test', 'abc123', null, 1);
-			$this->basic_token_tests($tokenData, 1, 'test');
+			$this->do_tokenTest($tokenData, 1, 'test');
 			
 			$this->assertEqual($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']), 1);
 			$this->assertTrue(($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']) === null), 
@@ -105,7 +105,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 		{
 			//Generic test to ensure we get the appropriate data back.
 			$tokenData = $tok->create_token(1, 'test', 'abc123', '2 years');
-			$this->basic_token_tests($tokenData, 1, 'test');
+			$this->do_tokenTest($tokenData, 1, 'test');
 			
 			$this->assertEqual($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']), 1);
 			$checkAttempts = 100;
@@ -122,7 +122,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 		//try to create a token with max_uses of 0.
 		{
 			$tokenData = $tok->create_token(2, 'test', 'xxxxyyyyyxxxx', null, 0);
-			$this->basic_token_tests($tokenData, 2, 'test');
+			$this->do_tokenTest($tokenData, 2, 'test');
 			$checkData = $tok->tokenData($tokenData['id']);
 			
 			$this->assertTrue(is_array($checkData));
@@ -134,7 +134,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 		{
 			$tokenData = $tok->create_token(88, 'test', 'This is a big old TEST', '-3 days');
 			if($this->assertTrue(is_array($tokenData))) {
-				$this->basic_token_tests($tokenData, 88, 'test');
+				$this->do_tokenTest($tokenData, 88, 'test');
 				$this->assertFalse($tok->authenticate_token($tokenData['id'], 'test', $tokenData['hash']));
 			}
 		}
@@ -173,7 +173,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 			$hashThis = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque ut.";
 			
 			$tokenData = $tok->create_token($uid, $checksum, $hashThis);
-			$this->basic_token_tests($tokenData, $uid, $checksum);
+			$this->do_tokenTest($tokenData, $uid, $checksum);
 			
 			$this->assertNotEqual($tokenData['hash'], $tok->doHash($tokenData['id'], $uid, $checksum, $hashThis), 
 					"hash is guessable");
@@ -184,7 +184,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 	
 	
 	//--------------------------------------------------------------------------
-	private function basic_token_tests(array $tokenData, $uid, $checksum) {
+	private function do_tokenTest(array $tokenData, $uid, $checksum) {
 		
 		if($this->assertTrue(is_array($tokenData)) && $this->assertTrue(is_numeric($uid)) && $this->assertTrue(strlen($checksum))) {
 			
@@ -196,7 +196,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 			$this->assertTrue((strlen($tokenData['hash']) == 40));
 		}
 		
-	}//end basic_token_tests()
+	}//end do_tokenTest()
 	//--------------------------------------------------------------------------
 }
 
