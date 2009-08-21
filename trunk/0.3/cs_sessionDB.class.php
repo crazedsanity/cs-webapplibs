@@ -47,13 +47,12 @@ class cs_sessionDB extends cs_session {
 		$this->db = new cs_phpDB(constant('DBTYPE'));
 		$this->db->connect($dbParams);
 		
-		$this->tableName = 'cs_session_store_table';
+		$this->tableName = 'cswal_session_store_table';
 		$this->tablePKey = 'session_store_id';
-		$this->sequenceName = 'cs_session_store_table_session_store_id_seq';
+		$this->sequenceName = 'cswal_session_store_table_session_store_id_seq';
 		
-		if(!$this->sessdb_table_exists()) {
-			$this->load_table();
-		}
+		//create a logger (this will automatically cause any upgrades to happen).
+		$this->logger = new cs_webdblogger($this->db, 'Session DB', true);
 		
 		//now tell PHP to use this class's methods for saving the session.
 		session_set_save_handler(
@@ -65,16 +64,8 @@ class cs_sessionDB extends cs_session {
 			array(&$this, 'sessdb_gc')
 		);
 		
-		//NOTE::: calling session_id() here, prior to parent's construct, can set a specific session_id; if
-		//			something like cs_authToken (part of cs-webapplibs project) were used, just call 
-		//			cs_authToken::create_token() here... 
 		
 		parent::__construct(true);
-		
-		//Stop things from going into an audit log... see 
-		//http://www.developertutorials.com/tutorials/php/saving-php-session-data-database-050711/page3.html
-		//	NOTE::: not sure if this is valid or not...
-		$this->audit_logging = false;
 		
 	}//end __construct()
 	//-------------------------------------------------------------------------
@@ -338,8 +329,8 @@ class cs_sessionDB extends cs_session {
 		
 		//check if the logger object has been created.
 		if(!is_object($this->logger)) {
-			$newDB = new cs_phpDB(constant('DBTYPE'));
-			$newDB->connect($this->db->connectParams, true);
+			$newDB = clone $this->db;
+			$newDB->reconnect(true);
 			$this->logger = new cs_webdblogger($newDB, $this->logCategory);
 		}
 		
