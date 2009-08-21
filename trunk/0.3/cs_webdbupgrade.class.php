@@ -905,8 +905,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	public function load_table() {
 		$schemaFileLocation = dirname(__FILE__) .'/setup/schema.'. $this->db->get_dbtype() .'.sql';
 		$schema = file_get_contents($schemaFileLocation);
-		$schema = str_replace('{tableName}', $this->config['DB_TABLE'], $schema);
-		$schema = str_replace('{primaryKey}', $this->config['DB_PRIMARYKEY'], $schema);
 		$this->db->exec($schema);
 		
 		$loadTableResult = $this->db->errorMsg();

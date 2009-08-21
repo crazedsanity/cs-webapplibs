@@ -44,9 +44,9 @@ class testOfCSWebAppLibs extends UnitTestCase {
 	//--------------------------------------------------------------------------
 	private function remove_tables() {
 		$tableList = array(
-			'cswal_auth_token_table', 'cswal_version_table', 'cswdbl_attribute_table', 
-			'cswdbl_category_table', 'cswdbl_class_table', 'cswdbl_event_table', 
-			'cswdbl_log_attribute_table', 'cswdbl_log_table', 
+			'cswal_auth_token_table', 'cswal_version_table', 'cswal_attribute_table', 
+			'cswal_category_table', 'cswal_class_table', 'cswal_event_table', 
+			'cswal_log_attribute_table', 'cswal_log_table', 'cswal_session_store_table'
 		);
 		
 		$db = $this->create_dbconn();

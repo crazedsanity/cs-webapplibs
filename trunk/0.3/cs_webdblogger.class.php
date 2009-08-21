@@ -22,7 +22,7 @@
  * 
  * QUERY TO GET LAST COUPLE OF LOGS::::
  SELECT l.log_id as id, l.creation, l.event_id as lid, le.description AS event, l.details 
- FROM cswdbl_log_table AS l INNER JOIN cswdbl_event_table AS le USING (event_id) ORDER BY log_id DESC LIMIT 25;
+ FROM cswal_log_table AS l INNER JOIN cswal_event_table AS le USING (event_id) ORDER BY log_id DESC LIMIT 25;
  */
 
 //NOTE::: this class **REQUIRES** cs-content for its "cs_phpDB" class.
@@ -64,22 +64,22 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	
 	/** List of tables keyed off an internal reference name. */
 	protected $tables = array(
-		'category'	=> 'cswdbl_category_table',
-		'class'		=> 'cswdbl_class_table',
-		'event'		=> 'cswdbl_event_table',
-		'log'		=> 'cswdbl_log_table',
-		'attrib'	=> 'cswdbl_attribute_table',
-		'logAttrib'	=> 'cswdbl_log_attribute_table'
+		'category'	=> 'cswal_category_table',
+		'class'		=> 'cswal_class_table',
+		'event'		=> 'cswal_event_table',
+		'log'		=> 'cswal_log_table',
+		'attrib'	=> 'cswal_attribute_table',
+		'logAttrib'	=> 'cswal_log_attribute_table'
 	);
 	
 	/** List of sequences keyed off an internal reference name (MUST match references above) */
 	protected $seqs = array(
-		'category'		=> "cswdbl_category_table_category_id_seq",
-		'class'			=> "cswdbl_class_table_class_id_seq",
-		'event'			=> "cswdbl_event_table_event_id_seq",
-		'log'			=> "cswdbl_log_table_log_id_seq",
-		'attrib'		=> "cswdbl_attribute_table_attribute_id_seq",
-		'logAttrib'		=> "cswdbl_log_attribute_table_log_attribute_id_seq"
+		'category'		=> "cswal_category_table_category_id_seq",
+		'class'			=> "cswal_class_table_class_id_seq",
+		'event'			=> "cswal_event_table_event_id_seq",
+		'log'			=> "cswal_log_table_log_id_seq",
+		'attrib'		=> "cswal_attribute_table_attribute_id_seq",
+		'logAttrib'		=> "cswal_log_attribute_table_log_attribute_id_seq"
 	);
 	
 	//=========================================================================

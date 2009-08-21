@@ -182,9 +182,9 @@ class cs_phpDB extends cs_contentAbstract {
 	
 	
 	//=========================================================================
-	public function reconnect() {
+	public function reconnect($forceNewConnection=TRUE) {
 		if(is_array($this->connectParams) && count($this->connectParams)) {
-			$this->dbLayerObj->connect($this->connectParams, true);
+			$this->dbLayerObj->connect($this->connectParams, $forceNewConnection);
 		}
 		else {
 			throw new exception(__METHOD__ .": no connection parameters stored");
