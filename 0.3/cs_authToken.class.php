@@ -298,19 +298,22 @@ class cs_authToken extends cs_webapplibsAbstract {
 	public function remove_expired_tokens() {
 		$sql = "SELECT * FROM ". $this->table ." WHERE NOW() > expiration";
 		
+		$destroyedTokens = 0;
 		try {
 			$data = $this->db->run_query($sql, 'auth_token_id');
 			
 			if(is_array($data)) {
 				foreach($data as $tokenId => $tokenData) {
 					//TODO: add logging here?
-					$this->destroy_token($tokenId);
+					$destroyedTokens += $this->destroy_token($tokenId);
 				}
 			}
 		}
 		catch(exception $e) {
 			throw new exception(__METHOD__ .": error encountered while expiring tokens::: ". $e->getMessage());
 		}
+		
+		return($destroyedTokens);
 	}//end remove_expired_tokens()
 	//=========================================================================
 	

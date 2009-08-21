@@ -178,6 +178,22 @@ class testOfCSWebAppLibs extends UnitTestCase {
 			$this->assertNotEqual($tokenData['hash'], $tok->doHash($tokenData['id'], $uid, $checksum, $hashThis), 
 					"hash is guessable");
 		}
+		
+		//test expiring tokens...
+		{
+			//create a token that is immediately expired.
+			$tokenData = $tok->create_token(22, 'token expiration test', 'Lorem ipsum dolor sit amet, consectetur.', '-5 days');
+			$this->do_tokenTest($tokenData, 22, 'token expiration test');
+			
+			$this->assertFalse(is_array($tok->tokenData($tokenData['id'], true)));
+			$this->assertTrue(is_array($tok->tokenData($tokenData['id'], false)));
+			$this->assertTrue(count($tok->tokenData($tokenData['id'],false)) == 9);
+			
+			//REMEMBER: we've created other tokens that will now expire...
+			$removedTokens = $tok->remove_expired_tokens();
+			$this->assertEqual(2, $removedTokens);
+		}
+		
 	}//end test_token_basics()
 	//--------------------------------------------------------------------------
 	
