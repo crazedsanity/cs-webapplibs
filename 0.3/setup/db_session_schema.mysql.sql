@@ -5,7 +5,7 @@
 -- Idea originally from: http://www.developertutorials.com/tutorials/php/saving-php-session-data-database-050711
 --
 
-CREATE TABLE `test`.`sess_tmp` (
+CREATE TABLE `cswal_session_store_table` (
   `session_store_id` int  NOT NULL AUTO_INCREMENT,
   `session_id` varchar(32)  NOT NULL,
   `user_id` varchar(16)  NOT NULL,
