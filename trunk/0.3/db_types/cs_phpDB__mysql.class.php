@@ -103,10 +103,6 @@ class cs_phpDB__mysql extends cs_phpDBAbstract {
 				$this->$index = $value;
 				$requiredCount++;
 			}
-			else {
-				throw new exception(__METHOD__. ": property (". $index .") does " .
-					"not exist or isn't allowed");
-			}
 		}
 		
 		if($requiredCount == count($required)) {
