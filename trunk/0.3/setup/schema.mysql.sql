@@ -135,7 +135,7 @@ CREATE TABLE `cswal_session_store_table` (
 -- 
 
 CREATE TABLE `cswal_version_table` (
-  `version_id` int(11) NOT NULL,
+  `version_id` int(11) NOT NULL auto_increment,
   `project_name` varchar(30) NOT NULL,
   `version_string` varchar(50) NOT NULL,
   PRIMARY KEY  (`version_id`),
