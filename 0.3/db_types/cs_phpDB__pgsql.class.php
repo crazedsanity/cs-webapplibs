@@ -121,10 +121,6 @@ class cs_phpDB__pgsql extends cs_phpDBAbstract {
 				$this->$index = $params[$index];
 				$requiredCount++;
 			}
-			else {
-				$this->gfObj->debug_print($params,1);
-				throw new exception(__METHOD__. ": property (". $index .") missing");
-			}
 		}
 		
 		if($requiredCount == count($required)) {
