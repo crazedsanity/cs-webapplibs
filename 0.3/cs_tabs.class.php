@@ -4,10 +4,10 @@
  * 
  */
 
-require_once(dirname(__FILE__) .'/abstract/cs_content.abstract.class.php');
+require_once(dirname(__FILE__) .'/abstract/cs_webapplibs.abstract.class.php');
 
 
-class cs_tabs extends cs_contentAbstract {
+class cs_tabs extends cs_webapplibsAbstract {
 	private $tabsArr=array();
 	private $selectedTab;
 	
@@ -25,7 +25,6 @@ class cs_tabs extends cs_contentAbstract {
 	 * @param $templateVar	(str,optional) What template var to find the tab blockrows in.
 	 */
 	public function __construct($templateVar="tabs") {
-		parent::__construct(false);
 		
 		if(is_object($templateVar)) {
 			//trying to pass cs_genericPage{}... tell 'em we don't like that anymore.
