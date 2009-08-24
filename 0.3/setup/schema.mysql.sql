@@ -111,28 +111,12 @@ CREATE TABLE `cswal_log_attribute_table` (
 
 -- --------------------------------------------------------
 
--- 
--- Table structure for table `cswal_log_table`
--- 
-
-CREATE TABLE `cswal_log_table` (
-  `log_id` int(11) NOT NULL auto_increment,
-  `creation` timestamp NOT NULL default CURRENT_TIMESTAMP,
-  `event_id` int(11) NOT NULL,
-  `uid` int(11) NOT NULL,
-  `affected_uid` int(11) NOT NULL,
-  `details` text NOT NULL,
-  PRIMARY KEY  (`log_id`),
-  KEY `cswal_log_table_event_id_fkey` (`event_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
-
 
 
 -- 
 -- Constraints for table `cswal_log_attribute_table`
 -- 
 ALTER TABLE `cswal_log_attribute_table`
-  ADD CONSTRAINT `cswal_log_attribute_table_attribute_id_fkey` FOREIGN KEY (`attribute_id`) REFERENCES `cswal_attribute_table` (`attribute_id`),
   ADD CONSTRAINT `cswal_log_attribute_table_log_id_fkey` FOREIGN KEY (`log_id`) REFERENCES `cswal_log_table` (`log_id`);
 
 
