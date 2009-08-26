@@ -27,7 +27,7 @@
 require_once(dirname(__FILE__) ."/abstract/cs_webapplibs.abstract.class.php");
 require_once(dirname(__FILE__) ."/abstract/cs_phpDB.abstract.class.php");
 
-class cs_phpDB extends cs_contentAbstract {
+class cs_phpDB extends cs_webAppLibsAbstract {
 	
 	private $dbLayerObj;
 	private $dbType;
