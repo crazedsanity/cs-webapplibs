@@ -10,10 +10,10 @@
  * Last Updated:::::::: $Date$
  */
 
-require_once(constant('LIBDIR') .'/cs-content/abstract/cs_version.abstract.class.php');
+require_once(dirname(__FILE__) .'/../../cs-content/abstract/cs_content.abstract.class.php');
 
 
-abstract class cs_webapplibsAbstract extends cs_versionAbstract {
+abstract class cs_webapplibsAbstract extends cs_contentAbstract {
 	
 }
 
