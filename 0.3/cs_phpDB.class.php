@@ -27,11 +27,12 @@
 require_once(dirname(__FILE__) ."/abstract/cs_webapplibs.abstract.class.php");
 require_once(dirname(__FILE__) ."/abstract/cs_phpDB.abstract.class.php");
 
-class cs_phpDB extends cs_webAppLibsAbstract {
+class cs_phpDB extends cs_webapplibsAbstract {
 	
 	private $dbLayerObj;
 	private $dbType;
 	public $connectParams = array();
+	protected $gfObj;
 	
 	//=========================================================================
 	public function __construct($type='pgsql') {
@@ -43,7 +44,7 @@ class cs_phpDB extends cs_webAppLibsAbstract {
 			$this->dbLayerObj = new $className;
 			$this->dbType = $type;
 			
-			parent::__construct();
+			parent::__construct(true);
 			
 			$this->isInitialized = TRUE;
 		}

@@ -19,7 +19,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 	private $db;
 	
 	/** Object that helps deal with strings. */
-	private $gfObj;
+	protected $gfObj;
 	
 	/** Name of the table */
 	private $table = 'cswal_auth_token_table';
@@ -39,7 +39,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 		else {
 			throw new exception(__METHOD__ .": database object not connected");
 		}
-		$this->gfObj = new cs_globalFunctions();
+		parent::__construct(true);
 		
 		$upg = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml');
 		$upg->check_versions(true);

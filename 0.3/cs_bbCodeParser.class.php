@@ -20,7 +20,7 @@
 
 require_once(dirname(__FILE__) ."/abstract/cs_webapplibs.abstract.class.php");
 
-class cs_bbCodeParser extends cs_webAppLibsAbstract {
+class cs_bbCodeParser extends cs_webapplibsAbstract {
 	
 	/** Array containing all the codes & how to parse them. */
 	private $bbCodeData = NULL;

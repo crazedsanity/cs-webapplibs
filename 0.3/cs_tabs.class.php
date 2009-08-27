@@ -38,6 +38,7 @@ class cs_tabs extends cs_webapplibsAbstract {
 			//set the internal var.
 			$this->templateVar = $templateVar;
 		}
+		parent::__construct();
 		
 		$this->gfObj = new cs_globalFunctions;
 	}//end __construct()
