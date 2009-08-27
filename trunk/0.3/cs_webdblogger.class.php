@@ -99,7 +99,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			throw new exception(__METHOD__ .": requires cs_phpDB of higher than v". $mustBeHigherThan,1);
 		}
 		
-		$this->gfObj = new cs_globalFunctions;
+		parent::__construct(true);
 		
 		//see if there's an upgrade to perform...
 		if($checkForUpgrades === true) {

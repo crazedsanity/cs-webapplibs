@@ -94,7 +94,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		require_once(constant('LIBDIR') .'/cs-phpxml/cs_arrayToPath.class.php');
 		
 		$this->fsObj =  new cs_fileSystem(constant('SITE_ROOT'));
-		$this->gfObj = new cs_globalFunctions;
+		parent::__construct(true);
 		if(defined('DEBUGPRINTOPT')) {
 			$this->gfObj->debugPrintOpt = constant('DEBUGPRINTOPT');
 		}

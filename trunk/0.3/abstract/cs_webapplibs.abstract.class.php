@@ -10,11 +10,24 @@
  * Last Updated:::::::: $Date$
  */
 
-require_once(dirname(__FILE__) .'/../../cs-content/abstract/cs_content.abstract.class.php');
-
-
-abstract class cs_webapplibsAbstract extends cs_contentAbstract {
+abstract class cs_webapplibsAbstract extends cs_versionAbstract {
 	
+	protected $gfObj;
+	
+	//-------------------------------------------------------------------------
+    function __construct($makeGfObj=true) {
+		$this->set_version_file_location(dirname(__FILE__) . '/../VERSION');
+		$this->get_version();
+		$this->get_project();
+		
+		if($makeGfObj === true) {
+			//make a cs_globalFunctions{} object.
+			//TODO::: find a way to avoid h
+			require_once(dirname(__FILE__) ."/../../cs-content/cs_globalFunctions.class.php");
+			$this->gfObj = new cs_globalFunctions();
+		}
+    }//end __construct()
+	//-------------------------------------------------------------------------
 }
 
 ?>
