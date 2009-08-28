@@ -18,7 +18,6 @@
  * been converted.
  */
 
-require_once(dirname(__FILE__) ."/abstract/cs_webapplibs.abstract.class.php");
 
 class cs_bbCodeParser extends cs_webapplibsAbstract {
 	

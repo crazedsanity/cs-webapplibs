@@ -15,10 +15,6 @@
  * 
  */
 
-require_once(dirname(__FILE__) .'/abstract/cs_webapplibs.abstract.class.php');
-require_once(dirname(__FILE__) .'/../cs-content/cs_fileSystem.class.php');
-require_once(dirname(__FILE__). '/../cs-phpxml/cs_phpxmlParser.class.php');
-require_once(dirname(__FILE__) .'/../cs-phpxml/cs_phpxmlBuilder.class.php');
 
 class cs_siteConfig extends cs_webapplibsAbstract {
 	

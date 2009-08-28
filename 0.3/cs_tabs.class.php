@@ -4,8 +4,6 @@
  * 
  */
 
-require_once(dirname(__FILE__) .'/abstract/cs_webapplibs.abstract.class.php');
-
 
 class cs_tabs extends cs_webapplibsAbstract {
 	private $tabsArr=array();

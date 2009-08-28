@@ -10,7 +10,6 @@
  * Last Updated:::::::: $Date$
  */
 
-require_once(dirname(__FILE__) .'/../../cs-content/abstract/cs_version.abstract.class.php');
 abstract class cs_webapplibsAbstract extends cs_versionAbstract {
 	
 	protected $gfObj;
@@ -24,7 +23,6 @@ abstract class cs_webapplibsAbstract extends cs_versionAbstract {
 		if($makeGfObj === true) {
 			//make a cs_globalFunctions{} object.
 			//TODO::: find a way to avoid h
-			require_once(dirname(__FILE__) ."/../../cs-content/cs_globalFunctions.class.php");
 			$this->gfObj = new cs_globalFunctions();
 		}
     }//end __construct()

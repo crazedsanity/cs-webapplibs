@@ -8,10 +8,6 @@
  * $LastChangedRevision$
  */
 
-require_once(constant('LIBDIR') .'/cs-content/cs_session.class.php');
-require_once(dirname(__FILE__) .'/cs_phpDB.class.php');
-require_once(constant('LIBDIR') .'/cs-phpxml/cs_arrayToPath.class.php');
-require_once(constant('LIBDIR') .'/cs-webapplibs/cs_webdblogger.class.php');
 
 class cs_sessionDB extends cs_session {
 

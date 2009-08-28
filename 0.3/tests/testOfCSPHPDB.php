@@ -4,8 +4,6 @@
  */
 
 
-require_once(dirname(__FILE__) .'/../cs_phpDB.class.php');
-
 class TestOfCSPHPDB extends UnitTestCase {
 	
 	private $dbParams=array();
