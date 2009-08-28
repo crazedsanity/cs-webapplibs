@@ -11,7 +11,6 @@
  * $LastChangedRevision$
  */
 
-require_once(dirname(__FILE__) .'/../cs_authToken.class.php');
 
 class testOfCSWebAppLibs extends UnitTestCase {
 	

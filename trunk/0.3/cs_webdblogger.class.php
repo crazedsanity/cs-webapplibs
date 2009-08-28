@@ -27,8 +27,6 @@
 
 //NOTE::: this class **REQUIRES** cs-content for its "cs_phpDB" class.
 
-require_once(dirname(__FILE__) .'/abstract/cs_webapplibs.abstract.class.php');
-require_once(dirname(__FILE__) .'/cs_webdbupgrade.class.php');
 
 class cs_webdblogger extends cs_webapplibsAbstract {
 	/** Database handle */

@@ -11,7 +11,6 @@
  */
 
 
-require_once(dirname(__FILE__) .'/abstract/cs_webapplibs.abstract.class.php');
 
 class cs_authToken extends cs_webapplibsAbstract {
 	
