@@ -10,7 +10,7 @@ class cs_tabs extends cs_webapplibsAbstract {
 	private $selectedTab;
 	
 	private $templateVar;
-	private $gfObj;
+	protected $gfObj;
 	
 	/** This is the default suffix to use when none is given during the add_tab() call. */
 	private $defaultSuffix='tab';
