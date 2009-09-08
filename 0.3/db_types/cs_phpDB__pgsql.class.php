@@ -127,8 +127,8 @@ class cs_phpDB__pgsql extends cs_phpDBAbstract {
 			$this->paramsAreSet = TRUE;
 		}
 		else {
-			throw new exception(__METHOD__ .": required count (". $requiredCount 
-				.") does not match required number of fields (". count($required) .")");
+			throw new exception(__METHOD__ .": given number of fields (". $requiredCount 
+				.") does not match required number of fields (". count($required) .")::: ". $this->gfObj->debug_print($params,0));
 		}
 	}//end set_db_info()
 	//=========================================================================
