@@ -73,7 +73,7 @@ class cs_siteConfig extends cs_webapplibsAbstract {
 	 * @return NULL					(PASS) object successfully created
 	 * @return exception			(FAIL) failed to create object (see exception message)
 	 */
-	public function __construct($configFileLocation, $section='MAIN', $setVarPrefix=null) {
+	public function __construct($configFileLocation, $section=null, $setVarPrefix=null) {
 		
 		$section = strtoupper($section);
 		$this->setVarPrefix=$setVarPrefix;
@@ -99,6 +99,13 @@ class cs_siteConfig extends cs_webapplibsAbstract {
 		}
 		else {
 			throw new exception(__METHOD__ .": invalid configuration file (". $configFileLocation .")");
+		}
+		
+		if(is_null($section) || !strlen($section)) {
+			$myData = $this->xmlReader->get_path($this->xmlReader->get_root_element());
+			unset($myData['type'], $myData['attributes']);
+			$myData = array_keys($myData);
+			$section = $myData[0];
 		}
 		
 		if(strlen($section)) {
