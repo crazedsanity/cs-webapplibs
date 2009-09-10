@@ -32,16 +32,21 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 */
 	public function __construct(cs_phpDB $db) {
 		
-		if($db->is_connected()) {
-			$this->db = $db;
+		if(is_object($db)) {
+			if($db->is_connected()) {
+				$this->db = $db;
+			}
+			else {
+				throw new exception(__METHOD__ .": database object not connected");
+			}
+			parent::__construct(true);
+			
+			$upg = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml');
+			$upg->check_versions(true);
 		}
 		else {
-			throw new exception(__METHOD__ .": database object not connected");
+			throw new exception(__METHOD__ .": invalid database object (". $db .")");
 		}
-		parent::__construct(true);
-		
-		$upg = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml');
-		$upg->check_versions(true);
 	}//end __construct()
 	//=========================================================================
 	
