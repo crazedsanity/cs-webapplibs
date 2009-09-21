@@ -26,11 +26,11 @@ class testOfCSWebAppLibs extends UnitTestCase {
 	//--------------------------------------------------------------------------
 	private function create_dbconn() {
 		$dbParams = array(
-			'host'		=> constant('DB_PG_HOST'),
-			'dbname'	=> constant('DB_PG_DBNAME'),
-			'user'		=> constant('DB_PG_DBUSER'),
-			'password'	=> constant('DB_PG_DBPASS'),
-			'port'		=> constant('DB_PG_PORT')
+			'host'		=> constant('cs_webapplibs-DB_CONNECT_HOST'),
+			'dbname'	=> constant('cs_webapplibs-DB_CONNECT_DBNAME'),
+			'user'		=> constant('cs_webapplibs-DB_CONNECT_USER'),
+			'password'	=> constant('cs_webapplibs-DB_CONNECT_PASSWORD'),
+			'port'		=> constant('cs_webapplibs-DB_CONNECT_PORT')
 		);
 		$db = new cs_phpDB(constant('DBTYPE'));
 		$db->connect($dbParams);
@@ -55,7 +55,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 			}
 			catch(exception $e) {
 				//force an error.
-				$this->assertTrue(false, "Error while dropping (". $name .")::: ". $e->getMessage());
+				//$this->assertTrue(false, "Error while dropping (". $name .")::: ". $e->getMessage());
 			}
 		}
 	}//end remove_tables()
