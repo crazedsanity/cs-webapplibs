@@ -783,7 +783,6 @@ class cs_phpDB__pgsql extends cs_phpDBAbstract {
 				$transLevel = $this->get_transaction_level();
 				//transaction started without using beginTrans()...
 				$this->transactionTree = array();
-				$this->gfObj->debug_print(__METHOD__ .": transaction already started, transStatus=(". $transStatus ."), transLevel=(". $transLevel .")");
 				$this->transactionTree[] = "Already started...";
 			}
 		}
