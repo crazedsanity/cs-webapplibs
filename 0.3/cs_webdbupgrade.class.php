@@ -55,6 +55,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	private $storedLogs = array();
 	private $debugLogs=array();
 	
+	private $dbType=null;
+	
 	/** List of acceptable suffixes; example "1.0.0-BETA3" -- NOTE: these MUST be in 
 	 * an order that reflects newest -> oldest; "ALPHA happens before BETA, etc. */
 	private $suffixList = array(
@@ -64,16 +66,19 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	);
 	
 	//=========================================================================
-	public function __construct($versionFileLocation, $upgradeConfigFile, $lockFile='upgrade.lock') {
+	public function __construct($versionFileLocation, $upgradeConfigFile, array $dbParams=null, $lockFile='upgrade.lock') {
 		
 		//setup configuration parameters for database connectivity.
-		$dbParams = array(
-			'host'		=> constant(__CLASS__ .'-DB_CONNECT_HOST'),
-			'port'		=> constant(__CLASS__ .'-DB_CONNECT_PORT'),
-			'dbname'	=> constant(__CLASS__ .'-DB_CONNECT_DBNAME'),
-			'user'		=> constant(__CLASS__ .'-DB_CONNECT_USER'),
-			'password'	=> constant(__CLASS__ .'-DB_CONNECT_PASSWORD')
-		);
+		if(!is_array($dbParams) || !count($dbParams)) {
+			$prefix = preg_replace('/-/', '_', $this->get_project());
+			$dbParams = array(
+				'host'		=> constant($prefix .'-DB_CONNECT_HOST'),
+				'port'		=> constant($prefix .'-DB_CONNECT_PORT'),
+				'dbname'	=> constant($prefix .'-DB_CONNECT_DBNAME'),
+				'user'		=> constant($prefix .'-DB_CONNECT_USER'),
+				'password'	=> constant($prefix .'-DB_CONNECT_PASSWORD')
+			);
+		}
 		$this->config['DBPARAMS'] = $dbParams;
 		//Check for some required constants.
 		$requisiteConstants = array('LIBDIR');
@@ -95,8 +100,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		$this->config['DB_PRIMARYKEY'] = 'version_id';
 		$this->sequenceName = $this->config['DB_TABLE'] .'_'. $this->config['DB_PRIMARYKEY'] .'_seq';
 		
-		if(!defined('DBTYPE')) {
-			throw new exception(__METHOD__ .": required constant 'DBTYPE' not set");
+		if(defined('DBTYPE')) {
+			$this->dbType = constant('DBTYPE');
 		}
 		
 		if(!file_exists($upgradeConfigFile) || !is_readable($upgradeConfigFile)) {
@@ -110,18 +115,17 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		$this->set_version_file_location($versionFileLocation);
 		
-		if(!defined(__CLASS__ .'-RWDIR') || !is_dir(constant(__CLASS__ .'-RWDIR')) || !is_readable(constant(__CLASS__ .'-RWDIR')) || !is_writable(constant(__CLASS__ .'-RWDIR'))) {
-			throw new exception(__METHOD__ .": missing RWDIR (". constant(__CLASS__ .'-RWDIR') .") or isn't readable/writable");
+		$rwDir = dirname(__FILE__) .'/../rw';
+		if(defined(__CLASS__ .'-RWDIR')) {
+			$rwDir = constant(__CLASS__ .'-RWDIR');
 		}
-		else {
-			$this->config['RWDIR'] = constant(__CLASS__ .'-RWDIR');
-		}
+		$this->config['RWDIR'] = $rwDir;
 		if(is_null($lockFile) || !strlen($lockFile)) {
 			$lockFile = 'upgrade.lock';
 		}
 		$this->lockfile = $this->config['RWDIR'] .'/'. $lockFile;
 		
-		$this->db = new cs_phpDB(constant('DBTYPE'));
+		$this->db = new cs_phpDB($this->dbType);
 		try {
 			$this->db->connect($this->config['DBPARAMS']);
 		}
@@ -137,7 +141,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		$this->check_internal_upgrades();
 		
 		try {
-			$loggerDb = new cs_phpDB(constant('DBTYPE'));
+			$loggerDb = new cs_phpDB($this->dbType);
 			$loggerDb->connect($this->config['DBPARAMS'], true);
 			$this->logsObj = new cs_webdblogger($loggerDb, "Upgrade ". $this->projectName, false);
 		}

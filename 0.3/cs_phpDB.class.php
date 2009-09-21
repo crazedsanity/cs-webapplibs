@@ -33,21 +33,18 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	public function __construct($type='pgsql') {
+		if(is_null($type) || !strlen($type)) {
+			$type = 'pgsql';
+		}
 		
-		if(strlen($type)) {
-			
-			require_once(dirname(__FILE__) .'/db_types/'. __CLASS__ .'__'. $type .'.class.php');
-			$className = __CLASS__ .'__'. $type;
-			$this->dbLayerObj = new $className;
-			$this->dbType = $type;
-			
-			parent::__construct(true);
-			
-			$this->isInitialized = TRUE;
-		}
-		else {
-			throw new exception(__METHOD__ .": failed to give a type (". $type .")");
-		}
+		require_once(dirname(__FILE__) .'/db_types/'. __CLASS__ .'__'. $type .'.class.php');
+		$className = __CLASS__ .'__'. $type;
+		$this->dbLayerObj = new $className;
+		$this->dbType = $type;
+		
+		parent::__construct(true);
+		
+		$this->isInitialized = TRUE;
 	}//end __construct()
 	//=========================================================================
 	
