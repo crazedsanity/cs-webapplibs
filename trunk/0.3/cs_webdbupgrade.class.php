@@ -90,7 +90,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		
 		
-		$this->fsObj =  new cs_fileSystem(constant('SITE_ROOT'));
 		parent::__construct(true);
 		if(defined('DEBUGPRINTOPT')) {
 			$this->gfObj->debugPrintOpt = constant('DEBUGPRINTOPT');
@@ -115,7 +114,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		$this->set_version_file_location($versionFileLocation);
 		
-		$rwDir = dirname(__FILE__) .'/../rw';
+		$rwDir = dirname(__FILE__) .'/../../rw';
 		if(defined(__CLASS__ .'-RWDIR')) {
 			$rwDir = constant(__CLASS__ .'-RWDIR');
 		}
@@ -133,6 +132,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
 		}
 		
+		$this->fsObj =  new cs_fileSystem(constant('SITE_ROOT'));
 		if($this->check_lockfile()) {
 			//there is an existing lockfile...
 			throw new exception(__METHOD__ .": upgrade in progress: ". $this->fsObj->read($this->lockfile));
@@ -952,20 +952,25 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	 */
 	public function create_lockfile($contents) {
 		if(!$this->check_lockfile()) {
-			if($this->fsObj->create_file($this->lockfile)) {
-				if(!preg_match('/\n$/', $contents)) {
-					$contents .= "\n";
-				}
-				$writeRes = $this->fsObj->write($contents);
-				if(is_numeric($writeRes) && $writeRes > 0) {
-					$this->fsObj->closeFile();
+			try {
+				if($this->fsObj->create_file($this->lockfile)) {
+					if(!preg_match('/\n$/', $contents)) {
+						$contents .= "\n";
+					}
+					$writeRes = $this->fsObj->write($contents);
+					if(is_numeric($writeRes) && $writeRes > 0) {
+						$this->fsObj->closeFile();
+					}
+					else {
+						$this->error_handler(__METHOD__ .": failed to write contents (". $contents .") to lockfile");
+					}
 				}
 				else {
-					$this->error_handler(__METHOD__ .": failed to write contents (". $contents .") to lockfile");
+					$this->error_handler(__METHOD__ .": failed to create lockfile (". $this->lockfile .")");
 				}
 			}
-			else {
-				$this->error_handler(__METHOD__ .": failed to create lockfile (". $this->lockfile .")");
+			catch(exception $e) {
+				throw new exception(__METHOD__ .": failed to create lockfile (". $this->lockfile ." [root=". $this->fsObj->root ."] with contents (". $contents .")::: ". $e->getMessage());
 			}
 		}
 		else {
