@@ -69,6 +69,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	public function __construct($versionFileLocation, $upgradeConfigFile, array $dbParams=null, $lockFile='upgrade.lock') {
 		
 		//setup configuration parameters for database connectivity.
+		$this->set_version_file_location(dirname(__FILE__) .'/VERSION');
 		if(!is_array($dbParams) || !count($dbParams)) {
 			$prefix = preg_replace('/-/', '_', $this->get_project());
 			$dbParams = array(
