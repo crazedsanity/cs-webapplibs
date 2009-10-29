@@ -166,6 +166,34 @@ CREATE TABLE `cswal_version_table` (
   UNIQUE KEY `project_name` (`project_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
+
+-- 
+-- Table for cs_genericDataLinker{}.
+-- 
+CREATE TABLE `cswal_gdl_object_table` (
+	`object_id` int(11) NOT NULL PRIMARY KEY auto_increment,
+	`object_name` text NOT NULL UNIQUE
+) ENGINE=InnoDB;
+
+
+CREATE TABLE `cswal_gdl_path_table` (
+	`path_id` int(11) NOT NULL PRIMARY KEY auto_increment,
+	`path_id_list` text NOT NULL
+) ENGINE=InnoDB;
+
+-- 
+-- Store attributes here.
+-- NOTE: fields prefixed with "a_" to avoid clashes with reserved words.
+-- 
+CREATE TABLE `cswal_gdl_attribute_table` (
+	`attribute_id` serial NOT NULL PRIMARY KEY auto_increment,
+	`object_path` text NOT NULL,
+	`a_text` text DEFAULT NULL,
+	`a_int` integer DEFAULT NULL,
+	`a_dec` decimal(10,2) DEFAULT NULL,
+	`a_bool` boolean DEFAULT NULL
+) ENGINE=InnoDB;
+
 -- 
 -- Constraints for dumped tables
 -- 
