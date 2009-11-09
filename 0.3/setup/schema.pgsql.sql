@@ -131,7 +131,7 @@ CREATE TABLE cswal_gdl_object_table (
 
 CREATE TABLE cswal_gdl_path_table (
 	path_id serial NOT NULL PRIMARY KEY,
-	path_id_list text NOT NULL
+	path_id_list text NOT NULL UNIQUE
 );
 
 -- 

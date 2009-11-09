@@ -178,7 +178,7 @@ CREATE TABLE `cswal_gdl_object_table` (
 
 CREATE TABLE `cswal_gdl_path_table` (
 	`path_id` int(11) NOT NULL PRIMARY KEY auto_increment,
-	`path_id_list` text NOT NULL
+	`path_id_list` text NOT NULL UNIQUE
 ) ENGINE=InnoDB;
 
 -- 
