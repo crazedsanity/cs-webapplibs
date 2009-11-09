@@ -244,6 +244,18 @@ class testOfCSWebAppLibs extends UnitTestCase {
 			$newPathIdList = $x->create_path('/testing/'. $myPath);
 			$myPathIdList = ':'. $this->gfObj->string_from_array(array_flip($pathBits), null, '::') .':';
 			$this->assertEqual($newPathIdList, $myPathIdList);
+			
+			$this->assertEqual($newPathIdList, $x->create_path('/testing/'. $myPath));
+			
+			$myRearrangedPath = array_reverse($pathBits, true);
+			$rPathIdList = ':'. $this->gfObj->string_from_array(array_flip($myRearrangedPath), null, '::') .':';
+			$rPath = '/'. $this->gfObj->string_from_array($myRearrangedPath, null, '/');
+			$this->assertEqual($x->create_path($rPath), $rPathIdList);
+			
+			$this->assertEqual($x->get_path_from_idlist($x->create_path($rPath)), $x->get_path_from_idlist($rPathIdList));
+			$this->assertEqual($x->get_path_from_idlist($x->create_path($rPath)), $x->get_path_from_idlist($rPathIdList));
+			$this->assertEqual($x->get_path_from_idlist($x->create_path($rPath)), $x->get_path_from_idlist($rPathIdList));
+			$this->assertEqual($x->get_path_from_idlist($x->create_path($rPath)), $x->get_path_from_idlist($rPathIdList));
 		}
 		
 		

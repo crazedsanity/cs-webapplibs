@@ -26,14 +26,20 @@ abstract class cs_gdlPathAbstract extends cs_gdlObjectAbstract {
 		$idList = $this->create_path_objects($path);
 		$pathIdList = $this->create_id_path($idList);
 		
-		$sql = "INSERT INTO ". self::table ." (path_id_list) VALUES ('". $pathIdList ."')";
-		
-		try {
-			$insertedId = $this->db->run_insert($sql, self::tableSeq);
+		if($this->get_path_from_idlist($pathIdList)) {
 			$retval = $pathIdList;
 		}
-		catch(exception $e) {
-			throw new exception(__METHOD__ .": unable to create path::: ". $e->getMessage());
+		else {
+			
+			$sql = "INSERT INTO ". self::table ." (path_id_list) VALUES ('". $pathIdList ."')";
+			
+			try {
+				$insertedId = $this->db->run_insert($sql, self::tableSeq);
+				$retval = $pathIdList;
+			}
+			catch(exception $e) {
+				throw new exception(__METHOD__ .": unable to create path::: ". $e->getMessage());
+			}
 		}
 		
 		return($retval);
@@ -99,12 +105,11 @@ abstract class cs_gdlPathAbstract extends cs_gdlObjectAbstract {
 	
 	
 	//-------------------------------------------------------------------------
-	public function get_text_path_from_id_path($idPath) {
+	public function get_path_from_idlist($idPath) {
 		
 		$idList = explode('::', preg_replace('/^:/', '', preg_replace('/:$/', '', $idPath)));
 		
 		$nameList = $this->build_object_name_list($idList);
-		$this->gfObj->debug_var_dump($nameList,1);
 		
 		$retval = "/";
 		foreach($nameList as $id=>$name) {
