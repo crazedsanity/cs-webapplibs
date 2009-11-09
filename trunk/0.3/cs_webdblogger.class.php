@@ -794,7 +794,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	public function get_uid() {
 		$myUid = $this->defaultUid;
 		//check for a uid in the session.
-		if(is_array($_SESSION) && isset($_SESSION['uid']) && is_numeric($_SESSION['uid'])) {
+		if(isset($_SESSION) && is_array($_SESSION) && isset($_SESSION['uid']) && is_numeric($_SESSION['uid'])) {
 			//got an ID in the session.
 			$myUid = $_SESSION['uid'];
 		}
