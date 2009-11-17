@@ -543,9 +543,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 				//add the table...
 				$loadTableResult = $this->load_table();
 				if($loadTableResult === TRUE) {
-					//now try the SQL...
-					$numrows = $this->db->exec($sql);
-					$dberror = $this->db->errorMsg();
+					$retval = $this->get_database_version();
 				}
 				else {
 					$this->error_handler(__METHOD__ .": no table in database, failed to create one... ORIGINAL " .
