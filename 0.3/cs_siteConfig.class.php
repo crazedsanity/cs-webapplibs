@@ -259,7 +259,7 @@ class cs_siteConfig extends cs_webapplibsAbstract {
 			$this->isInitialized=true;
 			
 			if(count($this->setGlobalArrays)) {
-				$globA2p = new cs_arrayToPath(&$GLOBALS);
+				$globA2p = new cs_arrayToPath($GLOBALS);
 				foreach($this->setGlobalArrays as $configPath=>$globalsPath) {
 					if($this->a2p->get_data($configPath)) {
 						$setMe = array();
