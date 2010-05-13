@@ -858,7 +858,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			$this->tempXmlConfig = array();
 		}
 		try {
-			$myA2p = new cs_arrayToPath(&$this->tempXmlConfig);
+			$myA2p = new cs_arrayToPath($this->tempXmlConfig);
 		}
 		catch(exception $e) {
 			$this->do_log(__METHOD__ .': encountered exception: '. $e->getMessage());
