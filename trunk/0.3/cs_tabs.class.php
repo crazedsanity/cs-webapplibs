@@ -66,7 +66,22 @@ class cs_tabs extends cs_webapplibsAbstract {
 	 * @return (void)
 	 */
 	public function select_tab($tabName) {
-		$this->selectedTab = $tabName;
+		$selected = $tabName;
+		
+		if(!$this->tab_exists($tabName)) {
+			$fixedTabName = strtolower($tabName);
+			foreach($this->tabsArr as $name => $info) {
+				if(preg_match('/^'. $tabName .'/', $name)) {
+					$selected = $name;
+				}
+				elseif(preg_match('/'. $tabName .'$/', $info['url'])) {
+					$selected = $name;
+				}
+			}
+		}
+		
+		$this->selectedTab = $selected;
+		return($this->selectedTab);
 	}//end select_tab()
 	//---------------------------------------------------------------------------------------------
 	
