@@ -303,11 +303,11 @@ class cs_sessionDB extends cs_session {
 			}
 			$numCleaned = $this->db->run_update($sql, true);
 			
-			if($numCleaned > 0) {
-				$this->do_log("cleaned (". $numCleaned .") old sessions, " .
-						"excludeCurrent=(". $this->gfObj->interpret_bool($excludeCurrent) .")" .
-						", maxFreshness=(". $maxFreshness .")", "debug");
-			}
+			#if($numCleaned > 0) {
+			#	$this->do_log("cleaned (". $numCleaned .") old sessions, " .
+			#			"excludeCurrent=(". $this->gfObj->interpret_bool($excludeCurrent) .")" .
+			#			", maxFreshness=(". $maxFreshness .")", "debug");
+			#}
 		}
 		catch(exception $e) {
 			$this->exception_handler(__METHOD__ .": exception while cleaning: ". $e->getMessage());
