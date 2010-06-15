@@ -320,7 +320,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	private function perform_upgrade() {
-		$this->logsObj->suspendLogging=true;
 		//make sure there's not already a lockfile.
 		if($this->upgrade_in_progress()) {
 			//ew.  Can't upgrade.
@@ -393,12 +392,9 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 					$this->error_handler(__METHOD__ .": transaction status=(". $transactionStatus ."), upgrade aborted:::". $e->getMessage());
 					$this->db->rollbackTrans();
 				}
-				$this->logsObj->suspendLogging=false;
 				$this->do_log("Upgrade process complete", 'end');
 			}
 		}
-		$this->logsObj->suspendLogging=false;
-		$logsHandled = $this->logsObj->handle_suspended_logs();
 	}//end perform_upgrade()
 	//=========================================================================
 	
