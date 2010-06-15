@@ -93,8 +93,8 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		
 		$retval = array();
 		
-		//length must be 19 as that's about the shortest valid SQL:  "select * from table"
-		if(strlen($sql) >= 19) {
+		//length must be 15 as that's about the shortest valid SQL:  "select * from x"
+		if(strlen($sql) >= 15) {
 			$this->exec($sql);
 			
 			$numRows = $this->numRows();
@@ -187,6 +187,36 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	}//end reconnect()
 	//=========================================================================
 	
+
+	//=========================================================================
+	/**
+	 * Execute the entire contents of the given file (with absolute path) as SQL.
+	 */
+	public function run_sql_file($filename) {
+		if(!is_object($this->fsObj)) {
+			if(class_exists('cs_fileSystem')) {
+				$fsObj = new cs_fileSystem(dirname($filename));
+			}
+			else {
+				throw new exception(__METHOD__ .": required library (cs_fileSystem) not found");
+			}
+		}
+		
+		$this->lastSQLFile = $filename;
+		
+		$fileContents = $fsObj->read($filename);
+		try {
+			$this->db->run_update($fileContents, true);
+			$this->build_cache();
+			$retval = TRUE;
+		}
+		catch(exception $e) {
+			$retval = FALSE;
+		}
+		
+		return($retval);
+	}//end run_sql_file()
+	//=========================================================================
 } // end class phpDB
 
 ?>
