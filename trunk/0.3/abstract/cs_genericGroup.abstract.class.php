@@ -23,7 +23,7 @@ abstract class cs_genericGroupAbstract extends cs_webapplibsAbstract {
 	const groupTable = "cswal_group_table";
 	
 	/** Sequence for groups table. */
-	const groupSeq = "cswal_group_table_group_id";
+	const groupSeq = "cswal_group_table_group_id_seq";
 	
 	//============================================================================
 	public function __construct(cs_phpDB $db) {
@@ -42,6 +42,7 @@ abstract class cs_genericGroupAbstract extends cs_webapplibsAbstract {
 		else {
 			throw new exception(__METHOD__ .":: invalid string (". $name .")");
 		}
+		return($name);
 	}//end clean_group_name()
 	//============================================================================
 	
@@ -52,7 +53,7 @@ abstract class cs_genericGroupAbstract extends cs_webapplibsAbstract {
 		try{
 			$name = $this->clean_group_name($name);
 			$sql = "INSERT INTO ". self::groupTable ." (group_name) VALUES ('". $name ."')";
-			$newId = $this->db->run_insert($sql, self::gropuSeq);
+			$newId = $this->db->run_insert($sql, self::groupSeq);
 		}
 		catch(Exception $e) {
 			throw new exception(__METHOD__ .":: failed to create new record, DETAILS::: ". $e->getMessage());
@@ -77,6 +78,22 @@ abstract class cs_genericGroupAbstract extends cs_webapplibsAbstract {
 		
 		return($retval);
 	}//end get_group()
+	//============================================================================
+	
+	
+	
+	//============================================================================
+	public function get_all_groups() {
+		try {
+			$sql = "SELECT * FROM ". self::groupTable ." ORDER BY group_name";
+			$retval = $this->db->run_query($sql);
+		}
+		catch(Exception $e) {
+			throw new exception(__METHOD__ .":: failed to retrieve groups, DETAILS::: ". $e->getMessage());
+		}
+		
+		return($retval);
+	}//end get_all_groups()
 	//============================================================================
 	
 	

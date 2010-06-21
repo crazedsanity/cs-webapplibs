@@ -23,7 +23,7 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	const objTable = "cswal_object_table";
 	
 	/** Sequence for permissions table. */
-	const objSeq = "cswal_object_table_object_id";
+	const objSeq = "cswal_object_table_object_id_seq";
 	
 	/** List of valid keys... */
 	protected $keys = array();
@@ -89,13 +89,14 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	//============================================================================
 	protected function build_permission_string(array $perms) {
 		$this->_sanityCheck();
-		if(is_array($perms) && count($perms) == count($this->keys)) {
+		if(is_array($perms) && count($perms) >= count($this->keys)) {
 			$retval = "";
 			foreach($this->keys as $dbColName) {
 				if(isset($perms[$dbColName])) {
 					//get the last character of the column name.
-					$permChar = substring($dbColName, -1);
-					if($perms[$dbColName] === false) {
+					$permChar = substr($dbColName, -1);
+					if($perms[$dbColName] === false || !strlen($perms[$dbColName]) || $perms[$dbColName] === '-' || $perms[$dbColName] === 'f') {
+
 						$permChar = '-';
 					}
 					$retval .= $permChar;
@@ -125,13 +126,27 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	//============================================================================
 	public function create_permission($name, $userId, $groupId, $permString) {
 		if(is_string($name) && strlen($name) && is_numeric($userId) && $userId >= 0 && is_numeric($groupId) && $groupId >= 0) {
+			$cleanStringArr = array(
+				'object_name'	=> 'sql',
+				'user_id'		=> 'numeric',
+				'group_id'		=> 'numeric',
+				'u_r'			=> 'bool',
+				'u_w'			=> 'bool',
+				'u_x'			=> 'bool',
+				'g_r'			=> 'bool',
+				'g_w'			=> 'bool',
+				'g_x'			=> 'bool',
+				'o_r'			=> 'bool',
+				'o_w'			=> 'bool',
+				'o_x'			=> 'bool'
+			);
 			try{
 				$insertArr = $this->parse_permission_string($permString);
 				$insertArr['object_name'] = $this->gfObj->cleanString($name, 'sql', 0);
 				$insertArr['user_id'] = $userId;
 				$insertArr['group_id'] = $groupId;
 				
-				$insertSql = $this->gfObj->string_from_array($insertArr, 'insert');
+				$insertSql = $this->gfObj->string_from_array($insertArr, 'insert', null, $cleanStringArr);
 				$sql = "INSERT INTO ". self::objTable ." ". $insertSql;
 				$newId = $this->db->run_insert($sql, self::objSeq);
 			}
@@ -160,8 +175,8 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	//============================================================================
 	public function get_permission($name) {
 		try {
-			$name = $this->clean_permission_name($name);
-			$sql = "SELECT * FROM ". self::objTable ." WHERE permission_name='". $name ."'";
+			$name = $this->gfObj->cleanString($name, 'sql', 0);
+			$sql = "SELECT * FROM ". self::objTable ." WHERE object_name='". $name ."'";
 			$retval = $this->db->run_query($sql);
 		}
 		catch(Exception $e) {

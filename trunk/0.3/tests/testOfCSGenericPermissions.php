@@ -14,14 +14,24 @@
 class testOfCSGenericPermissions extends UnitTestCase {
 	
 	//--------------------------------------------------------------------------
-	function __construct() {
+	function setUp() {
 		$this->gfObj = new cs_globalFunctions;
 		$this->gfObj->debugPrintOpt=1;
 		if(!defined('CS_UNITTEST')) {
 			throw new exception(__METHOD__ .": FATAL: constant 'CS_UNITTEST' not set, can't do testing safely");
 		}
 		$this->get_valid_users();
-	}//end __construct()
+		$perm = new _gpTester($this->create_dbconn());
+		$perm->do_schema();
+	}//end setUp()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	public function tearDown() {
+		$this->remove_tables();
+	}
 	//--------------------------------------------------------------------------
 	
 	
@@ -81,14 +91,95 @@ class testOfCSGenericPermissions extends UnitTestCase {
 	//--------------------------------------------------------------------------
 	public function test_userGroups() {
 		$perm = new _gpTester($this->create_dbconn());
-		$perm->do_schema();
 		
-		//create a group with an invalid group_id.
-		$perm->create_user_group($this->validUsers[0]['uid'],1);
+		//make sure there are groups available.
+		{
+			$groupList = $perm->get_all_groups();
+			$keys = array_keys($groupList);
+			$myKey = $keys[0];
+			
+			$this->assertTrue(is_array($groupList));
+			$this->assertTrue(count($groupList) > 0);
+			
+			$this->assertTrue(isset($groupList[$myKey]));
+			$this->assertTrue(isset($groupList[$myKey]['group_name']));
+			$this->assertTrue(isset($groupList[$myKey]['group_id']));
+		}
+		
+		//create some groups.
+		{
+			$newGroupId = $perm->create_group(__METHOD__);
+			$this->assertTrue(is_numeric($newGroupId));
+			
+			$groupList = $perm->get_all_groups();
+			
+			foreach($groupList as $groupData) {
+				$this->assertEqual($perm->get_group_by_id($groupData['group_id']), $groupData);
+				$this->assertEqual($perm->get_group($groupData['group_name']), $groupData);
+			}
+		}
+		
+		//create & test user_group relationships.
+		{
+			$newId = $perm->create_user_group($this->validUsers[$myKey]['uid'],1);
+			$this->assertTrue(is_numeric($newId));
+			
+			$ugList = $perm->get_user_groups($this->validUsers[$myKey]['uid']);
+			$this->assertTrue(is_array($ugList));
+			$this->assertTrue(count($ugList) > 0);
+			$this->assertFalse(isset($ugList['group_name']));
+		}
 	}//end test_userGroups
 	//--------------------------------------------------------------------------
 	
 	
+	
+	//--------------------------------------------------------------------------
+	public function test_permissions() {
+		
+		$perm = new _gpTester($this->create_dbconn());
+		
+		//Test permission string parsing.
+		{
+			$myPermArr = array(
+				'u_r'	=> 'x',
+				'u_w'	=> 'x',
+				'u_x'	=> 'r',
+				'g_r'	=> '-',
+				'g_w'	=> '-',
+				'g_x'	=> '',
+				'o_r'	=> '',
+				'o_w'	=> '-',
+				'o_x'	=> 'x'
+			);
+			$permString = 'rwx-----x';
+			
+			$this->assertEqual(strlen($perm->make_perm_string($myPermArr)),9);
+			$this->assertEqual(count($perm->parse_perm_string($permString)), 9);
+			$this->assertEqual($perm->make_perm_string($myPermArr), $permString);
+			$this->assertEqual(array_keys($perm->parse_perm_string($permString)), array_keys($myPermArr));
+			$this->assertEqual($perm->make_perm_string($perm->parse_perm_string($permString)), $permString);
+			$this->assertEqual(array_keys($perm->parse_perm_string($perm->make_perm_string($myPermArr))), array_keys($myPermArr));
+		}
+		
+		//create some permissions.
+		{
+			$userKeys = array_keys($this->validUsers);
+			$myUser = $this->validUsers[$userKeys[0]];
+			
+			$usePermString = 'rwxrw-rw-';
+			$usePermName = __METHOD__ .'/test1';
+			$permId = $perm->create_permission($usePermName, $myUser['uid'], 1, $usePermString);
+			$this->assertTrue(is_numeric($permId));
+			
+			//the method 'build_permissions_string()' should disregard extra indices in the array & build the string.
+			$this->assertEqual($perm->make_perm_string($perm->get_permission_by_id($permId)), $usePermString);
+			$this->assertEqual($perm->make_perm_string($perm->get_object_by_id($permId)), $usePermString);
+			$this->assertEqual($perm->make_perm_string($perm->get_permission($usePermName)), $usePermString);
+			$this->assertEqual($perm->make_perm_string($perm->get_object($usePermName)), $usePermString);
+		}
+	}//end test_permissions
+	//--------------------------------------------------------------------------
 	
 }
 
@@ -99,6 +190,14 @@ class _gpTester extends cs_genericPermission {
 	
 	public function do_schema() {
 		$this->build_schema();
+	}
+	
+	public function make_perm_string(array $perms) {
+		return($this->build_permission_string($perms));
+	}
+	
+	public function parse_perm_string($string) {
+		return($this->parse_permission_string($string));
 	}
 }
 ?>
