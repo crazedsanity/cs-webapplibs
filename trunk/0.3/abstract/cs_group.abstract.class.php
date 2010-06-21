@@ -1,6 +1,6 @@
 <?php
 /*
- * Created on June 03, 2010
+ * Created on June 18, 2010
  * 
  * FILE INFORMATION:
  * 
@@ -11,7 +11,7 @@
  * $LastChangedRevision$
  */
 
-abstract class cs_genericPermissionAbstract extends cs_webapplibsAbstract {
+class cs_groupAbstract extends cs_webapplibsAbstract {
 	
 	/** Database object. */
 	public $db;
@@ -19,11 +19,11 @@ abstract class cs_genericPermissionAbstract extends cs_webapplibsAbstract {
 	/** cs_globalFunctions object, for cleaning strings & such. */
 	public $gfObj;
 	
-	/** Table name used to store permissions. */
-	const permTable = "cswal_permission_table";
+	/** Table name used to store groups. */
+	const groupTable = "cswal_group_table";
 	
-	/** Sequence for permissions table. */
-	const permSeq = "cswal_permission_table_permission_id";
+	/** Sequence for groups table. */
+	const groupSeq = "cswal_group_table_group_id";
 	
 	//============================================================================
 	public abstract function __construct(cs_phpDB $db) {
@@ -35,76 +35,76 @@ abstract class cs_genericPermissionAbstract extends cs_webapplibsAbstract {
 	
 	
 	//============================================================================
-	protected function clean_permission_name($name) {
+	protected function clean_group_name($name) {
 		if(!is_null($name) && is_string($name) && strlen($name)) {
 			$name = $this->gfObj->cleanString(strtolower($name), 'email');
 		}
 		else {
 			throw new exception(__METHOD__ .":: invalid string (". $name .")");
 		}
-	}//end clean_permission_name()
+	}//end clean_group_name()
 	//============================================================================
 	
 	
 	
 	//============================================================================
-	public function create_permission($name) {
+	public function create_group($name) {
 		try{
-			$name = $this->clean_permission_name($name);
-			$sql = "INSERT INTO ". self::permTable ." (permission_name) VALUES ('". $name ."')";
-			$newId = $this->db->run_insert($sql, self::permSeq);
+			$name = $this->clean_group_name($name);
+			$sql = "INSERT INTO ". self::groupTable ." (group_name) VALUES ('". $name ."')";
+			$newId = $this->db->run_insert($sql, self::gropuSeq);
 		}
 		catch(Exception $e) {
 			throw new exception(__METHOD__ .":: failed to create new record, DETAILS::: ". $e->getMessage());
 		}
 		
 		return($newId);
-	}//end create_permission()
+	}//end create_group()
 	//============================================================================
 	
 	
 	
 	//============================================================================
-	public function get_permission($name) {
+	public function get_group($name) {
 		try {
-			$name = $this->clean_permission_name($name);
-			$sql = "SELECT * FROM ". self::permTable ." WHERE permission_name='". $name ."'";
+			$name = $this->clean_group_name($name);
+			$sql = "SELECT * FROM ". self::groupTable ." WHERE group_name='". $name ."'";
 			$retval = $this->db->run_query($sql);
 		}
 		catch(Exception $e) {
-			throw new exception(__METHOD__ .":: error while locating permission '". $name ."', DETAILS::: ". $e->getMessage());
+			throw new exception(__METHOD__ .":: error while locating group '". $name ."', DETAILS::: ". $e->getMessage());
 		}
 		
 		return($retval);
-	}//end get_permission()
+	}//end get_group()
 	//============================================================================
 	
 	
 	
 	//============================================================================
-	public function get_permission_by_id($permId) {
+	public function get_group_by_id($groupId) {
 		try {
-			if(!is_null($permId) && is_numeric($permId)) {
-				$sql = "SELECT * FROM ". self::permTable ." WHERE permission_id='". $permId ."'";
+			if(!is_null($groupId) && is_numeric($groupId)) {
+				$sql = "SELECT * FROM ". self::groupTable ." WHERE group_id='". $groupId ."'";
 				$retval = $this->db->run_query($sql);
 			}
 			else {
-				throw new exception(__METHOD__ .":: invalid permission ID (". $permId .")");
+				throw new exception(__METHOD__ .":: invalid group ID (". $groupId .")");
 			}
 		}
 		catch(Exception $e) {
-			throw new exception(__METHOD__ .":: error while locating permission '". $permId ."', DETAILS::: ". $e->getMessage());
+			throw new exception(__METHOD__ .":: error while locating group '". $groupId ."', DETAILS::: ". $e->getMessage());
 		}
 		
 		return($retval);
-	}//end get_permission_by_id()
+	}//end get_group_by_id()
 	//============================================================================
 	
 	
 	
 	//============================================================================
 	/**
-	 * Build the schema for permissions.
+	 * Build the schema for the generic permissions system.
 	 */
 	private function build_schema() {
 		try {

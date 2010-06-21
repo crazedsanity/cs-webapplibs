@@ -1,13 +1,4 @@
-
---
--- Permission table
--- Specific permissions: these are words used by the code to determine if the user has the appropriate permission.
---
-CREATE TABLE cswal_permission_table (
-	permission_id serial NOT NULL PRIMARY KEY,
-	permission_name text NOT NULL UNIQUE
-);
-
+BEGIN;
 
 --
 -- Group table
@@ -15,44 +6,55 @@ CREATE TABLE cswal_permission_table (
 --
 CREATE TABLE cswal_group_table (
 	group_id serial NOT NULL PRIMARY KEY,
-	group_name text NOT NULL UNIQUE
-);
-
---
--- Permission + Group table
--- Enumerates permissions for a given group: any permissions not specifically entered are denied.
---
-CREATE TABLE cswal_permission_group_table (
-	permission_group_id serial NOT NULL PRIMARY KEY,
-	permission_id integer NOT NULL REFERENCES cswal_permission_table(permission_id),
-	group_id integer NOT NULL REFERENCES cswal_group_table(group_id),
-	allowed boolean NOT NULL DEFAULT false,
-	description text
+	group_name text NOT NULL UNIQUE,
+	group_admin integer NOT NULL REFERENCES cs_authtentication_table(uid)
 );
 
 --
 -- User + Group table
 -- Assigns a user to one or more groups.
--- NOTE::: the "user_id" column should be (manually) foreign-keyed to an existing user table.
+-- NOTE::: the "user_id" table should be updated to match your database schema.
 --
 CREATE TABLE cswal_user_group_table (
 	user_group_id serial NOT NULL PRIMARY KEY,
-	user_id integer NOT NULL,
+	user_id integer NOT NULL REFERENCES cs_authentication_table(uid),
 	group_id integer NOT NULL REFERENCES cswal_group_table(group_id)
 );
 
 
 --
--- User + Permission table
--- Give users specific permissions, overriding default and/or assigned group permissions.
+-- Object table
+-- Contains unique list of objects along with the owner, default group, & user/group/other permissions (like *nix filesystem permissions)
+-- The permissions for user/group/other could be converted to octal (i.e. "rwxrwxrwx" == "777"), but it isn't as straightforward to read.
+-- NOTE::: the "user_id" table should be updated to match your database schema.
 --
-CREATE TABLE cswal_user_permission_table (
-	user_permission_id serial NOT NULL PRIMARY KEY,
-	user_id integer NOT NULL,
+CREATE TABLE cswal_object_table (
+	object_id serial NOT NULL PRIMARY KEY,
+	object_name text NOT NULL UNIQUE,
+	user_id integer NOT NULL REFERENCES cs_authentication_table(uid),
 	group_id integer NOT NULL REFERENCES cswal_group_table(group_id),
-	permission_id integer NOT NULL REFERENCES cswal_permission_table(permission_id),
-	allowed boolean NOT NULL DEFAULT false
+	u_r boolean NOT NULL DEFAULT TRUE,
+	u_w boolean NOT NULL DEFAULT TRUE,
+	u_x boolean NOT NULL DEFAULT FALSE,
+	g_r boolean NOT NULL DEFAULT TRUE,
+	g_w boolean NOT NULL DEFAULT FALSE,
+	g_x boolean NOT NULL DEFAULT FALSE,
+	o_r boolean NOT NULL DEFAULT TRUE,
+	o_w boolean NOT NULL DEFAULT FALSE,
+	o_x boolean NOT NULL DEFAULT FALSE
 );
 
 
+INSERT INTO cswal_group_table (group_name) VALUES ('www');
+INSERT INTO cswal_group_table (group_name) VALUES ('blogs');
+INSERT INTO cswal_group_table (group_name) VALUES ('admin');
 
+INSERT INTO cswal_object_table 
+	(object_name,user_id, group_id)
+	VALUES
+	('/',        101,     1);
+
+INSERT INTO cswal_object_table
+	(object_name, user_id, group_id, g_r,  g_w)
+	VALUES 
+	('/member', 101,       2,        true, true);
