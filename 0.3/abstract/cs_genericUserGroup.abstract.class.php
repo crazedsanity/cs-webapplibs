@@ -53,8 +53,8 @@ abstract class cs_genericUserGroupAbstract extends cs_genericGroupAbstract {
 		if(is_numeric($userId) && $userId >= 0) {
 			try {
 				$sql = "SELECT ug.*, g.group_name FROM ". self::ugTable ." AS ug INNER "
-					."JOIN ". parent::groupTable ." as g WHERE user_id=". $userId;
-				$retval = $this->db->run_query($sql);
+					."JOIN ". parent::groupTable ." as g USING (group_id) WHERE user_id=". $userId;
+				$retval = $this->db->run_query($sql, 'group_id');
 			}
 			catch(Exception $e) {
 				throw new exception(__METHOD__ .":: failed to locate group (". $groupName ."), DETAILS::: ". $e->getMessage());

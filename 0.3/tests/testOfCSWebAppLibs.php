@@ -291,7 +291,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 		
 		// now REALLY test paths.
 		{
-			#$gdl = new gdlTester($this->create_dbconn());
+			$gdl = new gdlTester($this->create_dbconn());
 			
 			$myBasePath = '/character/sheet/Xander Cage';
 			$x->set_base_path($myBasePath);
