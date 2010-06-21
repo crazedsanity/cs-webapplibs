@@ -73,7 +73,6 @@ class testOfCSGenericPermissions extends UnitTestCase {
 		$sql = "SELECT uid,username FROM cs_authentication_table ORDER BY uid";
 		$db = $this->create_dbconn();
 		$this->validUsers = $db->run_query($sql);
-		$this->gfObj->debug_print($this->validUsers);
 	}//end get_valid_users()
 	//--------------------------------------------------------------------------
 	

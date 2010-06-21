@@ -193,14 +193,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	 * Execute the entire contents of the given file (with absolute path) as SQL.
 	 */
 	public function run_sql_file($filename) {
-		if(!is_object($this->fsObj)) {
-			if(class_exists('cs_fileSystem')) {
-				$fsObj = new cs_fileSystem(dirname($filename));
-			}
-			else {
-				throw new exception(__METHOD__ .": required library (cs_fileSystem) not found");
-			}
-		}
+		$fsObj = new cs_fileSystem(dirname($filename));
 		
 		$this->lastSQLFile = $filename;
 		
