@@ -7,7 +7,7 @@ BEGIN;
 CREATE TABLE cswal_group_table (
 	group_id serial NOT NULL PRIMARY KEY,
 	group_name text NOT NULL UNIQUE,
-	group_admin integer NOT NULL REFERENCES cs_authtentication_table(uid)
+	group_admin integer REFERENCES cs_authentication_table(uid)
 );
 
 --

@@ -205,14 +205,8 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		$this->lastSQLFile = $filename;
 		
 		$fileContents = $fsObj->read($filename);
-		try {
-			$this->db->run_update($fileContents, true);
-			$this->build_cache();
-			$retval = TRUE;
-		}
-		catch(exception $e) {
-			$retval = FALSE;
-		}
+		$this->run_update($fileContents, true);
+		$retval = TRUE;
 		
 		return($retval);
 	}//end run_sql_file()

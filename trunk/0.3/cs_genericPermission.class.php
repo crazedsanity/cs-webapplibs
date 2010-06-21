@@ -29,7 +29,7 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	protected $keys = array();
 	
 	//============================================================================
-	public abstract function __construct(cs_phpDB $db) {
+	public function __construct(cs_phpDB $db) {
 		$this->db = $db;
 		parent::__construct($db);
 		$this->gfObj = new cs_globalFunctions;
@@ -70,7 +70,7 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 			//handle it like an array.
 			for($x=0;$x<strlen($string);$x++) {
 				$myVal = false;
-				if($string[$x] !== '-') 
+				if($string[$x] !== '-') { 
 					$myVal = true;
 				}
 				$key = $this->keys[$x];
@@ -176,7 +176,7 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	
 	//============================================================================
 	public function get_object_by_id($objectId) {
-		return($this->get_permission_by_id($objectId);
+		return($this->get_permission_by_id($objectId));
 	}//end get_object_by_id()
 	//============================================================================
 	
