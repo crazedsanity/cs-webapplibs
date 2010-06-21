@@ -12,7 +12,7 @@
  * $LastChangedRevision$
  */
 
-abstract class cs_genericGroupAbstract extends cs_genericPermissionAbstract {
+abstract class cs_genericGroupAbstract extends cs_webapplibsAbstract {
 	
 	/** Table name used to store groups. */
 	const groupTable = "cswal_group_table";

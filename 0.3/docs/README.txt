@@ -91,3 +91,31 @@ WORK FLOW:
 	 					--> stop upgrade process.
 	 					--> HALT
  --> (continues as before)
+
+
+=== CS Generic Permissions === 
+
+This permissions system is built to be flexible enough to be used in virtually any application for any purpose.  The "permissions" are stored in a way that basically mimics *nix filesystem permissions.  The code must know what the object is for which the user is asking permission.  That object has the following traits:
+	* Object Name: the name of the item that is being assigned permissions.
+		-- Examples:
+			++ A URL (i.e. "/authenticated" would only be accessible to the owner + group members)
+			++ A Blog (i.e. "/blog/harryjohnson" would be readable to everyone, but only writeable by user "harryjohnson")
+			++ A File (i.e. "/{WEBROOT}/files/hiddenData.sqlite" might only be allowed access by a certain user)
+			++ Executing a special script: (i.e. "/bin/importFiles.pl", run script using a web interface)
+	* User ID: indicates what user owns this object.
+	* Group ID: indicates a group that users must be part of (if not owner) to be assigned these permissions
+	* Permission Bits:
+		-- Each permission is a true/false value.  The name is in the form "{x}_{y}"
+			++ "{x}":  u/g/o (User/Group/Owner)
+			++ "{y}":  r/w/x (Read/Write/eXecute)
+		-- Full Explanation:
+			++ "u_r":  User's read permission; indicates if the owner can "read" (view) it.
+			++ "u_w":  User's write permission; indicates if the owner can write (create/update) the object.
+			++ "u_x":  User's execute permission; this rarely applies, and usage would vary greatly depending upon the object & associated code.
+			++ "g_r":  Group read permission; users assigned to the associated group can/cannot "read" (view) it.
+			++ "g_w":  Group write permission; users assigned to the associated group can/cannot write (create/update) the object.
+			++ "g_x":  Group execute permission; users assigned to the associated group are bound by this value (usage depends on code).
+			++ "o_r":  Other read permission; users that are not owners or members of the group can/cannot "read" (view) it
+			++ "o_w":  Other write permission; users that are not owners or members of the group can/cannot write (create/update) the object.
+			++ "o_x":  Other execute permission; users that are... you get the idea.
+
