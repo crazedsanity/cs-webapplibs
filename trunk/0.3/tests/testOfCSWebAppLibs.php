@@ -203,7 +203,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 	
 	
 	//--------------------------------------------------------------------------
-	function tst_genericDataLinker() {
+	function test_genericDataLinker() {
 		
 		$x = new gdlTester($this->create_dbconn());
 		
@@ -260,7 +260,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 		}
 		
 		
-		/*/basic tests for building text-based paths vs. id-based paths.
+		//basic tests for building text-based paths vs. id-based paths.
 		{
 			$myPath = '/character/sheet/Tetra Tealeaf';
 			
@@ -273,8 +273,8 @@ class testOfCSWebAppLibs extends UnitTestCase {
 			$idList2 = $x->create_path($myPath);
 			$this->assertEqual($x->create_id_path(array_values($idList)), $idList2);
 			
-			$this->assertEqual($myPath, $x->get_text_path_from_id_path($x->create_id_path($idList)));
-			$this->gfObj->debug_var_dump($x->get_text_path_from_id_path($x->create_id_path($idList)));
+			$this->assertEqual($myPath, $x->get_path_from_idlist($x->create_id_path($idList)));
+			$this->gfObj->debug_var_dump($x->get_path_from_idlist($x->create_id_path($idList)));
 			
 			$this->gfObj->debug_var_dump($idList);
 			$this->gfObj->debug_var_dump($idList2);
@@ -495,7 +495,6 @@ class authTokenTester extends cs_authToken {
 	}
 }
 
-/*
 class gdlTester extends cs_genericDataLinker {
 	public $isTest = true;
 	
@@ -507,6 +506,5 @@ class gdlTester extends cs_genericDataLinker {
 		return($this->create_path_objects($path));
 	}
 }
-//*/
 
 ?>
