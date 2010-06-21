@@ -21,7 +21,7 @@ abstract class cs_genericUserGroupAbstract extends cs_genericGroupAbstract {
 	const ugSeq = "cswal_user_group_table_user_group_id_seq";
 	
 	//============================================================================
-	public abstract function __construct(cs_phpDB $db) {
+	public function __construct(cs_phpDB $db) {
 		parent::__construct($db);
 	}//end __construct()
 	//============================================================================
@@ -36,7 +36,7 @@ abstract class cs_genericUserGroupAbstract extends cs_genericGroupAbstract {
 				$newId = $this->db->run_insert($sql, self::ugSeq);
 			}
 			catch(Exception $e) {
-				throw new exception(__METHOD__ .":: failed to create group (". $groupName ."), DETAILS::: ". $e->getMessage());
+				throw new exception(__METHOD__ .":: failed to create user group, DETAILS::: ". $e->getMessage());
 			}
 		}
 		else {

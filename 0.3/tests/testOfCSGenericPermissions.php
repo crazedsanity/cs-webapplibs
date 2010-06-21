@@ -20,6 +20,7 @@ class testOfCSGenericPermissions extends UnitTestCase {
 		if(!defined('CS_UNITTEST')) {
 			throw new exception(__METHOD__ .": FATAL: constant 'CS_UNITTEST' not set, can't do testing safely");
 		}
+		$this->get_valid_users();
 	}//end __construct()
 	//--------------------------------------------------------------------------
 	
@@ -65,12 +66,40 @@ class testOfCSGenericPermissions extends UnitTestCase {
 	
 	
 	//--------------------------------------------------------------------------
+	/**
+	 * Just like the schema, this SQL will need to change to match your database in order to work.
+	 */
+	private function get_valid_users() {
+		$sql = "SELECT uid,username FROM cs_authentication_table ORDER BY uid";
+		$db = $this->create_dbconn();
+		$this->validUsers = $db->run_query($sql);
+		$this->gfObj->debug_print($this->validUsers);
+	}//end get_valid_users()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
 	public function test_userGroups() {
-		$perm = new cs_genericPermission($this->create_dbconn());
+		$perm = new _gpTester($this->create_dbconn());
+		$perm->do_schema();
+		
+		//create a group with an invalid group_id.
+		$perm->create_user_group($this->validUsers[0]['uid'],1);
 	}//end test_userGroups
 	//--------------------------------------------------------------------------
 	
 	
 	
+}
+
+class _gpTester extends cs_genericPermission {
+	public function __construct($db) {
+		parent::__construct($db);
+	}
+	
+	public function do_schema() {
+		$this->build_schema();
+	}
 }
 ?>
