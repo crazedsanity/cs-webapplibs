@@ -37,7 +37,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 		$db = new cs_phpDB(constant('DBTYPE'));
 		$db->connect($dbParams);
 		return($db);
-	}//end create_db()
+	}//end create_dbconn()
 	//--------------------------------------------------------------------------
 	
 	
@@ -48,8 +48,7 @@ class testOfCSWebAppLibs extends UnitTestCase {
 			'cswal_auth_token_table', 'cswal_version_table', 'cswal_attribute_table', 
 			'cswal_category_table', 'cswal_class_table', 'cswal_event_table', 
 			'cswal_log_attribute_table', 'cswal_log_table', 'cswal_session_store_table',
-			'cswal_gdl_object_table', 'cswal_gdl_attribute_table', 'cswal_gdl_path_table',
-			'cswal_object_table', 'cswal_user_group_table', 'cswal_group_table'
+			'cswal_gdl_object_table', 'cswal_gdl_path_table', 'cswal_gdl_attribute_table'
 		);
 		
 		$db = $this->create_dbconn();
