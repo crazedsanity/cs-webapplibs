@@ -123,6 +123,7 @@ class testOfCSGenericPermissions extends UnitTestCase {
 		{
 			$newId = $perm->create_user_group($this->validUsers[$myKey]['uid'],1);
 			$this->assertTrue(is_numeric($newId));
+			$this->assertTrue($perm->is_group_member($this->validUsers[$myKey]['uid'],1));
 			
 			$ugList = $perm->get_user_groups($this->validUsers[$myKey]['uid']);
 			$this->assertTrue(is_array($ugList));
@@ -152,6 +153,23 @@ class testOfCSGenericPermissions extends UnitTestCase {
 				'o_w'	=> '-',
 				'o_x'	=> 'x'
 			);
+			$permByType = array(
+				'u'	=> array(
+						'r'	=> true,
+						'w'	=> true,
+						'x'	=> true
+					),
+				'g'	=> array(
+						'r'	=> false,
+						'w'	=> false,
+						'x'	=> false
+					),
+				'o' => array(
+						'r'	=> false,
+						'w'	=> false,
+						'x'	=> true
+					)
+			);
 			$permString = 'rwx-----x';
 			
 			$this->assertEqual(strlen($perm->make_perm_string($myPermArr)),9);
@@ -160,16 +178,23 @@ class testOfCSGenericPermissions extends UnitTestCase {
 			$this->assertEqual(array_keys($perm->parse_perm_string($permString)), array_keys($myPermArr));
 			$this->assertEqual($perm->make_perm_string($perm->parse_perm_string($permString)), $permString);
 			$this->assertEqual(array_keys($perm->parse_perm_string($perm->make_perm_string($myPermArr))), array_keys($myPermArr));
+			
+			$this->assertEqual($perm->get_perm_list($myPermArr,'u'), $permByType['u']);
+			$this->assertEqual($perm->get_perm_list($myPermArr,'g'), $permByType['g']);
+			$this->assertEqual($perm->get_perm_list($myPermArr,'o'), $permByType['o']);
 		}
 		
 		//create some permissions.
 		{
 			$userKeys = array_keys($this->validUsers);
 			$myUser = $this->validUsers[$userKeys[0]];
+			$myUid = $myUser['uid'];
 			
-			$usePermString = 'rwxrw-rw-';
+			$usePermString = 'rwxrw-r--';
 			$usePermName = __METHOD__ .'/test1';
-			$permId = $perm->create_permission($usePermName, $myUser['uid'], 1, $usePermString);
+			$this->assertFalse($perm->permission_exists($usePermName));
+			$permId = $perm->create_permission($usePermName, $myUid, 1, $usePermString);
+			$this->assertTrue($perm->permission_exists($usePermName));
 			$this->assertTrue(is_numeric($permId));
 			
 			//the method 'build_permissions_string()' should disregard extra indices in the array & build the string.
@@ -177,6 +202,29 @@ class testOfCSGenericPermissions extends UnitTestCase {
 			$this->assertEqual($perm->make_perm_string($perm->get_object_by_id($permId)), $usePermString);
 			$this->assertEqual($perm->make_perm_string($perm->get_permission($usePermName)), $usePermString);
 			$this->assertEqual($perm->make_perm_string($perm->get_object($usePermName)), $usePermString);
+			
+			//check to make sure individual permission requests work as expected.
+			$this->assertTrue($perm->has_read_permission($myUid, $usePermName));
+			$this->assertTrue($perm->has_write_permission($myUid, $usePermName));
+			$this->assertTrue($perm->has_execute_permission($myUid, $usePermName));
+			
+			//make sure "anonymous" permissions are correct.
+			$this->assertTrue($perm->has_read_permission(0,$usePermName));
+			$this->assertFalse($perm->has_write_permission(0,$usePermName));
+			$this->assertFalse($perm->has_execute_permission(0,$usePermName));
+			
+			//put a second user into the proper user_group, then test group permissions.
+			$secondUser = $this->validUsers[$userKeys[1]]['uid'];
+			$this->assertTrue(is_numeric($perm->create_user_group($secondUser, 1)));
+			$this->assertTrue($perm->has_read_permission($secondUser, $usePermName));
+			$this->assertTrue($perm->has_write_permission($secondUser, $usePermName));
+			$this->assertFalse($perm->has_execute_permission($secondUser, $usePermName));
+			
+			//test a THIRD user (non-zero uid), make sure they are subject to the same permissions as anonymous (uid=0)
+			$thirdUser = $this->validUsers[$userKeys[2]]['uid'];
+			$this->assertEqual($perm->has_read_permission(0,$usePermName), $perm->has_read_permission($thirdUser,$usePermName));
+			$this->assertEqual($perm->has_write_permission(0,$usePermName), $perm->has_write_permission($thirdUser,$usePermName));
+			$this->assertEqual($perm->has_execute_permission(0,$usePermName), $perm->has_execute_permission($thirdUser,$usePermName));
 		}
 	}//end test_permissions
 	//--------------------------------------------------------------------------
@@ -198,6 +246,10 @@ class _gpTester extends cs_genericPermission {
 	
 	public function parse_perm_string($string) {
 		return($this->parse_permission_string($string));
+	}
+	
+	public function get_perm_list(array $permData, $type) {
+		return($this->get_permission_list($permData, $type));
 	}
 }
 ?>

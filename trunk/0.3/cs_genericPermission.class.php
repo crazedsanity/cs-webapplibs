@@ -29,6 +29,9 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	protected $keys = array();
 	
 	//============================================================================
+	/**
+	 * Generic permission system based on *nix filesystem permissions.
+	 */
 	public function __construct(cs_phpDB $db) {
 		$this->db = $db;
 		parent::__construct($db);
@@ -63,6 +66,9 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	
 	
 	//============================================================================
+	/**
+	 * Parses a string like 'rwxr-xr--' into keys for the database.
+	 */
 	protected function parse_permission_string($string) {
 		$this->_sanityCheck();
 		if(is_string($string) && strlen($string) == 9) {
@@ -87,6 +93,9 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	
 	
 	//============================================================================
+	/** 
+	 * Create permission string based on an array (the opposite of parse_permission_string())
+	 */
 	protected function build_permission_string(array $perms) {
 		$this->_sanityCheck();
 		if(is_array($perms) && count($perms) >= count($this->keys)) {
@@ -94,9 +103,11 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 			foreach($this->keys as $dbColName) {
 				if(isset($perms[$dbColName])) {
 					//get the last character of the column name.
-					$permChar = substr($dbColName, -1);
-					if($perms[$dbColName] === false || !strlen($perms[$dbColName]) || $perms[$dbColName] === '-' || $perms[$dbColName] === 'f') {
-
+					$thisPermChar = substr($dbColName, -1);
+					if($this->evaluate_perm_value($perms[$dbColName], $thisPermChar)) {
+						$permChar = substr($dbColName, -1);
+					}
+					else {
 						$permChar = '-';
 					}
 					$retval .= $permChar;
@@ -116,6 +127,9 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	
 	
 	//============================================================================
+	/**
+	 * Same as create_permission().
+	 */
 	public function create_object($name, $userId, $groupId, $permString) {
 		return($this->create_permission($name, $userId, $groupId, $permString));
 	}//end create_object()
@@ -124,6 +138,9 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	
 	
 	//============================================================================
+	/** 
+	 * Creates a permission object record.
+	 */
 	public function create_permission($name, $userId, $groupId, $permString) {
 		if(is_string($name) && strlen($name) && is_numeric($userId) && $userId >= 0 && is_numeric($groupId) && $groupId >= 0) {
 			$cleanStringArr = array(
@@ -165,6 +182,9 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	
 	
 	//============================================================================
+	/**
+	 * Same as get_permission().
+	 */
 	public function get_object($name) {
 		return($this->get_permission($name));
 	}//end get_object()
@@ -173,6 +193,9 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	
 	
 	//============================================================================
+	/**
+	 * Retrieves a permission object by name from the database, exception on failure.
+	 */
 	public function get_permission($name) {
 		try {
 			$name = $this->gfObj->cleanString($name, 'sql', 0);
@@ -190,6 +213,9 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	
 	
 	//============================================================================
+	/**
+	 * Same as get_permission_by_id().
+	 */
 	public function get_object_by_id($objectId) {
 		return($this->get_permission_by_id($objectId));
 	}//end get_object_by_id()
@@ -198,6 +224,9 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	
 	
 	//============================================================================
+	/**
+	 * Retrieves a permission object from the database based on an ID.
+	 */
 	public function get_permission_by_id($permId) {
 		try {
 			if(!is_null($permId) && is_numeric($permId)) {
@@ -214,6 +243,160 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 		
 		return($retval);
 	}//end get_permission_by_id()
+	//============================================================================
+	
+	
+	
+	//============================================================================
+	/**
+	 * Check available permissions...
+	 */
+	public function check_permission($objectName, $userId) {
+		$availablePerms = array(
+			'r'	=> false,
+			'w'	=> false,
+			'x'	=> false
+		);
+			
+		try {
+			//get the object.
+			$permission = $this->get_permission($objectName);
+			
+			//now figure out what permissions they have.
+			if($permission['user_id'] == $userId) {
+				//it is the owner, determine based on the permissions with the 'u_' prefix.
+				$availablePerms = $this->get_permission_list($permission, 'u');
+			}
+			elseif($this->is_group_member($userId, $permission['group_id'])) {
+				//group member, use the 'g_' permissions.
+				$availablePerms = $this->get_permission_list($permission, 'g');
+			}
+			else {
+				//not owner OR group member, use the 'o_' permissions
+				$availablePerms = $this->get_permission_list($permission, 'o');
+			}
+		}
+		catch(Exception $e) {
+			//consider logging this... maybe based on some internal variable.
+		}
+		
+		return($availablePerms);
+	}//end check_permission()
+	//============================================================================
+	
+	
+	
+	//============================================================================
+	/** 
+	 * Creates an array of permission bits based on user/group/other from the given 
+	 * permission data (i.e. the return from get_permission()).
+	 */
+	protected function get_permission_list(array $permData, $type) {
+		$retval = array();
+		if(in_array($type, array('u', 'g', 'o'))) {
+			foreach($this->keys as $myKey) {
+				if(preg_match('/'. $type .'_[rwx]$/',$myKey)) {
+					//chop the last character off (i.e. 'r' from 'u_r')
+					$myPermChar = substr($myKey, -1);
+					#$retval[$myPermChar] = $this->gfObj->interpret_bool($permData[$myKey], array('f', 't'));
+					$retval[$myPermChar] = $this->evaluate_perm_value($permData[$myKey], $type);
+				}
+			}
+		}
+		else {
+			throw new exception(__METHOD__ .":: invalid type (". $type ."), must be u/g/o");
+		}
+		
+		return($retval);
+	}//end get_permission_list()
+	//============================================================================
+	
+	
+	
+	//============================================================================
+	/**
+	 * Evaluate the value in a permission bit as true (allowed) or false (disallowed).
+	 */
+	protected function evaluate_perm_value($val=null) {
+		
+		if($val === '-' || $val === false || $val === 'f' || $val === 0 || $val === '0' || !strlen($val)) {
+			$retval = false;
+		}
+		else {
+			$retval = true;
+		}
+		return($retval);
+	}//end evaluate_perm_value
+	//============================================================================
+	
+	
+	
+	//============================================================================
+	/**
+	 * Determines if a permission record exists (based on name).
+	 */
+	public function permission_exists($permName) {
+		try {
+			$info = $this->get_permission($permName);
+			$retval = false;
+			if(is_array($info)) {
+				$retval = true;
+			}
+		}
+		catch(Exception $e) {
+			$retval = false;
+		}
+		
+		return($retval);
+	}//end permission_exists()
+	//============================================================================
+	
+	
+	
+	//============================================================================
+	/**
+	 * If user has read permission for the given named permission/object.
+	 */
+	public function has_read_permission($userId, $permName) {
+		$myPerms = $this->check_permission($permName, $userId);
+		$retval = false;
+		if($myPerms['r'] === true) {
+			$retval = true;
+		}
+		return($retval);
+	}//end has_read_permission()
+	//============================================================================
+	
+	
+	
+	//============================================================================
+	/**
+	 * If user has write permission for the given named permission/object.
+	 */
+	public function has_write_permission($userId, $permName) {
+		$myPerms = $this->check_permission($permName, $userId);
+		$retval = false;
+		if($myPerms['w'] === true) {
+			$retval = true;
+		}
+		return($retval);
+	}//end has_write_permission()
+	//============================================================================
+	
+	
+	
+	//============================================================================
+	/**
+	 * If user has execute permission for the given named permission/object.
+	 */
+	public function has_execute_permission($userId, $permName) {
+		$myPerms = $this->check_permission($permName, $userId);
+		$retval = false;
+		if($myPerms['x'] === true) {
+			$retval = true;
+		}
+		return($retval);
+	}//end has_execute_permission()
 	//============================================================================
 }
 ?>
