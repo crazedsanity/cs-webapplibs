@@ -57,14 +57,27 @@ abstract class cs_genericUserGroupAbstract extends cs_genericGroupAbstract {
 				$retval = $this->db->run_query($sql, 'group_id');
 			}
 			catch(Exception $e) {
-				throw new exception(__METHOD__ .":: failed to locate group (". $groupName ."), DETAILS::: ". $e->getMessage());
+				throw new exception(__METHOD__ .":: failed to locate groups for user_id=(". $userId ."), DETAILS::: ". $e->getMessage());
 			}
 		}
 		else {
 			throw new exception(__METHOD__ .":: invalid or non-numeric user_id (". $userId .")");
 		}
 		return($retval);
-	}//end get_group()
+	}//end get_user_groups()
+	//============================================================================
+	
+	
+	
+	//============================================================================
+	public function is_group_member($userId, $groupId) {
+		$groupList = $this->get_user_groups($userId);
+		$retval = false;
+		if(isset($groupList[$groupId])) {
+			$retval = true;
+		}
+		return($retval);
+	}//end is_group_member()
 	//============================================================================
 	
 }
