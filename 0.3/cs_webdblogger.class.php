@@ -86,7 +86,12 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	 */
 	public function __construct(cs_phpDB &$db, $logCategory=null, $checkForUpgrades=true) {
 		//assign the database object.
-		$this->db = $db;
+		if(is_object($db) && get_class($db) == 'cs_phpDB') {
+			$this->db = $db;
+		}
+		else {
+			throw new exception(__METHOD__ .":: invalid database object");
+		}
 		
 		$this->set_version_file_location(dirname(__FILE__) . '/VERSION');
 		

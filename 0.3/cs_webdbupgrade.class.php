@@ -1058,12 +1058,17 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		
 		$sql = 'INSERT INTO '. $this->config['DB_TABLE'] . $this->gfObj->string_from_array($insertData, 'insert');
 		
-		if($this->db->run_insert($sql, $this->sequenceName)) {
-			$loadRes = true;
-			$this->do_log("Created data for '". $this->projectName ."' with version '". $insertData['version_string'] ."'", 'initialize');
+		try {
+			if($this->db->run_insert($sql, $this->sequenceName)) {
+				$loadRes = true;
+				$this->do_log("Created data for '". $this->projectName ."' with version '". $insertData['version_string'] ."'", 'initialize');
+			}
+			else {
+				$this->error_handler(__METHOD__ .": failed to load initial version::: ". $e->getMessage());
+			}
 		}
-		else {
-			$this->error_handler(__METHOD__ .": failed to load initial version::: ". $e->getMessage());
+		catch(Exception $e) {
+			$this->error_handler(__METHOD__ .":: failed to load initial version due to exception, DETAILS::: ". $e->getMessage());
 		}
 		
 		return($loadRes);

@@ -81,8 +81,14 @@ class testOfCSGenericPermissions extends UnitTestCase {
 	 */
 	private function get_valid_users() {
 		$sql = "SELECT uid,username FROM cs_authentication_table ORDER BY uid";
-		$db = $this->create_dbconn();
-		$this->validUsers = $db->run_query($sql);
+		try {
+			$db = $this->create_dbconn();
+			$this->validUsers = $db->run_query($sql);
+		}
+		catch(Exception $e) {
+			cs_debug_backtrace(1);
+			throw new exception(__METHOD__ .":: failed to retrieve any records (". $db->numRows() ."), DB OBJECT::: ". $this->gfObj->debug_print($db,0));
+		}
 	}//end get_valid_users()
 	//--------------------------------------------------------------------------
 	

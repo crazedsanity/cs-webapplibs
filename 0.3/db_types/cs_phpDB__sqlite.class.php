@@ -178,13 +178,14 @@ class cs_phpDB__sqlite extends cs_phpDBAbstract {
 			$this->result = @sqlite_query($this->connectionID, $query);
 
 			if($this->result !== false) {
-				if (eregi("^[[:space:]]*select", $query)) {
-					//If we didn't have an error and we are a select statement, move the pointer to first result
-					$numRows = $this->numRows();
+				$numRows = $this->numRows();
+				if($numRows != 0) {
 					$returnVal = $numRows;
+					if($numRows > 0) {
+						$this->move_first();
+					}
 				}
 				else {
-					//We got something other than an update. Use numAffected
 					$returnVal = $this->numAffected();
 				}
 			}
