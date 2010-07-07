@@ -26,6 +26,7 @@
 
 class cs_phpDB extends cs_webapplibsAbstract {
 	
+	public $queryList=array();
 	private $dbLayerObj;
 	private $dbType;
 	public $connectParams = array();
@@ -59,6 +60,13 @@ class cs_phpDB extends cs_webapplibsAbstract {
 			if($methodName == 'connect' && is_array($args[0])) {
 				//capture the connection parameters.
 				$this->connectParams = $args[0];
+			}
+			elseif($methodName == 'exec') {
+				//update lastQuery list... should hold the last few SQL commands.
+				if(count($this->queryList) > 20) {
+					array_pop($this->queryList);
+				}
+				array_unshift($this->queryList, $args[0]);
 			}
 			$retval = call_user_func_array(array($this->dbLayerObj, $methodName), $args);
 		}
@@ -203,6 +211,14 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		
 		return($retval);
 	}//end run_sql_file()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function is_connected() {
+		return($this->dbLayerObj->is_connected());
+	}//end is_connected()
 	//=========================================================================
 } // end class phpDB
 

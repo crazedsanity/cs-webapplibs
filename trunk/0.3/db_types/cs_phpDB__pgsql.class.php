@@ -230,27 +230,25 @@ class cs_phpDB__pgsql extends cs_phpDBAbstract {
 		if($this->useQueryList) {
 			$this->queryList[] = $query;
 		}
-		$returnVal = false;
 		
+		$returnVal = false;
 		if(($this->get_transaction_status() != -1) && ($this->connectionID != -1)) {
 			$this->result = @pg_query($this->connectionID, $query);
 
 			if($this->result !== false) {
-				if (eregi("^[[:space:]]*select", $query)) {
-					//If we didn't have an error and we are a select statement, move the pointer to first result
-					$numRows = $this->numRows();
+				$numRows = $this->numRows();
+				if($numRows != 0) {
+					$returnVal = $numRows;
 					if($numRows > 0) {
 						$this->move_first();
 					}
-					$returnVal = $numRows;
-					
 				}
 				else {
-					//We got something other than an update. Use numAffected
 					$returnVal = $this->numAffected();
 				}
 			}
  		}
+ 		
 		return($returnVal);
 	}//end exec()
 	//=========================================================================

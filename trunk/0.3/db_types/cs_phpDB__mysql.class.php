@@ -213,18 +213,17 @@ class cs_phpDB__mysql extends cs_phpDBAbstract {
 		$this->result = mysql_query($query, $this->connectionID);
 		
 		if($this->result !== false) {
-			if (eregi("^[[:space:]]*select", $query)) {
-				//If we didn't have an error and we are a select statement, move the pointer to first result
+			if($this->result !== false) {
 				$numRows = $this->numRows();
-				if($numRows > 0) {
-					$this->move_first();
+				if($numRows != 0) {
+					$returnVal = $numRows;
+					if($numRows > 0) {
+						$this->move_first();
+					}
 				}
-				$returnVal = $numRows;
-				
-			}
-			else {
-				//We got something other than an update. Use numAffected
-				$returnVal = $this->numAffected();
+				else {
+					$returnVal = $this->numAffected();
+				}
 			}
 		}
 		return($returnVal);

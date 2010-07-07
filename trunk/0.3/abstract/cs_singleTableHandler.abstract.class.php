@@ -13,11 +13,11 @@
 abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	
 	protected $gfObj;
-	abstract protected $tableName;
-	abstract protected $seqName;
-	abstract protected $pkeyField;
-	abstract protected $cleanStringArr;
-	abstract protected $dbParams;
+	protected $tableName;
+	protected $seqName;
+	protected $pkeyField;
+	protected $cleanStringArr;
+	protected $dbParams;
 	
 	//-------------------------------------------------------------------------
 	/**
@@ -33,11 +33,11 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 		$this->set_version_file_location(dirname(__FILE__) . '/../VERSION');
 		parent::__construct(true);
 		
-		if($dbObj->is_connnected()) {
+		if(isset($dbObj) && is_object($dbObj) && $dbObj->is_connected()) {
 			$this->dbObj = $dbObj;
 		}
 		else {
-			throw new exception(__METHOD__ .":: database object not connected");
+			throw new exception(__METHOD__ .":: database object not connected or not passed");
 		}
 		
 		if(is_string($tableName) && strlen($tableName)) {
