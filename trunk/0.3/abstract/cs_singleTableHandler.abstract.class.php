@@ -23,11 +23,11 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	/**
 	 * Generic way of using a class to define how to update a single database table.
 	 * 
-	 * @dbObj			(object) Connected instance of cs_phpDB{}.
-	 * @tableName		(str) Name of table inserting/updating.
-	 * @seqName			(str) Name of sequence, used with PostgreSQL for retrieving the last inserted ID.
-	 * @pkeyField		(str) Name of the primary key field, for performing updates & retrieving specific records.
-	 * @cleanStringArr	(array) Array of {fieldName}=>{dataType} for allowing updates & creating records.
+	 * @param $dbObj			(object) Connected instance of cs_phpDB{}.
+	 * @param $tableName		(str) Name of table inserting/updating.
+	 * @param $seqName			(str) Name of sequence, used with PostgreSQL for retrieving the last inserted ID.
+	 * @param $pkeyField		(str) Name of the primary key field, for performing updates & retrieving specific records.
+	 * @param $cleanStringArr	(array) Array of {fieldName}=>{dataType} for allowing updates & creating records.
 	 */
     function __construct(cs_phpDB $dbObj, $tableName, $seqName, $pkeyField, array $cleanStringArr) {
 		$this->set_version_file_location(dirname(__FILE__) . '/../VERSION');
@@ -76,7 +76,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	/** 
 	 * Insert a new record into the table.
 	 * 
-	 * @$data			(array) field=>value pairs of data to be inserted.
+	 * @param $data		(array) field=>value pairs of data to be inserted.
 	 * 
 	 * @RETURN (int)	SUCCESS: the (int) is the last inserted ID.
 	 * @EXCEPTION		FAIL: exception indicates the error.
@@ -100,10 +100,10 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	/**
 	 * Retrieve a record based on a given ID, such as was returned from create_record().
 	 * 
-	 * @$recId			(int) ID to retrieve.
+	 * @param $recId		(int) ID to retrieve.
 	 * 
-	 * @RETURN (array)	SUCCESS: list of field=>value of data from database.
-	 * @EXCEPTION		FAIL: exception indicates the error.
+	 * @RETURN (array)		SUCCESS: list of field=>value of data from database.
+	 * @EXCEPTION			FAIL: exception indicates the error.
 	 */
 	protected function get_record_by_id($recId) {
 		if(is_numeric($recId)) {
@@ -125,12 +125,37 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	
 	//-------------------------------------------------------------------------
 	/**
+	 * Just a simple wrapper to get_records(), no initial (id-based) record used.
+	 * 
+	 * @param $fieldname		(str) field to search (for $value)
+	 * @param $value			(str) value to find (in $field)
+	 * @param $orderBy			(str) field to order by; can contain "DESC" or "ASC"
+	 * @param $limit			(int) how many records to display
+	 * @param $offset			(int) offset by this many records
+	 * 
+	 * @RETURN (array)			SUCCESS: returns single record with all fields.
+	 * @EXCEPTION 				FAIL: exception indicates error 
+	 */
+	public function get_single_record($fieldname, $value, $orderBy=null, $limit=null, $offset=null) {
+		$data = $this->get_records(array($fieldname=>$value), $orderBy, $limit, $offset);
+		
+		$keys = array_keys($data);
+		$retval = $data[$keys[0]];
+		
+		return($retval);
+	}//end get_single_record()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	/**
 	 * Retrieves a number of records based on arguments.
 	 * 
 	 * @$filter 		(array) Field=>value list of filters (i.e. 'my_id'=>1)
-	 * @orderBy			(str) Field to order by; can contain "DESC" or "ASC".
-	 * @limit			(int) How many max records to display.
-	 * @offset			(int) Offset by this number of records.
+	 * @$orderBy			(str) Field to order by; can contain "DESC" or "ASC".
+	 * @$limit			(int) How many max records to display.
+	 * @$offset			(int) Offset by this number of records.
 	 * 
 	 * @RETURN (array)	SUCCESS: Primary index is the record ID, sub-array is same as returned by get_record_by_id().
 	 * @EXCEPTION		FAIL: exception indicates error.
