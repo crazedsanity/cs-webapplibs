@@ -29,7 +29,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @param $pkeyField		(str) Name of the primary key field, for performing updates & retrieving specific records.
 	 * @param $cleanStringArr	(array) Array of {fieldName}=>{dataType} for allowing updates & creating records.
 	 */
-    function __construct(cs_phpDB $dbObj, $tableName, $seqName, $pkeyField, array $cleanStringArr) {
+    public function __construct(cs_phpDB $dbObj, $tableName, $seqName, $pkeyField, array $cleanStringArr) {
 		$this->set_version_file_location(dirname(__FILE__) . '/../VERSION');
 		parent::__construct(true);
 		
@@ -136,7 +136,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @RETURN (array)			SUCCESS: returns single record with all fields.
 	 * @EXCEPTION 				FAIL: exception indicates error 
 	 */
-	public function get_single_record($fieldname, $value, $orderBy=null, $limit=null, $offset=null) {
+	protected function get_single_record($fieldname, $value, $orderBy=null, $limit=null, $offset=null) {
 		$data = $this->get_records(array($fieldname=>$value), $orderBy, $limit, $offset);
 		
 		$keys = array_keys($data);
