@@ -151,7 +151,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		}
 		else {
 			//something broke...
-			throw new exception(__METHOD__ .": failed to insert, rows=(". $this->numRows .")... "
+			throw new exception(__METHOD__ .": failed to insert, rows=(". $this->numRows() .")... "
 				."ERROR::: ". $this->errorMsg() ."\n -- SQL:::: ". $sql);
 		}
 		
