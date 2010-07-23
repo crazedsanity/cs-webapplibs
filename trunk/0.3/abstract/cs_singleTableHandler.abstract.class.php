@@ -125,22 +125,23 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	
 	//-------------------------------------------------------------------------
 	/**
-	 * Just a simple wrapper to get_records(), no initial (id-based) record used.
+	 * Just a simple wrapper to get_records(), guaranteed to return a single record.
 	 * 
-	 * @param $fieldname		(str) field to search (for $value)
-	 * @param $value			(str) value to find (in $field)
-	 * @param $orderBy			(str) field to order by; can contain "DESC" or "ASC"
-	 * @param $limit			(int) how many records to display
-	 * @param $offset			(int) offset by this many records
+	 * @param $filter			(array) fieldname=>value list of filters.
 	 * 
 	 * @RETURN (array)			SUCCESS: returns single record with all fields.
 	 * @EXCEPTION 				FAIL: exception indicates error 
 	 */
-	protected function get_single_record($fieldname, $value, $orderBy=null, $limit=null, $offset=null) {
-		$data = $this->get_records(array($fieldname=>$value), $orderBy, $limit, $offset);
-		
-		$keys = array_keys($data);
-		$retval = $data[$keys[0]];
+	protected function get_single_record(array $filter) {
+		try {
+			$data = $this->get_records($filter, null, 1);
+			
+			$keys = array_keys($data);
+			$retval = $data[$keys[0]];
+		}
+		catch(Exception $e) {
+			throw new exception(__METHOD__ .":: failed to retrieve record, DETAILS::: ". $e->getMessage());
+		}
 		
 		return($retval);
 	}//end get_single_record()
@@ -153,7 +154,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * Retrieves a number of records based on arguments.
 	 * 
 	 * @$filter 		(array) Field=>value list of filters (i.e. 'my_id'=>1)
-	 * @$orderBy			(str) Field to order by; can contain "DESC" or "ASC".
+	 * @$orderBy		(str) Field to order by; can contain "DESC" or "ASC".
 	 * @$limit			(int) How many max records to display.
 	 * @$offset			(int) Offset by this number of records.
 	 * 
@@ -204,20 +205,27 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @RETURN (int)	SUCCESS: (int) is the number of records updated (should always be 1)
 	 * @EXCEPTION		FAIL: exception indicates the error.
 	 */
-	protected function update_record($recId, array $updates) {
+	protected function update_record($recId, array $updates, $removeEmptyVals=true) {
 		if(is_numeric($recId) && $recId >= 0 && is_array($updates) && count($updates) > 0) {
-			$sql = 'UPDATE '. $this->tableName .' SET '
-				. $this->gfObj->string_from_array($updates, 'update', null, $this->cleanStringArr, true)
-				.' WHERE '. $this->pkeyField .'='. $recId;
-			try {
-				$retval = $this->dbObj->run_update($sql, true);
+			$updateString = $this->gfObj->string_from_array($updates, 'update', null, $this->cleanStringArr, $removeEmptyVals);
+			if(is_null($updateString) || !strlen($updateString) || strlen($updateString) < 3) {
+				throw new exception(__METHOD__ .":: no update string created (". $updateSTring ."), contents::: ". $this->gfObj->debug_var_dump($updates,0));
 			}
-			catch(Exception $e) {
-				throw new exception(__METHOD__ .":: failed to update record (". $recId ."), DETAILS::: ". $e->getMessage());
+			else {
+				$sql = 'UPDATE '. $this->tableName .' SET '
+					. $updateString
+					.' WHERE '. $this->pkeyField .'='. $recId;
+				try {
+					$retval = $this->dbObj->run_update($sql, true);
+#$this->gfObj->debug_print(__METHOD__ .":: retval=(". $retval ."), SQL::: ". $sql ,1);
+				}
+				catch(Exception $e) {
+					throw new exception(__METHOD__ .":: failed to update record (". $recId ."), DETAILS::: ". $e->getMessage());
+				}
 			}
 		}
 		else {
-			throw new exception(__METHOD__ .":: failed to update record (". $recId ."), DETAILS::: ". $e->getMessage());
+			throw new exception(__METHOD__ .":: failed to update record (". $recId ."), invalid recordId (". $recId ."), or no data in array::: ". $this->gfObj->debug_var_dump($updates,0));
 		}
 		return($retval);
 	}//end update_record()
