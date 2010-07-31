@@ -114,7 +114,7 @@ class cs_sessionDB extends cs_session {
 	//-------------------------------------------------------------------------
 	protected function is_valid_sid($sid) {
 		$isValid = false;
-		if(strlen($sid) == 32) {
+		if(strlen($sid) >= 20) {
 			try {
 				$sql = "SELECT * FROM ". $this->tableName ." WHERE session_id='". 
 						$sid ."'";
@@ -231,7 +231,7 @@ class cs_sessionDB extends cs_session {
 		}
 		catch(exception $e) {
 			//umm... yeah.
-			$this->exception_handler(__METHOD__ .": failed to perform action (". $type .")::: ". $e->getMessage());
+			$this->exception_handler(__METHOD__ .": failed to perform action (". $type ."), sid=(". $sid ."), sid length=(". strlen($sid) ."), validSid=(". $this->is_valid_sid($sid) .")::: ". $e->getMessage());
 		}
 		
 		return(true);
