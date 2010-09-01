@@ -128,7 +128,7 @@ class cs_sessionDB extends cs_session {
 				}
 			}
 			catch(exception $e) {
-				//well... do nothing I guess.
+				$this->exception_handler(__METHOD__ .": invalid sid (". $sid .")");
 			}
 		}
 		
@@ -188,50 +188,55 @@ class cs_sessionDB extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	public function sessdb_write($sid, $data) {
-		$data = array(
-			'session_data'	=> $data,
-			'user_id'		=> null
-		);
-		$cleanString = array(
-			'session_data'		=> 'sql',
-			'user_id'			=> 'numeric'
-		);
-		
-		
-		
-		//pull the uid out of the session...
-		if(defined('SESSION_DBSAVE_UIDPATH')) {
-			$a2p = new cs_arrayToPath($_SESSION);
-			$uidVal = $a2p->get_data(constant('SESSION_DBSAVE_UIDPATH'));
+		if(is_string($sid) && strlen($sid) >= 20) {
+			$data = array(
+				'session_data'	=> $data,
+				'user_id'		=> null
+			);
+			$cleanString = array(
+				'session_data'		=> 'sql',
+				'user_id'			=> 'numeric'
+			);
 			
-			if(is_string($uidVal) || is_numeric($uidVal)) {
-				$data['user_id'] = $uidVal;
+			
+			
+			//pull the uid out of the session...
+			if(defined('SESSION_DBSAVE_UIDPATH')) {
+				$a2p = new cs_arrayToPath($_SESSION);
+				$uidVal = $a2p->get_data(constant('SESSION_DBSAVE_UIDPATH'));
+				
+				if(is_string($uidVal) || is_numeric($uidVal)) {
+					$data['user_id'] = $uidVal;
+				}
+			}
+			
+			$afterSql = "";
+			if($this->is_valid_sid($sid)) {
+				$type = 'update';
+				$sql = "UPDATE ". $this->tableName ." SET ";
+				$afterSql = "WHERE session_id='". $sid ."'";
+				$data['last_updated'] = 'NOW()';
+				$secondArg = false;
+			}
+			else {
+				$type = 'insert';
+				$sql = "INSERT INTO ". $this->tableName ." ";
+				$data['session_id'] = $sid;
+				$secondArg = $this->sequenceName;
+			}
+			
+			$sql .= $this->gfObj->string_from_array($data, $type, null, $cleanString) .' '. $afterSql;
+			try {
+				$funcName = 'run_'. $type;
+				$res = $this->db->$funcName($sql, $secondArg);
+			}
+			catch(exception $e) {
+				//umm... yeah.
+				$this->exception_handler(__METHOD__ .": failed to perform action (". $type ."), sid=(". $sid ."), sid length=(". strlen($sid) ."), validSid=(". $this->is_valid_sid($sid) .")::: ". $e->getMessage());
 			}
 		}
-		
-		$afterSql = "";
-		if($this->is_valid_sid($sid)) {
-			$type = 'update';
-			$sql = "UPDATE ". $this->tableName ." SET ";
-			$afterSql = "WHERE session_id='". $sid ."'";
-			$data['last_updated'] = 'NOW()';
-			$secondArg = false;
-		}
 		else {
-			$type = 'insert';
-			$sql = "INSERT INTO ". $this->tableName ." ";
-			$data['session_id'] = $sid;
-			$secondArg = $this->sequenceName;
-		}
-		
-		$sql .= $this->gfObj->string_from_array($data, $type, null, $cleanString) .' '. $afterSql;
-		try {
-			$funcName = 'run_'. $type;
-			$res = $this->db->$funcName($sql, $secondArg);
-		}
-		catch(exception $e) {
-			//umm... yeah.
-			$this->exception_handler(__METHOD__ .": failed to perform action (". $type ."), sid=(". $sid ."), sid length=(". strlen($sid) ."), validSid=(". $this->is_valid_sid($sid) .")::: ". $e->getMessage());
+			$this->exception_handler(__METHOD__ .": invalid sid (". $sid ."), DATA::: ". $this->gfObj->debug_print($data,0));
 		}
 		
 		return(true);
