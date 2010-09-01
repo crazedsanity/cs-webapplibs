@@ -31,9 +31,21 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	private $dbType;
 	public $connectParams = array();
 	protected $gfObj;
+	protected $fsObj;
+	protected $logFile;
+	protected $writeCommandsToFile;
 	
 	//=========================================================================
-	public function __construct($type='pgsql') {
+	/**
+	 * 
+	 * @param string $type
+	 * @param bool $writeCommandsToFile		(change this to a string for a filename, 
+	 * 											or use boolean true and it write to 
+	 * 											a default filename (__CLASS__.log). 
+	 * @return unknown_type
+	 */
+	public function __construct($type='pgsql', $writeCommandsToFile=null) {
+		
 		if(is_null($type) || !strlen($type)) {
 			$type = 'pgsql';
 		}
@@ -46,6 +58,21 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		parent::__construct(true);
 		
 		$this->isInitialized = TRUE;
+		
+		$this->writeCommandsToFile = $writeCommandsToFile;
+		
+		if($this->writeCommandsToFile) {
+			$this->logFile = __CLASS__ .".log";
+			if(is_string($this->writeCommandsToFile)) {
+				$this->logFile = $this->writeCommandsToFile;
+			}
+			$this->fsObj = new cs_fileSystem(constant('RWDIR'));
+			$lsData = $this->fsObj->ls();
+			if(!isset($lsData[$this->logFile])) {
+				$this->fsObj->create_file($this->logFile);
+			}
+			$this->fsObj->openFile($this->logFile, 'a');	
+		}
 	}//end __construct()
 	//=========================================================================
 	
@@ -67,6 +94,11 @@ class cs_phpDB extends cs_webapplibsAbstract {
 					array_pop($this->queryList);
 				}
 				array_unshift($this->queryList, $args[0]);
+				
+				//log it to a file.
+				if($this->writeCommandsToFile) {
+					$this->fsObj->append_to_file(date('D, d M Y H:i:s') . ' ('. microtime(true) . ')::: '. $args[0]);
+				}
 			}
 			$retval = call_user_func_array(array($this->dbLayerObj, $methodName), $args);
 		}
