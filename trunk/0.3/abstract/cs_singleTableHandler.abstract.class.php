@@ -82,13 +82,18 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @EXCEPTION		FAIL: exception indicates the error.
 	 */
 	protected function create_record(array $data) {
-		$sql = 'INSERT INTO '. $this->tableName .' '
-			. $this->gfObj->string_from_array($data, 'insert', null, $this->cleanStringArr, true);
-		try {
-			$newId = $this->dbObj->run_insert($sql, $this->seqName);
+		if(is_array($data) && count($data)) {
+			$sql = 'INSERT INTO '. $this->tableName .' '
+				. $this->gfObj->string_from_array($data, 'insert', null, $this->cleanStringArr, true);
+			try {
+				$newId = $this->dbObj->run_insert($sql, $this->seqName);
+			}
+			catch(Exception $e) {
+				throw new exception(__METHOD__ .":: failed to create record, DETAILS::: ". $e->getMessage());
+			}
 		}
-		catch(Exception $e) {
-			throw new exception(__METHOD__ .":: failed to create record, DETAILS::: ". $e->getMessage());
+		else {
+			throw new exception(__METHOD__ .":: no data passed");
 		}
 		return($newId);
 	}//end create_record()
@@ -133,14 +138,19 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @EXCEPTION 				FAIL: exception indicates error 
 	 */
 	protected function get_single_record(array $filter) {
-		try {
-			$data = $this->get_records($filter, null, 1);
-			
-			$keys = array_keys($data);
-			$retval = $data[$keys[0]];
+		if(is_array($filter) && count($filter)) {
+			try {
+				$data = $this->get_records($filter, null, 1);
+				
+				$keys = array_keys($data);
+				$retval = $data[$keys[0]];
+			}
+			catch(Exception $e) {
+				throw new exception(__METHOD__ .":: failed to retrieve record, DETAILS::: ". $e->getMessage());
+			}
 		}
-		catch(Exception $e) {
-			throw new exception(__METHOD__ .":: failed to retrieve record, DETAILS::: ". $e->getMessage());
+		else {
+			throw new exception(__METHOD__ .":: no filter passed");
 		}
 		
 		return($retval);
@@ -179,7 +189,13 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 		
 		$filterStr = '';
 		if(is_array($filter) && count($filter) > 0) {
-			$filterStr = ' WHERE '. $this->gfObj->string_from_array($filter, 'select', null, $this->cleanStringArr, true);
+			$filterSql = $this->gfObj->string_from_array($filter, 'select', null, $this->cleanStringArr, true);
+			if(strlen($filterSql) > 2) {
+				$filterStr = ' WHERE '. $filterSql;
+			}
+			else {
+				throw new exception(__METHOD__ .":: no filter created (". $this->gfObj->debug_print($filter,0) .")");
+			}
 		}
 		
 		$sql = 'SELECT * FROM '. $this->tableName . $filterStr . $orderByStr . $limitOffsetStr;
