@@ -81,7 +81,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @RETURN (int)	SUCCESS: the (int) is the last inserted ID.
 	 * @EXCEPTION		FAIL: exception indicates the error.
 	 */
-	protected function create_record(array $data) {
+	public function create_record(array $data) {
 		if(is_array($data) && count($data)) {
 			$sql = 'INSERT INTO '. $this->tableName .' '
 				. $this->gfObj->string_from_array($data, 'insert', null, $this->cleanStringArr, true);
@@ -110,7 +110,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @RETURN (array)		SUCCESS: list of field=>value of data from database.
 	 * @EXCEPTION			FAIL: exception indicates the error.
 	 */
-	protected function get_record_by_id($recId) {
+	public function get_record_by_id($recId) {
 		if(is_numeric($recId)) {
 			try {
 				$data = $this->get_records(array($this->pkeyField => $recId));
@@ -137,7 +137,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @RETURN (array)			SUCCESS: returns single record with all fields.
 	 * @EXCEPTION 				FAIL: exception indicates error 
 	 */
-	protected function get_single_record(array $filter) {
+	public function get_single_record(array $filter) {
 		if(is_array($filter) && count($filter)) {
 			try {
 				$data = $this->get_records($filter, null, 1);
@@ -171,7 +171,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @RETURN (array)	SUCCESS: Primary index is the record ID, sub-array is same as returned by get_record_by_id().
 	 * @EXCEPTION		FAIL: exception indicates error.
 	 */
-	protected function get_records(array $filter=null, $orderBy=null, $limit=null, $offset=null) {
+	public function get_records(array $filter=null, $orderBy=null, $limit=null, $offset=null) {
 		$limitOffsetStr = '';
 		if(is_numeric($limit) && $limit > 0) {
 			$limitOffsetStr = ' LIMIT '. $limit;
@@ -221,7 +221,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @RETURN (int)	SUCCESS: (int) is the number of records updated (should always be 1)
 	 * @EXCEPTION		FAIL: exception indicates the error.
 	 */
-	protected function update_record($recId, array $updates, $removeEmptyVals=true) {
+	public function update_record($recId, array $updates, $removeEmptyVals=true) {
 		if(is_numeric($recId) && $recId >= 0 && is_array($updates) && count($updates) > 0) {
 			$updateString = $this->gfObj->string_from_array($updates, 'update', null, $this->cleanStringArr, $removeEmptyVals);
 			if(is_null($updateString) || !strlen($updateString) || strlen($updateString) < 3) {
