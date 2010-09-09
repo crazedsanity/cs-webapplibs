@@ -246,6 +246,29 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 		return($retval);
 	}//end update_record()
 	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	/**
+	 * TODO: only allow 1 record to be deleted, or a specific number of records (add transaction logic)?
+	 */
+	public function delete_record($recId) {
+		if(is_numeric($recId)) {
+			$sql = "DELETE FROM ". $this->tableName ." WHERE ". $this->pkeyField ."=". $recId;
+			try {
+				$result = $this->dbObj->run_update($sql);
+			}
+			catch(Exception $e) {
+				throw new exception(__METHOD__ .": failed to delete record, DETAILS::: ". $e->getMessage());
+			}
+		}
+		else {
+			throw new exception(__METHOD__ .":: failed to delete record, invalid data (". $recId .")");
+		}
+		return($result);
+	}//end delete_record()
+	//-------------------------------------------------------------------------
 }
 
 ?>
