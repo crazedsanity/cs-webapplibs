@@ -1,0 +1,42 @@
+
+$Id$
+
+For information on how the system works, some caveats, and other useful 
+information, check out the "README.txt" in this folder.
+
+This system assumes that your website uses constants 
+(i.e. define('CONSTANTNAME', "constantValue")).  It uses a couple of these 
+constants for the purposes of upgrading and so forth; if you would like an easy 
+way to put all your configuration stuff into one file and be able to set them 
+as global, constants, or both, look into using the "cs_siteConfig" library 
+provided by the latest version of CS-Content (see 
+"http://crazedsanity.com/projects/cs-content" for more information).  For the 
+purposes of keeping this document as simple as possible, I will assume you've 
+set that system up (look at the afore-mentioned website for information on how 
+to interpret the XML below, and why I recommend using it).
+
+FOR CS-SITECONFIG:
+
+Add a section similar to the following:
+
+	<cs-webupgradedb>
+		<dbparmlinker note="This compensates for cs_siteConfig::parse_config()'s inability to parse 
+		'template vars' past a certain depth in or before CS-Content v1.0-ALPHA9">
+			<host>DB_CONNECT_HOST</host>
+			<dbname>DB_CONNECT_DBNAME</dbname>
+			<user>DB_CONNECT_USER</user>
+			<password>DB_CONNECT_PASSWORD</password>
+			<port>DB_CONNECT_PORT</port>
+		</dbparmlinker>
+		<db_table setconstant="1" setconstantprefix="cs_webdbupgrade">cs_version_table</db_table>
+		<db_primarykey setconstant="1" setconstantprefix="cs_webdbupgrade">project_id</db_primarykey>
+		<db_sequence setconstant="1" setconstantprefix="cs_webdbupgrade">{DB_TABLE}_{DB_PRIMARYKEY}_seq</db_sequence>
+		<db_connect_host>{/WEBSITE/DB_PG_HOST}</db_connect_host>
+		<db_connect_port>{/WEBSITE/DB_PG_PORT}</db_connect_port>
+		<db_connect_dbname>{WEBSITE/DB_PG_DBNAME}</db_connect_dbname>
+		<db_connect_user>{WEBSITE/DB_PG_DBUSER}</db_connect_user>
+		<db_connect_password>{WEBSITE/DB_PG_DBPASS}</db_connect_password>
+		<CONFIG_FILE_LOCATION>{_CONFIGFILE_}</CONFIG_FILE_LOCATION>
+		<UPGRADE_CONFIG_FILE>{SITE_ROOT}/upgrade/upgrade.xml</UPGRADE_CONFIG_FILE>
+		<RWDIR setconstant="1">{SITE_ROOT}/rw</RWDIR>
+	</cs-webupgradedb>
