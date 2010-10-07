@@ -103,7 +103,7 @@ class cs_siteConfig extends cs_webapplibsAbstract {
 		
 		if(is_null($section) || !strlen($section)) {
 			$myData = $this->xmlReader->get_path($this->xmlReader->get_root_element());
-			unset($myData['type'], $myData['attributes']);
+			unset($myData['type'], $myData[cs_phpxmlCreator::attributeIndex]);
 			$myData = array_keys($myData);
 			$section = $myData[0];
 		}
@@ -168,22 +168,23 @@ class cs_siteConfig extends cs_webapplibsAbstract {
 	private function parse_config() {
 		if(is_object($this->xmlReader)) {
 			$data = $this->xmlReader->get_path($this->xmlReader->get_root_element());
+			unset($data[cs_phpxmlCreator::attributeIndex]);
 			$specialVars = $this->build_special_vars();
 			$parseThis = array();
-			
 			
 			$this->configSections = array();
 			
 			foreach($data as $section=>$secData) {
-				//only handle UPPERCASE index names; lowercase indexes are special entries (i.e. "type" or "attributes"
+				//only handle UPPERCASE index names....
+				//TODO: take this (above) requirement out, as cs-phpxml doesn't require everything to be upper-case.
 				if($section == strtoupper($section)) {
 					$this->configSections[] = $section;
 					
-					unset($secData['type']);
-					
-					if(isset($secData['attributes']) && is_array($secData['attributes'])) {
-						$sectionAttribs = $secData['attributes'];
-						unset($secData['attributes']);
+					//TODO: use method (i.e. $this->xmlReader->get_attribute($path)) to retrieve attributes.
+					if(isset($secData[cs_phpxmlCreator::attributeIndex]) && is_array($secData[cs_phpxmlCreator::attributeIndex])) {
+						//TODO: use method (i.e. $this->xmlReader->get_attribute($path)) to retrieve attributes.
+						$sectionAttribs = $secData[cs_phpxmlCreator::attributeIndex];
+						unset($secData[cs_phpxmlCreator::attributeIndex]);
 						
 						//put stuff into the globals scope...
 						if(isset($sectionAttribs['SETGLOBAL'])) {
@@ -197,13 +198,23 @@ class cs_siteConfig extends cs_webapplibsAbstract {
 						}
 					}
 					
+					$secData = $secData[0];
+					$tSectionAttribs = null;
+					if(isset($secData[cs_phpxmlCreator::attributeIndex])) {
+						$tSectionAttribs = $secData[cs_phpxmlCreator::attributeIndex];
+						unset($secData[cs_phpxmlCreator::attributeIndex]);
+					}
 					foreach($secData as $itemName=>$itemValue) {
 						$attribs = array();
-						if(isset($itemValue['attributes']) && is_array($itemValue['attributes'])) {
-							$attribs = $itemValue['attributes'];
+						//TODO: use method (i.e. $this->xmlReader->get_attribute($path)) to retrieve attributes.
+						if(isset($itemValue[0][cs_phpxmlCreator::attributeIndex]) && is_array($itemValue[0][cs_phpxmlCreator::attributeIndex])) {
+							//TODO: use method (i.e. $this->xmlReader->get_attribute($path)) to retrieve attributes.
+							$attribs = $itemValue[0][cs_phpxmlCreator::attributeIndex];
 						}
-						if(isset($itemValue['value'])) {
-							$itemValue = $itemValue['value'];
+						//TODO: use method (i.e. $this->xmlReader->get_value($path)) to retrieve tag value.
+						if(isset($itemValue[0][cs_phpxmlCreator::dataIndex])) {
+							//TODO: use method (i.e. $this->xmlReader->get_value($path)) to retrieve tag value.
+							$itemValue = $itemValue[0][cs_phpxmlCreator::dataIndex];
 						}
 						else {
 							$itemValue = null;
@@ -230,7 +241,7 @@ class cs_siteConfig extends cs_webapplibsAbstract {
 						
 						$parseThis[$itemName] = $itemValue;
 						$parseThis[$section ."/". $itemName] = $itemValue;
-						$data[$section][$itemName]['value'] = $itemValue;
+						$data[$section][$itemName][cs_phpxmlCreator::dataIndex] = $itemValue;
 						
 						$setVarIndex = $this->setVarPrefix . $itemName;
 						if(isset($attribs['SETGLOBAL'])) {
@@ -264,7 +275,7 @@ class cs_siteConfig extends cs_webapplibsAbstract {
 					if($this->a2p->get_data($configPath)) {
 						$setMe = array();
 						foreach($this->a2p->get_data($configPath) as $i=>$v) {
-							$setMe[$i] = $v['value'];
+							$setMe[$i] = $v[cs_phpxmlCreator::dataIndex];
 						}
 						$globA2p->set_data($globalsPath, $setMe);
 					}
@@ -294,14 +305,13 @@ class cs_siteConfig extends cs_webapplibsAbstract {
 	public function get_section($section) {
 		if($this->isInitialized === true) {
 			$section = strtoupper($section);
-			$data = $this->a2p->get_data($section);
+			$data = $this->a2p->get_data($section .'/0');
 			
-			if(is_array($data) && count($data) && $data['type'] == 'open') {
-				unset($data['type']);
+			if(is_array($data) && count($data)) {
 				$retval = $data;
 			}
 			else {
-				throw new exception(__METHOD__ .": invalid section (". $section .") or no data (". $data['type'] .")");
+				throw new exception(__METHOD__ .": invalid section (". $section .") or no data::: ". $this->gfObj->debug_print($data,0));
 			}
 		}
 		else {
@@ -332,7 +342,7 @@ class cs_siteConfig extends cs_webapplibsAbstract {
 				//section NOT given, assume they're looking for something in the active section.
 				$index = $this->activeSection ."/". $index;
 			}
-			$retval = $this->a2p->get_data($index .'/value');
+			$retval = $this->a2p->get_data($index .'/'. cs_phpxmlCreator::dataIndex);
 		}
 		else {
 			throw new exception(__METHOD__ .": not initialized");
