@@ -304,10 +304,32 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		//parse the file.
 		$xmlParser = new cs_phpxmlParser($xmlString);
 		
-		$config = $xmlParser->get_tree(TRUE);
-		
-		if(is_array($config['UPGRADE']) && count($config['UPGRADE'])) {
-			$this->config['UPGRADELIST'] = $config['UPGRADE'];
+		if($xmlParser->get_root_element() == 'UPGRADE') {
+			
+			//see if there's an "initial version" setting.
+			try {
+				$this->config['INITIALVERSION'] = $xmlParser->get_tag_value('/UPGRADE/INITIALVERSION');
+			}
+			catch(Exception $e) {
+				//no worries, this only happens when the tag doesn't exist or it doesn't have data (that is okay).
+			}
+			
+			$tConfig = array();
+			if(is_array($xmlParser->get_data('/UPGRADE/MATCHING'))) {
+				$matchingData = $xmlParser->get_data('/UPGRADE/MATCHING');
+				foreach($matchingData as $index=>$array) {
+					$array = $array[0];
+					foreach($array as $matchingName=>$subInfo) {
+						if(isset($subInfo[0][cs_phpxmlCreator::dataIndex])) {
+							$tConfig[$index][$matchingName] = $subInfo[0][cs_phpxmlCreator::dataIndex];
+						}
+						else {
+							throw new exception(__METHOD__ .": invalid data beneath matching (". $index .")::: ". $this->gfObj->debug_print($subInfo,0));
+						}
+					}
+				}
+			}
+			$this->config['matchingData'] = $tConfig;
 		}
 		else {
 			$this->error_handler(__METHOD__ .": failed to retrieve 'UPGRADE' section; " .
@@ -581,7 +603,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	private function do_single_upgrade($fromVersion, $toVersion=null) {
 		//Use the "matching_syntax" data in the upgrade.xml file to determine the filename.
 		$versionIndex = "V". $this->get_full_version_string($fromVersion);
-		if(!isset($this->config['UPGRADELIST']['MATCHING'][$versionIndex])) {
+		if(!isset($this->config['matchingData'][$versionIndex])) {
 			//version-only upgrade.
 			$this->newVersion = $toVersion;
 			$this->update_database_version($toVersion);
@@ -590,7 +612,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			//scripted upgrade...
 			$scriptIndex = $versionIndex;
 			
-			$upgradeData = $this->config['UPGRADELIST']['MATCHING'][$versionIndex];
+			$upgradeData = $this->config['matchingData'][$versionIndex];
 			
 			if(isset($upgradeData['TARGET_VERSION']) && count($upgradeData) > 1) {
 				$this->newVersion = $upgradeData['TARGET_VERSION'];
@@ -764,9 +786,9 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		if(!$this->is_higher_version($dbVersion, $newVersion)) {
 			$this->error_handler(__METHOD__ .": version (". $newVersion .") isn't higher than (". $dbVersion .")... something is broken");
 		}
-		elseif(is_array($this->config['UPGRADELIST']['MATCHING'])) {
+		elseif(is_array($this->config['matchingData'])) {
 			$lastVersion = $dbVersion;
-			foreach($this->config['UPGRADELIST']['MATCHING'] as $matchVersion=>$data) {
+			foreach($this->config['matchingData'] as $matchVersion=>$data) {
 				
 				$matchVersion = preg_replace('/^V/', '', $matchVersion);
 				if($matchVersion == $data['TARGET_VERSION']) {
@@ -1044,8 +1066,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		//if there's an INITIAL_VERSION in the upgrade config file, use that.
 		$this->read_upgrade_config_file();
 		$insertData = array();
-		if(isset($this->config['UPGRADELIST']['INITIALVERSION'])) {
-			$parseThis = $this->config['UPGRADELIST']['INITIALVERSION'];
+		if(isset($this->config['INITIALVERSION'])) {
+			$parseThis = $this->config['INITIALVERSION'];
 		}
 		else {
 			$parseThis = $this->versionFileVersion;
