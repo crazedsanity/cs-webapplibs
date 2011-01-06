@@ -182,7 +182,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 			}
 		}
 		
-		$orderByStr = '';
+		$orderByStr = ' ORDER BY '. $this->pkeyField;
 		if(is_string($orderBy) && strlen($orderBy)) {
 			$orderByStr = ' ORDER BY '. $orderBy;
 		}
