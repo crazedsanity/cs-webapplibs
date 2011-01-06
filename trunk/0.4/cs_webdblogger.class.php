@@ -287,6 +287,9 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	 */
 	public function log_by_class($details, $className="error", $uid=NULL, array $logAttribs=NULL) {
 		
+		if(is_null($details) || !strlen($details)) {
+			$details = "(". __METHOD__ .": no details given)";
+		}
 		if($this->suspendLogging === true) {
 			$this->pendingLogs[] = func_get_args();
 			$retval = count($this->pendingLogs) -1;
