@@ -1,4 +1,3 @@
-BEGIN;
 
 --
 -- Group table
