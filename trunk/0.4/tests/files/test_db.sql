@@ -67,11 +67,11 @@ ALTER TABLE cs_authentication_table ALTER COLUMN uid SET DEFAULT nextval('cs_aut
 --
 
 INSERT INTO cs_authentication_table VALUES (101, 'slaughter', 'x', true, '2008-06-01', '2011-01-10 21:07:07.029629-06', 'slaughter@dev.null', 1);
-INSERT INTO cs_authentication_table VALUES (101, 'mary', 'x', true, '2008-06-01', '2011-01-10 21:07:07.029629-06', 'mary@dev.null', 1);
-INSERT INTO cs_authentication_table VALUES (101, 'einstein', 'x', true, '2008-06-01', '2011-01-10 21:07:07.029629-06', 'einstein@dev.null', 1);
-INSERT INTO cs_authentication_table VALUES (101, 'alexander.graham.bell', 'x', true, '2008-06-01', '2011-01-10 21:07:07.029629-06', 'alexander.graham.bell@dev.null', 1);
-INSERT INTO cs_authentication_table VALUES (101, 'john', 'x', true, '2008-06-01', '2011-01-10 21:07:07.029629-06', 'john@dev.null', 1);
-INSERT INTO cs_authentication_table VALUES (101, 'xavier', 'x', true, '2008-06-01', '2011-01-10 21:07:07.029629-06', 'xavier@dev.null', 1);
+INSERT INTO cs_authentication_table VALUES (102, 'mary', 'x', true, '2008-06-01', '2011-01-10 21:07:07.029629-06', 'mary@dev.null', 1);
+INSERT INTO cs_authentication_table VALUES (103, 'einstein', 'x', true, '2008-06-01', '2011-01-10 21:07:07.029629-06', 'einstein@dev.null', 1);
+INSERT INTO cs_authentication_table VALUES (104, 'alexander.graham.bell', 'x', true, '2008-06-01', '2011-01-10 21:07:07.029629-06', 'alexander.graham.bell@dev.null', 1);
+INSERT INTO cs_authentication_table VALUES (105, 'john', 'x', true, '2008-06-01', '2011-01-10 21:07:07.029629-06', 'john@dev.null', 1);
+INSERT INTO cs_authentication_table VALUES (106, 'xavier', 'x', true, '2008-06-01', '2011-01-10 21:07:07.029629-06', 'xavier@dev.null', 1);
 
 
 --
