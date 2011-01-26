@@ -15,10 +15,8 @@ abstract class cs_webapplibsAbstract extends cs_versionAbstract {
 	protected $gfObj;
 	
 	//-------------------------------------------------------------------------
-    function __construct($makeGfObj=true) {
+    public function __construct($makeGfObj=true) {
 		$this->set_version_file_location(dirname(__FILE__) . '/../VERSION');
-		$this->get_version();
-		$this->get_project();
 		
 		if($makeGfObj === true) {
 			//make a cs_globalFunctions{} object.
@@ -26,6 +24,21 @@ abstract class cs_webapplibsAbstract extends cs_versionAbstract {
 			$this->gfObj = new cs_globalFunctions();
 		}
     }//end __construct()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public function load_schema($dbType, cs_phpDb $db) {
+		$file = dirname(__FILE__) .'/../setup/schema.'. $dbType .'.sql';
+		try {
+			$result = $db->run_sql_file($file);
+		}
+		catch(Exception $e) {
+			throw new exception(__METHOD__ .": failed to load schema file (". $file ."), DETAILS::: ". $e->getMessage());
+		}
+		return($result);
+	}//end load_schema()
 	//-------------------------------------------------------------------------
 }
 
