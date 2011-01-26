@@ -52,7 +52,7 @@ abstract class cs_genericUserGroupAbstract extends cs_genericGroupAbstract {
 	public function get_user_groups($userId) {
 		if(is_numeric($userId) && $userId >= 0) {
 			try {
-				$sql = "SELECT ug.*, g.group_name FROM ". self::ugTable ." AS ug INNER "
+				$sql = "SELECT ug.*, g.group_name, g.group_admin FROM ". self::ugTable ." AS ug INNER "
 					."JOIN ". parent::groupTable ." as g USING (group_id) WHERE user_id=". $userId;
 				$retval = $this->db->run_query($sql, 'group_id');
 			}

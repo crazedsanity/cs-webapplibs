@@ -13,14 +13,22 @@
 
 class testOfCSGenericPermissions extends testDbAbstract {
 	
+	
+	//--------------------------------------------------------------------------
+	public function __construct() {
+	}//end __construct()
+	//--------------------------------------------------------------------------
+	
+	
+	
 	//--------------------------------------------------------------------------
 	function setUp() {
 		$this->gfObj = new cs_globalFunctions;
 		$this->gfObj->debugPrintOpt=1;
 		parent::__construct('postgres','', 'localhost', '5432');
-		$this->get_valid_users();
 		$this->permObj = new _gpTester($this->db);
 		$this->permObj->do_schema();
+		$this->get_valid_users();
 	}//end setUp()
 	//--------------------------------------------------------------------------
 	
@@ -28,7 +36,12 @@ class testOfCSGenericPermissions extends testDbAbstract {
 	
 	//--------------------------------------------------------------------------
 	public function tearDown() {
-		$this->destroy_db();
+		if(isset($GLOBALS['keepDb'])) {
+			unset($GLOBALS['keepDb']);
+		}
+		else {
+			$this->destroy_db();
+		}
 	}
 	//--------------------------------------------------------------------------
 	
@@ -54,6 +67,7 @@ class testOfCSGenericPermissions extends testDbAbstract {
 	
 	//--------------------------------------------------------------------------
 	public function test_userGroups() {
+		#$GLOBALS['keepDb'] = true;
 		//make sure there are groups available.
 		{
 			$groupList = $this->permObj->get_all_groups();
@@ -83,9 +97,11 @@ class testOfCSGenericPermissions extends testDbAbstract {
 		
 		//create & test user_group relationships.
 		{
-			$newId = $this->permObj->create_user_group($this->validUsers[$myKey]['uid'],1);
+			$newId = $this->permObj->create_user_group($this->validUsers[$myKey]['uid'],$newGroupId);
 			$this->assertTrue(is_numeric($newId));
-			$this->assertTrue($this->permObj->is_group_member($this->validUsers[$myKey]['uid'],1));
+			$this->assertTrue($this->permObj->is_group_member($this->validUsers[$myKey]['uid'],$newGroupId), "user (". 
+					$this->validUsers[$myKey]['uid'] .") isn't member of group (". $newGroupId .") after ".
+					"being added to it... ");
 			
 			$ugList = $this->permObj->get_user_groups($this->validUsers[$myKey]['uid']);
 			$this->assertTrue(is_array($ugList));
