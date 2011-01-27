@@ -252,6 +252,14 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		return($this->dbLayerObj->is_connected());
 	}//end is_connected()
 	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function get_last_query() {
+		return($this->dbLayerObj->lastQuery);
+	}//end get_last_query()
+	//=========================================================================
 } // end class phpDB
 
 ?>
