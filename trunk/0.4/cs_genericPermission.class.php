@@ -20,19 +20,29 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	public $gfObj;
 	
 	/** Table name used to store permissions. */
-	const objTable = "cswal_object_table";
+	protected $permTable = "cswal_permission_table";
 	
 	/** Sequence for permissions table. */
-	const objSeq = "cswal_object_table_object_id_seq";
+	protected $permSeq = "cswal_permission_table_permission_id_seq";
 	
 	/** List of valid keys... */
 	protected $keys = array();
+	
+	/** Determine object path pieces based on this... */
+	protected $objectDelimiter="/";
+	
+	/** How to clean the path (if at all); boolean true = use cs_globalFunctions::clean_url(); boolean false will 
+		cause it to not be cleaned at all; a string will use cs_globalFunctions::cleanString({string})*/
+	protected $pathCleaner=true;
+	
+	/** dbTableHandler{} object for easier SQL. */
+	private $dbTableHandler;
 	
 	//============================================================================
 	/**
 	 * Generic permission system based on *nix filesystem permissions.
 	 */
-	public function __construct(cs_phpDB $db) {
+	public function __construct(cs_phpDB $db, $objectDelimiter=NULL, $useUrlCleaner=true) {
 		$this->db = $db;
 		parent::__construct($db);
 		$this->gfObj = new cs_globalFunctions;
@@ -47,6 +57,29 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 			7	=> 'o_w',
 			8	=> 'o_x'
 		);
+		if(!is_null($objectDelimiter) && is_string($objectDelimiter) && strlen($objectDelimiter)) {
+			$this->objectDelimiter=$objectDelimiter;
+		}
+		if(is_bool($useUrlCleaner) || (is_string($useUrlCleaner) && strlen($useUrlCleaner))) {
+			$this->pathCleaner = $useUrlCleaner;
+		}
+		$cleanString = array(
+			'system_name'		=> 'integer',
+			'object_path'		=> 'text',
+			'user_id'			=> 'integer',
+			'group_id'			=> 'integer',
+			'inherit'			=> 'bool',
+			'u_r'				=> 'bool',
+			'u_w'				=> 'bool',
+			'u_x'				=> 'bool',
+			'g_r'				=> 'bool',
+			'g_w'				=> 'bool',
+			'g_x'				=> 'bool',
+			'o_r'				=> 'bool',
+			'o_w'				=> 'bool',
+			'o_x'				=> 'bool',
+		);
+		$this->dbTableHandler = new cs_dbTableHandler($this->db, $this->permTable, $this->permSeq, 'permission_id', $cleanString);
 	}//end __construct()
 	//============================================================================
 	
@@ -98,6 +131,9 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	 */
 	protected function build_permission_string(array $perms) {
 		$this->_sanityCheck();
+		
+		//NOTE:: the incoming $perms must have more (or equal) items vs. $this->keys so that it can accept arrays with extra
+		//	items, but can disregard those that obviously do not have enough.
 		if(is_array($perms) && count($perms) >= count($this->keys)) {
 			$retval = "";
 			foreach($this->keys as $dbColName) {
@@ -118,7 +154,11 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 			}
 		}
 		else {
-			throw new exception(__METHOD__ .":: invalid permission set.");
+			$extraInfo="";
+			if(!is_array($perms)) {
+				$extraInfo = " (expected array, received ". gettype($perms) ." '". $perms ."')";
+			}
+			throw new exception(__METHOD__ .":: invalid permission set". $extraInfo);
 		}
 		return($retval);
 	}//end build_permission_string();
@@ -144,7 +184,7 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	public function create_permission($name, $userId, $groupId, $permString) {
 		if(is_string($name) && strlen($name) && is_numeric($userId) && $userId >= 0 && is_numeric($groupId) && $groupId >= 0) {
 			$cleanStringArr = array(
-				'object_name'	=> 'sql',
+				'object_path'	=> 'sql',
 				'user_id'		=> 'numeric',
 				'group_id'		=> 'numeric',
 				'u_r'			=> 'bool',
@@ -159,13 +199,11 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 			);
 			try{
 				$insertArr = $this->parse_permission_string($permString);
-				$insertArr['object_name'] = $this->gfObj->cleanString($name, 'sql', 0);
+				$insertArr['object_path'] = $this->gfObj->cleanString($name, 'sql', 0);
 				$insertArr['user_id'] = $userId;
 				$insertArr['group_id'] = $groupId;
 				
-				$insertSql = $this->gfObj->string_from_array($insertArr, 'insert', null, $cleanStringArr);
-				$sql = "INSERT INTO ". self::objTable ." ". $insertSql;
-				$newId = $this->db->run_insert($sql, self::objSeq);
+				$newId = $this->dbTableHandler->create_record($insertArr);
 			}
 			catch(Exception $e) {
 				throw new exception(__METHOD__ .":: failed to create new record, DETAILS::: ". $e->getMessage());
@@ -183,24 +221,11 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	
 	//============================================================================
 	/**
-	 * Same as get_permission().
-	 */
-	public function get_object($name) {
-		return($this->get_permission($name));
-	}//end get_object()
-	//============================================================================
-	
-	
-	
-	//============================================================================
-	/**
 	 * Retrieves a permission object by name from the database, exception on failure.
 	 */
 	public function get_permission($name) {
 		try {
-			$name = $this->gfObj->cleanString($name, 'sql', 0);
-			$sql = "SELECT * FROM ". self::objTable ." WHERE object_name='". $name ."'";
-			$retval = $this->db->run_query($sql);
+			$retval = $this->dbTableHandler->get_single_record(array('object_path'=>$name));
 		}
 		catch(Exception $e) {
 			throw new exception(__METHOD__ .":: error while locating permission '". $name ."', DETAILS::: ". $e->getMessage());
@@ -214,24 +239,12 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 	
 	//============================================================================
 	/**
-	 * Same as get_permission_by_id().
-	 */
-	public function get_object_by_id($objectId) {
-		return($this->get_permission_by_id($objectId));
-	}//end get_object_by_id()
-	//============================================================================
-	
-	
-	
-	//============================================================================
-	/**
 	 * Retrieves a permission object from the database based on an ID.
 	 */
 	public function get_permission_by_id($permId) {
 		try {
 			if(!is_null($permId) && is_numeric($permId)) {
-				$sql = "SELECT * FROM ". self::objTable ." WHERE object_id='". $permId ."'";
-				$retval = $this->db->run_query($sql);
+				$retval = $this->dbTableHandler->get_record_by_id($permId);
 			}
 			else {
 				throw new exception(__METHOD__ .":: invalid permission ID (". $permId .")");
@@ -298,7 +311,6 @@ class cs_genericPermission extends cs_genericUserGroupAbstract {
 				if(preg_match('/'. $type .'_[rwx]$/',$myKey)) {
 					//chop the last character off (i.e. 'r' from 'u_r')
 					$myPermChar = substr($myKey, -1);
-					#$retval[$myPermChar] = $this->gfObj->interpret_bool($permData[$myKey], array('f', 't'));
 					$retval[$myPermChar] = $this->evaluate_perm_value($permData[$myKey], $type);
 				}
 			}

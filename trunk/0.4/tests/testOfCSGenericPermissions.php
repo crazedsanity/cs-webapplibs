@@ -89,9 +89,9 @@ class testOfCSGenericPermissions extends testDbAbstract {
 			
 			$groupList = $this->permObj->get_all_groups();
 			
-			foreach($groupList as $groupData) {
-				$this->assertEqual($this->permObj->get_group_by_id($groupData['group_id']), $groupData);
-				$this->assertEqual($this->permObj->get_group($groupData['group_name']), $groupData);
+			foreach($groupList as $groupId=>$groupData) {
+				$this->assertEqual($this->permObj->get_group_by_id($groupId), $groupData, "failed to get group (". $groupData['group_name'] .") by ID (". $groupId .")");
+				$this->assertEqual($this->permObj->get_group($groupData['group_name']), $groupData, "failed to get group (". $groupData['group_name'] .") by name");
 			}
 		}
 		
@@ -100,8 +100,7 @@ class testOfCSGenericPermissions extends testDbAbstract {
 			$newId = $this->permObj->create_user_group($this->validUsers[$myKey]['uid'],$newGroupId);
 			$this->assertTrue(is_numeric($newId));
 			$this->assertTrue($this->permObj->is_group_member($this->validUsers[$myKey]['uid'],$newGroupId), "user (". 
-					$this->validUsers[$myKey]['uid'] .") isn't member of group (". $newGroupId .") after ".
-					"being added to it... ");
+					$this->validUsers[$myKey]['uid'] .") isn't member of group (". $newGroupId .") after being added to it... ");
 			
 			$ugList = $this->permObj->get_user_groups($this->validUsers[$myKey]['uid']);
 			$this->assertTrue(is_array($ugList));
@@ -175,9 +174,7 @@ class testOfCSGenericPermissions extends testDbAbstract {
 			
 			//the method 'build_permissions_string()' should disregard extra indices in the array & build the string.
 			$this->assertEqual($this->permObj->make_perm_string($this->permObj->get_permission_by_id($permId)), $usePermString);
-			$this->assertEqual($this->permObj->make_perm_string($this->permObj->get_object_by_id($permId)), $usePermString);
 			$this->assertEqual($this->permObj->make_perm_string($this->permObj->get_permission($usePermName)), $usePermString);
-			$this->assertEqual($this->permObj->make_perm_string($this->permObj->get_object($usePermName)), $usePermString);
 			
 			//check to make sure individual permission requests work as expected.
 			$this->assertTrue($this->permObj->has_read_permission($myUid, $usePermName));

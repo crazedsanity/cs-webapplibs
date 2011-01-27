@@ -1,8 +1,6 @@
 <?php
 
 /*
- * Created on June 18, 2010
- * 
  * FILE INFORMATION:
  * 
  * $HeadURL$
@@ -15,14 +13,22 @@
 abstract class cs_genericUserGroupAbstract extends cs_genericGroupAbstract {
 	
 	/** Table name used to store user_group records. */
-	const ugTable = "cswal_user_group_table";
+	protected $ugTable = "cswal_user_group_table";
 	
 	/** Sequence for user_group table. */
-	const ugSeq = "cswal_user_group_table_user_group_id_seq";
+	protected $ugSeq = "cswal_user_group_table_user_group_id_seq";
+	
+	/** dbTableHandler{} object for simplifying SQL. */
+	private $dbTableHandler;
 	
 	//============================================================================
 	public function __construct(cs_phpDB $db) {
 		parent::__construct($db);
+		$cleanString = array(
+			'user_id'	=> 'integer',
+			'group_id'	=> 'integer'
+		);
+		$this->dbTableHandler = new cs_dbTableHandler($this->db, $this->ugTable, $this->ugSeq, 'user_group_id', $cleanString);
 	}//end __construct()
 	//============================================================================
 	
@@ -32,8 +38,7 @@ abstract class cs_genericUserGroupAbstract extends cs_genericGroupAbstract {
 	public function create_user_group($userId, $groupId) {
 		if(is_numeric($userId) && is_numeric($groupId) && $userId >= 0 && $groupId >= 0) {
 			try {
-				$sql = "INSERT INTO ". self::ugTable ." (user_id, group_id) VALUES (". $userId .", ". $groupId .")";
-				$newId = $this->db->run_insert($sql, self::ugSeq);
+				$newId = $this->dbTableHandler->create_record(array('user_id'=>$userId,'group_id'=>$groupId));
 			}
 			catch(Exception $e) {
 				throw new exception(__METHOD__ .":: failed to create user group, DETAILS::: ". $e->getMessage());
@@ -52,9 +57,7 @@ abstract class cs_genericUserGroupAbstract extends cs_genericGroupAbstract {
 	public function get_user_groups($userId) {
 		if(is_numeric($userId) && $userId >= 0) {
 			try {
-				$sql = "SELECT ug.*, g.group_name, g.group_admin FROM ". self::ugTable ." AS ug INNER "
-					."JOIN ". parent::groupTable ." as g USING (group_id) WHERE user_id=". $userId;
-				$retval = $this->db->run_query($sql, 'group_id');
+				$retval = $this->dbTableHandler->get_records(array('user_id'=>$userId));
 			}
 			catch(Exception $e) {
 				throw new exception(__METHOD__ .":: failed to locate groups for user_id=(". $userId ."), DETAILS::: ". $e->getMessage());
@@ -73,8 +76,11 @@ abstract class cs_genericUserGroupAbstract extends cs_genericGroupAbstract {
 	public function is_group_member($userId, $groupId) {
 		$groupList = $this->get_user_groups($userId);
 		$retval = false;
-		if(isset($groupList[$groupId])) {
-			$retval = true;
+		if(is_array($groupList)) {
+			$keys = array_keys($groupList);
+			if($groupList[$keys[0]]['group_id'] == $groupId) {
+				$retval = true;
+			}
 		}
 		return($retval);
 	}//end is_group_member()
