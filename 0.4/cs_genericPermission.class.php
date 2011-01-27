@@ -11,7 +11,7 @@
  * $LastChangedRevision$
  */
 
-class cs_genericPermission extends cs_genericUserGroupAbstract {
+class cs_genericPermission extends cs_genericObjectAbstract {
 	
 	/** Database object. */
 	public $db;
