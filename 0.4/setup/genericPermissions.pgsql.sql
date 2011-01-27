@@ -40,13 +40,11 @@ CREATE TABLE cswal_system_table (
 -- 
 -- Object table
 -- Unique set of names which should be chained together to create an object path; for a URL of "/member/blog/edit", the pieces would be created 
---	with ID's, such as "member"=1, "blog"=2, "edit"=3; the object path would then be ":1::2::3:"; an extra prefix element might be created to 
---	define a default, inheritable set of permissions, such as "{root}"=10; the path might then be ":10::1::2::3:".
+--	with ID's, such as "member"=1, "blog"=2, "edit"=3; the object path would then be ":1::2::3:".
 --
 CREATE TABLE cswal_object_table (
 	object_id integer NOT NULL PRIMARY KEY,
 	object_name text NOT NULL UNIQUE,
-	is_hidden boolean NOT NULL DEFAULT FALSE,
 	created TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -84,8 +82,8 @@ INSERT INTO cswal_group_table (group_name) VALUES ('www');
 INSERT INTO cswal_group_table (group_name) VALUES ('blogs');
 INSERT INTO cswal_group_table (group_name) VALUES ('admin');
 
-INSERT INTO cswal_object_table (object_id, object_name,is_hidden) VALUES (0, '/', true);
-INSERT INTO cswal_object_table (object_id, object_name,is_hidden) VALUES (1, 'member', false);
+INSERT INTO cswal_object_table (object_id, object_name) VALUES (0, '{APPURL}');
+INSERT INTO cswal_object_table (object_id, object_name) VALUES (1, 'member');
 
 INSERT INTO cswal_permission_table 
 	(object_path,user_id, group_id)
