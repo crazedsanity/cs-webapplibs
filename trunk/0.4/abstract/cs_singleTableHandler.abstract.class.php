@@ -114,6 +114,12 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 		if(is_numeric($recId)) {
 			try {
 				$data = $this->get_records(array($this->pkeyField => $recId));
+				if(isset($data[$recId])) {
+					$data = $data[$recId];
+				}
+				else {
+					throw new exception(__METHOD__ .": returned data did not contain ID (". $recId .")");
+				}
 			}
 			catch(Exception $e) {
 				throw new exception(__METHOD__ .":: error while retrieving record (". $recId ."), DETAILS::: ". $e->getMessage());
@@ -142,8 +148,14 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 			try {
 				$data = $this->get_records($filter, null, 1);
 				
-				$keys = array_keys($data);
-				$retval = $data[$keys[0]];
+				if(is_array($data)) {
+					$keys = array_keys($data);
+					$retval = $data[$keys[0]];
+				}
+				else {
+					//technically, the call to get_records() got boolean(false) from cs_phpDB::run_query(), so we could just return $data directly...
+					$retval = false;
+				}
 			}
 			catch(Exception $e) {
 				throw new exception(__METHOD__ .":: failed to retrieve record, DETAILS::: ". $e->getMessage());
@@ -233,7 +245,6 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 					.' WHERE '. $this->pkeyField .'='. $recId;
 				try {
 					$retval = $this->dbObj->run_update($sql, true);
-#$this->gfObj->debug_print(__METHOD__ .":: retval=(". $retval ."), SQL::: ". $sql ,1);
 				}
 				catch(Exception $e) {
 					throw new exception(__METHOD__ .":: failed to update record (". $recId ."), DETAILS::: ". $e->getMessage());
@@ -268,6 +279,14 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 		}
 		return($result);
 	}//end delete_record()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public function get_last_query() {
+		return($this->dbObj->get_last_query());
+	}//end get_last_query();
 	//-------------------------------------------------------------------------
 }
 
