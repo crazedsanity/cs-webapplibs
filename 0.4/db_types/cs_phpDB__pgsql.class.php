@@ -44,7 +44,7 @@ class cs_phpDB__pgsql extends cs_phpDBAbstract {
 	protected $inTrans = FALSE;
 	
 	/** Holds the last query performed. */
-	protected $lastQuery = NULL;
+	public $lastQuery = NULL;
 	
 	/** List of queries that have been run */
 	protected $queryList=array();
