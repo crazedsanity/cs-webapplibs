@@ -10,7 +10,7 @@
  * $LastChangedRevision$
  */
 
-abstract class cs_genericObject extends cs_genericUserGroupAbstract {
+abstract class cs_genericObjectAbstract extends cs_genericUserGroupAbstract {
 	
 	/** Table name used to store object records. */
 	protected $oTable = "cswal_object_table";
