@@ -124,19 +124,13 @@ abstract class cs_genericObjectAbstract extends cs_genericUserGroupAbstract {
 					$missingIndexes = array_diff($objectNames, $nvpArray);
 					
 					if(count($missingIndexes)) {
-$this->gfObj->debug_print(__METHOD__ .": MISSING INDEXES::: ". $this->gfObj->debug_print($missingIndexes,0,1));
 						foreach($missingIndexes as $newObjectName) {
 							$newId = $this->create_object($newObjectName);
 							$nvpArray[$newId] = $newObjectName;
 						}
 					}
-$this->gfObj->debug_print(__METHOD__ .": createMissing=(". $createMissing ."), counts=(". count($objectNames) ."/". count($nvpArray)  ."/". count($missingIndexes)."), SQL::: ". $sql);
 				}
 				if(!is_array($nvpArray) || !count($nvpArray)) {
-$this->gfObj->debug_print(__METHOD__ .": objectNames::: ". $this->gfObj->debug_print($objectNames,0,1));
-$this->gfObj->debug_print(__METHOD__ .": nvpArray::: ". $this->gfObj->debug_print($nvpArray,0,1));
-$this->gfObj->debug_print(__METHOD__ .": missingIndexes::: ". $this->gfObj->debug_print($missingIndexes,0,1));
-cs_debug_backtrace(1);
 					throw new exception(__METHOD__ .": no data returned");
 				}
 			}
