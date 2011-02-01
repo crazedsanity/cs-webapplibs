@@ -6,7 +6,7 @@
 CREATE TABLE cswal_group_table (
 	group_id serial NOT NULL PRIMARY KEY,
 	group_name text NOT NULL UNIQUE,
-	group_admin integer REFERENCES cs_authentication_table(uid),
+	group_admin integer NOT NULL REFERENCES cs_authentication_table(uid),
 	created TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -43,7 +43,7 @@ CREATE TABLE cswal_system_table (
 --	with ID's, such as "member"=1, "blog"=2, "edit"=3; the object path would then be ":1::2::3:".
 --
 CREATE TABLE cswal_object_table (
-	object_id integer NOT NULL PRIMARY KEY,
+	object_id serial NOT NULL PRIMARY KEY,
 	object_name text NOT NULL UNIQUE,
 	created TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -60,7 +60,7 @@ CREATE TABLE cswal_object_table (
 CREATE TABLE cswal_permission_table (
 	permission_id serial NOT NULL PRIMARY KEY,
 	system_name integer NOT NULL DEFAULT 0 REFERENCES cswal_system_table(system_id),
-	object_path text NOT NULL UNIQUE,
+	object_path text NOT NULL,
 	user_id integer NOT NULL REFERENCES cs_authentication_table(uid),
 	group_id integer NOT NULL REFERENCES cswal_group_table(group_id),
 	inherit boolean NOT NULL DEFAULT FALSE,
@@ -78,20 +78,6 @@ CREATE TABLE cswal_permission_table (
 
 INSERT INTO cswal_system_table (system_id, system_name) VALUES (0, 'DEFAULT');
 
-INSERT INTO cswal_group_table (group_name) VALUES ('www');
-INSERT INTO cswal_group_table (group_name) VALUES ('blogs');
-INSERT INTO cswal_group_table (group_name) VALUES ('admin');
-
-INSERT INTO cswal_object_table (object_id, object_name) VALUES (0, '{APPURL}');
-INSERT INTO cswal_object_table (object_id, object_name) VALUES (1, 'member');
-
-INSERT INTO cswal_permission_table 
-	(object_path,user_id, group_id)
-	VALUES
-	(':0:',        101,     1);
-
-INSERT INTO cswal_permission_table
-	(object_path, user_id, group_id, g_r,  g_w)
-	VALUES 
-	(':0::1:', 101,       2,        true, true);
+ALTER TABLE ONLY cswal_permission_table
+	ADD CONSTRAINT cswal_permission_table_system_path_key UNIQUE (system_name, object_path);
 
