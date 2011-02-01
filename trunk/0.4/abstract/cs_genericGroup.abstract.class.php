@@ -35,7 +35,7 @@ abstract class cs_genericGroupAbstract extends cs_webapplibsAbstract {
 		
 		//setup table handler.
 		$cleanString = array(
-			'group_name'	=> 'text',
+			'group_name'	=> 'email',
 			'group_admin'	=> 'integer'
 		);
 		$this->dbTableHandler = new cs_dbTableHandler($this->db, $this->groupTable, $this->groupSeq, 'group_id', $cleanString);
@@ -59,9 +59,13 @@ abstract class cs_genericGroupAbstract extends cs_webapplibsAbstract {
 	
 	
 	//============================================================================
-	public function create_group($name) {
+	public function create_group($name, $adminUid) {
 		try{
-			$newId = $this->dbTableHandler->create_record(array('group_name'=>$this->clean_group_name($name)));
+			$insertData = array(
+				'group_name'	=> $this->clean_group_name($name),
+				'group_admin'	=> $adminUid
+			);
+			$newId = $this->dbTableHandler->create_record($insertData);
 		}
 		catch(Exception $e) {
 			throw new exception(__METHOD__ .":: failed to create new record, DETAILS::: ". $e->getMessage());

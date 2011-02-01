@@ -36,7 +36,7 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 	protected $pathCleaner=true;
 	
 	/** dbTableHandler{} object for easier SQL. */
-	private $dbTableHandler;
+	protected $dbTableHandler;
 	
 	//============================================================================
 	/**
@@ -65,7 +65,7 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 		}
 		$cleanString = array(
 			'system_name'		=> 'integer',
-			'object_path'		=> 'text',
+			'object_path'		=> 'email_plus',
 			'user_id'			=> 'integer',
 			'group_id'			=> 'integer',
 			'inherit'			=> 'bool',
@@ -167,46 +167,21 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 	
 	
 	//============================================================================
-	/**
-	 * Same as create_permission().
-	 */
-	public function create_object($name, $userId, $groupId, $permString) {
-		return($this->create_permission($name, $userId, $groupId, $permString));
-	}//end create_object()
-	//============================================================================
-	
-	
-	
-	//============================================================================
 	/** 
 	 * Creates a permission object record.
 	 */
 	public function create_permission($name, $userId, $groupId, $permString) {
 		if(is_string($name) && strlen($name) && is_numeric($userId) && $userId >= 0 && is_numeric($groupId) && $groupId >= 0) {
-			$cleanStringArr = array(
-				'object_path'	=> 'sql',
-				'user_id'		=> 'numeric',
-				'group_id'		=> 'numeric',
-				'u_r'			=> 'bool',
-				'u_w'			=> 'bool',
-				'u_x'			=> 'bool',
-				'g_r'			=> 'bool',
-				'g_w'			=> 'bool',
-				'g_x'			=> 'bool',
-				'o_r'			=> 'bool',
-				'o_w'			=> 'bool',
-				'o_x'			=> 'bool'
-			);
 			try{
 				$insertArr = $this->parse_permission_string($permString);
-				$insertArr['object_path'] = $this->gfObj->cleanString($name, 'sql', 0);
+				$insertArr['object_path'] = $this->create_id_path($name);
 				$insertArr['user_id'] = $userId;
 				$insertArr['group_id'] = $groupId;
 				
 				$newId = $this->dbTableHandler->create_record($insertArr);
 			}
 			catch(Exception $e) {
-				throw new exception(__METHOD__ .":: failed to create new record, DETAILS::: ". $e->getMessage());
+				throw new exception(__METHOD__ .":: failed to create new record, name=(". $name ."), permString=(". $permString .") DETAILS::: ". $e->getMessage());
 			}
 		}
 		else {
@@ -225,7 +200,14 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 	 */
 	public function get_permission($name) {
 		try {
+			if(!$this->is_id_path($name)) {
+				$name = $this->create_id_path($name);
+			}
 			$retval = $this->dbTableHandler->get_single_record(array('object_path'=>$name));
+			
+			//now translate the object_path...
+			// TODO: this could be a resource hog if called in rapid succession; consider creating an object cache or whatnot
+			$retval['translated_path'] = $this->translate_id_path($retval['object_path']);
 		}
 		catch(Exception $e) {
 			throw new exception(__METHOD__ .":: error while locating permission '". $name ."', DETAILS::: ". $e->getMessage());
@@ -265,6 +247,9 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 	 * Check available permissions...
 	 */
 	public function check_permission($objectName, $userId) {
+		if(!$this->is_id_path($objectName)) {
+			$objectName = $this->create_id_path($objectName,false);
+		}
 		$availablePerms = array(
 			'r'	=> false,
 			'w'	=> false,
@@ -409,6 +394,39 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 		}
 		return($retval);
 	}//end has_execute_permission()
+	//============================================================================
+	
+	
+	
+	//============================================================================
+	public function explode_path($path) {
+		if(is_string($path) && strlen($path)) {
+			$path = preg_replace('/^'. addcslashes($this->objectDelimiter, '/') .'/', '', $path);
+			$path = preg_replace('/'. addcslashes($this->objectDelimiter, '/') .'{2,}/', $this->objectDelimiter, $path);
+			$bits = explode($this->objectDelimiter, $path);
+		}
+		else {
+			throw new exception(__METHOD__ .": invalid path (". $path .")");
+		}
+		return($bits);
+	}//end explode_path()
+	//============================================================================
+	
+	
+	
+	//============================================================================
+	public function create_id_path($path) {
+		//Get the list of objects from the path.
+		$bits = $this->explode_path($path);
+		
+		//now create the path.
+		$newPath = $this->create_id_path_from_objects($bits);
+		if(!$this->is_id_path($newPath)) {
+			throw new exception(__METHOD__ .": failed to create ID path from (". $path .")");
+		}
+		
+		return($newPath);
+	}//end create_id_path()
 	//============================================================================
 }
 ?>
