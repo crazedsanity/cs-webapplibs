@@ -81,10 +81,10 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @RETURN (int)	SUCCESS: the (int) is the last inserted ID.
 	 * @EXCEPTION		FAIL: exception indicates the error.
 	 */
-	public function create_record(array $data) {
+	public function create_record(array $data, $removeEmptyVals=TRUE) {
 		if(is_array($data) && count($data)) {
 			$sql = 'INSERT INTO '. $this->tableName .' '
-				. $this->gfObj->string_from_array($data, 'insert', null, $this->cleanStringArr, true);
+				. $this->gfObj->string_from_array($data, 'insert', null, $this->cleanStringArr, $removeEmptyVals);
 			try {
 				$newId = $this->dbObj->run_insert($sql, $this->seqName);
 			}
