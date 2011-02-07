@@ -201,7 +201,7 @@ class cs_phpDB__pgsql extends cs_phpDBAbstract {
 			}
 		}
 		else {
-			throw new exception(__METHOD__ .": paramsAreSet=(". $this->paramsAreSet ."), isConnected=(". $this->isConnected .")");
+			throw new exception(__METHOD__ .": not connected... paramsAreSet=(". $this->paramsAreSet ."), isConnected=(". $this->isConnected .")");
 		}
 		
 		return($retval);
@@ -225,8 +225,10 @@ class cs_phpDB__pgsql extends cs_phpDBAbstract {
 	 * 
 	 * TODO: re-implement query logging (setting debug, logfilename, etc).
 	 */
-	function exec($query) {
-		$this->lastQuery = $query;
+	function exec($query,$setLastQuery=true) {
+		if($setLastQuery) {
+			$this->lastQuery = $query;
+		}
 		if($this->useQueryList) {
 			$this->queryList[] = $query;
 		}
@@ -1095,7 +1097,7 @@ class cs_phpDB__pgsql extends cs_phpDBAbstract {
 	//=========================================================================
 	public function get_currval($sequence) {
 		if(is_string($sequence) && strlen($sequence) >= 5) {
-			$numrows = $this->exec("SELECT currval('". $sequence ."')");
+			$numrows = $this->exec("SELECT currval('". $sequence ."')",false);
 			$dberror = $this->errorMsg();
 			
 			if($numrows == 1 && !strlen($dberror)) {
