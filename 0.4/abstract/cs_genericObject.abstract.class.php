@@ -98,8 +98,9 @@ abstract class cs_genericObjectAbstract extends cs_genericUserGroupAbstract {
 				. "object_name IN ";
 			
 			$myFilter = "";
-			foreach($objectNames as $n) {
-				$tString = "'". $this->clean_object_name($n) ."'";
+			foreach($objectNames as $i=>$n) {
+				$tCleanName = $this->clean_object_name($n);
+				$tString = "'". $tCleanName ."'";
 				$myFilter = $this->gfObj->create_list($myFilter, $tString);
 			}
 			$sql .= '('. $myFilter .')';
@@ -165,13 +166,11 @@ abstract class cs_genericObjectAbstract extends cs_genericUserGroupAbstract {
 			
 			$idPath = "";
 			if(is_array($myIds) && count($myIds)) {
-				foreach($myIds as $id=>$name) {
-					try {
-						$idPath = $this->gfObj->create_list($idPath, $this->create_id_path_part($id), '');
-					}
-					catch(Exception $e) {
-						throw new exception($e->getMessage());
-					}
+				$nameToId = array_flip($myIds);
+				foreach($objects as $i=>$name) {
+					$cleanName = $this->clean_object_name($name);
+					$tId = $nameToId[$cleanName];
+					$idPath = $this->gfObj->create_list($idPath, $this->create_id_path_part($tId), '');
 				}
 			}
 			else {
@@ -181,6 +180,7 @@ abstract class cs_genericObjectAbstract extends cs_genericUserGroupAbstract {
 		catch(Exception $e) {
 			throw new exception(__METHOD__ .": failed to create id path, DETAILS::: ". $e->getMessage());
 		}
+#$this->gfObj->debug_print(__METHOD__ .": returning=(". $idPath ."), objects::: ". $this->gfObj->debug_print($objects,0,1) ."\n<BR> myIds::: ". $this->gfObj->debug_print($myIds,0,1));
 		return($idPath);
 	}//end create_id_path_from_objects()
 	//============================================================================
@@ -188,7 +188,7 @@ abstract class cs_genericObjectAbstract extends cs_genericUserGroupAbstract {
 	
 	
 	//============================================================================
-	protected function clean_object_name($n) {
+	public function clean_object_name($n) {
 		//pulled from cs-content, cs_globalFunctions::cleanString(), style="query"; modified to allow the brackets.
 		$evilChars = array("\$", ":", "%", "~", "*",">", "<", "-", "[", "]", ")", "(", "&", "#", "?", ".", "\,","\/","\\","\"","\|","!","^","+","`","\n","\r");
 		$n = preg_replace("/\|/","",$n);
@@ -229,10 +229,19 @@ abstract class cs_genericObjectAbstract extends cs_genericUserGroupAbstract {
 	
 	
 	//============================================================================
-	public function translate_id_path($idPath) {
+	public function translate_id_path($idPath, $debug=0) {
 		if($this->is_id_path($idPath)) {
 			$bits = $this->explode_id_path($idPath);
-			$translatedPath = $this->get_object_names($this->explode_id_path($idPath));
+			$translatedBits = $this->get_object_names($this->explode_id_path($idPath));
+			
+			$translatedPath = "";
+			foreach($bits as $id) {
+				$translatedPath = $this->gfObj->create_list($translatedPath, $translatedBits[$id], '/');
+			}
+			#foreach($translatedBits as $id=>$name) {
+			#	$translatedPath = $this->gfObj->create_list($translatedPath, $name, '/');
+			#}
+			$translatedPath = '/'. $translatedPath;
 		}
 		else {
 			throw new exception(__METHOD__ .": invalid path (". $idPath .")");
@@ -267,6 +276,19 @@ abstract class cs_genericObjectAbstract extends cs_genericUserGroupAbstract {
 		}
 		return($objectNames);
 	}//end get_object_names()
+	//============================================================================
+	
+	
+	
+	//============================================================================
+	public function clean_object_path($path) {
+		$bits = $this->explode_id_path($path);
+		$newPath = "";
+		foreach($bits as $k=>$v) {
+			$newPath = $this->gfObj->create_list($newPath, $this->clean_object_name($v), '/');
+		}
+		return($newPath);
+	}//end clean_object_path()
 	//============================================================================
 	
 }

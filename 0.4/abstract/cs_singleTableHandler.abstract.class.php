@@ -224,6 +224,41 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	
 	
 	//-------------------------------------------------------------------------
+	public function get_records_using_custom_filter($filter, $orderBy=null, $limit=null, $offset=null) {
+		if(is_string($filter) && strlen($filter)) {
+			$limitOffsetStr = '';
+			if(is_numeric($limit) && $limit > 0) {
+				$limitOffsetStr = ' LIMIT '. $limit;
+				
+				//using an offset without a limit seems silly...
+				if(is_numeric($limitOffsetStr) && $offset > 0) {
+					$limitOffsetStr .= ' OFFSET '. $offset;
+				}
+			}
+			
+			$orderBYStr = ' ORDER BY '. $this->pkeyField;
+			if($is_string($orderBy) && strlen($orderBy)) {
+				$orderByStr = ' ORDER BY '. $orderBy;
+			}
+			
+			$sql = 'SELECT * FROM '. $this->tableName . $filter . $orderByStr . $limitOffsetStr;
+			try {
+				$data = $this->dbObj->run_query($sql, $this->pkeyField);
+			}
+			catch(Exception $e) {
+				throw new exception(__METHOD__ .":: failed to retrieve records, DETAILS::: ". $e->getMessage());
+			}
+		}
+		else {
+			throw new exception(__METHOD__ .": invalid filter (". $filter .")");
+		}
+		return($data);
+	}//end get_records_using_custom_filter()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
 	/**
 	 * Update a single record with the given changes.
 	 * 

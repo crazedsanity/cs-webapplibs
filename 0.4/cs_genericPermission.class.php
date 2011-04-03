@@ -174,11 +174,11 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 		if(is_string($name) && strlen($name) && is_numeric($userId) && $userId >= 0 && is_numeric($groupId) && $groupId >= 0) {
 			try{
 				$insertArr = $this->parse_permission_string($permString);
-				$insertArr['object_path'] = $this->create_id_path($name);
+				$insertArr['id_path'] = $this->create_id_path($name);
 				$insertArr['user_id'] = $userId;
 				$insertArr['group_id'] = $groupId;
 				
-				$newId = $this->dbTableHandler->create_record($insertArr);
+				$newId = $this->dbTableHandler->create_record($insertArr,false);
 			}
 			catch(Exception $e) {
 				throw new exception(__METHOD__ .":: failed to create new record, name=(". $name ."), permString=(". $permString .") DETAILS::: ". $e->getMessage());
@@ -203,11 +203,11 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 			if(!$this->is_id_path($name)) {
 				$name = $this->create_id_path($name);
 			}
-			$retval = $this->dbTableHandler->get_single_record(array('object_path'=>$name));
+			$retval = $this->dbTableHandler->get_single_record(array('id_path'=>$name));
 			
 			//now translate the object_path...
-			// TODO: this could be a resource hog if called in rapid succession; consider creating an object cache or whatnot
-			$retval['translated_path'] = $this->translate_id_path($retval['object_path']);
+			$retval['object_path'] = $this->translate_id_path($retval['id_path']);
+			$retval['perm_string'] = $this->build_permission_string($retval);
 		}
 		catch(Exception $e) {
 			throw new exception(__METHOD__ .":: error while locating permission '". $name ."', DETAILS::: ". $e->getMessage());
@@ -404,6 +404,7 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 			$path = preg_replace('/^'. addcslashes($this->objectDelimiter, '/') .'/', '', $path);
 			$path = preg_replace('/'. addcslashes($this->objectDelimiter, '/') .'{2,}/', $this->objectDelimiter, $path);
 			$bits = explode($this->objectDelimiter, $path);
+#$this->gfObj->debug_print(__METHOD__ .": path=(". $path ."), bits::: ". $this->gfObj->debug_print($bits,0,1));
 		}
 		else {
 			throw new exception(__METHOD__ .": invalid path (". $path .")");
@@ -421,12 +422,20 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 		
 		//now create the path.
 		$newPath = $this->create_id_path_from_objects($bits);
+#$this->gfObj->debug_print(__METHOD__ .": newPath=(". $newPath ."), bits::: ". $this->gfObj->debug_print($bits,0,1));
 		if(!$this->is_id_path($newPath)) {
 			throw new exception(__METHOD__ .": failed to create ID path from (". $path .")");
 		}
 		
 		return($newPath);
 	}//end create_id_path()
+	//============================================================================
+	
+	
+	
+	//============================================================================
+	public function update_permission() {
+	}//end update_permission()
 	//============================================================================
 }
 ?>

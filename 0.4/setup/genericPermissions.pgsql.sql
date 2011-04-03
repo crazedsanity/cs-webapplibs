@@ -60,7 +60,7 @@ CREATE TABLE cswal_object_table (
 CREATE TABLE cswal_permission_table (
 	permission_id serial NOT NULL PRIMARY KEY,
 	system_name integer NOT NULL DEFAULT 0 REFERENCES cswal_system_table(system_id),
-	object_path text NOT NULL,
+	id_path text NOT NULL,
 	user_id integer NOT NULL REFERENCES cs_authentication_table(uid),
 	group_id integer NOT NULL REFERENCES cswal_group_table(group_id),
 	inherit boolean NOT NULL DEFAULT FALSE,
@@ -79,5 +79,5 @@ CREATE TABLE cswal_permission_table (
 INSERT INTO cswal_system_table (system_id, system_name) VALUES (0, 'DEFAULT');
 
 ALTER TABLE ONLY cswal_permission_table
-	ADD CONSTRAINT cswal_permission_table_system_path_key UNIQUE (system_name, object_path);
+	ADD CONSTRAINT cswal_permission_table_system_path_key UNIQUE (system_name, id_path);
 
