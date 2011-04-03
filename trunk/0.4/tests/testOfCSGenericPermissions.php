@@ -250,6 +250,126 @@ class testOfCSGenericPermissions extends testDbAbstract {
 			$this->assertEqual($this->permObj->get_perm_list($myPermArr,'o'), $permByType['o']);
 		}
 		
+		//test ALL (or at least close to all) variations of permission strings...
+		{
+			$allVariations = array(
+				'rwxrwxrwx'	=> array(
+					'u_r'	=> true,
+					'u_w'	=> true,
+					'u_x'	=> true,
+					'g_r'	=> true,
+					'g_w'	=> true,
+					'g_x'	=> true,
+					'o_r'	=> true,
+					'o_w'	=> true,
+					'o_x'	=> true
+				),
+				'rwxrwxrw-'	=> array(
+					'u_r'	=> true,
+					'u_w'	=> true,
+					'u_x'	=> true,
+					'g_r'	=> true,
+					'g_w'	=> true,
+					'g_x'	=> true,
+					'o_r'	=> true,
+					'o_w'	=> true,
+					'o_x'	=> false
+				),
+				'rwxrwxr--'	=> array(
+					'u_r'	=> true,
+					'u_w'	=> true,
+					'u_x'	=> true,
+					'g_r'	=> true,
+					'g_w'	=> true,
+					'g_x'	=> true,
+					'o_r'	=> true,
+					'o_w'	=> false,
+					'o_x'	=> false
+				),
+				'rwxrwx---'	=> array(
+					'u_r'	=> true,
+					'u_w'	=> true,
+					'u_x'	=> true,
+					'g_r'	=> true,
+					'g_w'	=> true,
+					'g_x'	=> true,
+					'o_r'	=> false,
+					'o_w'	=> false,
+					'o_x'	=> false
+				),
+				'rwxrw----'	=> array(
+					'u_r'	=> true,
+					'u_w'	=> true,
+					'u_x'	=> true,
+					'g_r'	=> true,
+					'g_w'	=> true,
+					'g_x'	=> false,
+					'o_r'	=> false,
+					'o_w'	=> false,
+					'o_x'	=> false
+				),
+				'rwxr-----'	=> array(
+					'u_r'	=> true,
+					'u_w'	=> true,
+					'u_x'	=> true,
+					'g_r'	=> true,
+					'g_w'	=> false,
+					'g_x'	=> false,
+					'o_r'	=> false,
+					'o_w'	=> false,
+					'o_x'	=> false
+				),
+				'rwx------'	=> array(
+					'u_r'	=> true,
+					'u_w'	=> true,
+					'u_x'	=> true,
+					'g_r'	=> false,
+					'g_w'	=> false,
+					'g_x'	=> false,
+					'o_r'	=> false,
+					'o_w'	=> false,
+					'o_x'	=> false
+				),
+				'rw-------'	=> array(
+					'u_r'	=> true,
+					'u_w'	=> true,
+					'u_x'	=> false,
+					'g_r'	=> false,
+					'g_w'	=> false,
+					'g_x'	=> false,
+					'o_r'	=> false,
+					'o_w'	=> false,
+					'o_x'	=> false
+				),
+				'r--------'	=> array(
+					'u_r'	=> true,
+					'u_w'	=> false,
+					'u_x'	=> false,
+					'g_r'	=> false,
+					'g_w'	=> false,
+					'g_x'	=> false,
+					'o_r'	=> false,
+					'o_w'	=> false,
+					'o_x'	=> false
+				),
+				'---------'	=> array(
+					'u_r'	=> false,
+					'u_w'	=> false,
+					'u_x'	=> false,
+					'g_r'	=> false,
+					'g_w'	=> false,
+					'g_x'	=> false,
+					'o_r'	=> false,
+					'o_w'	=> false,
+					'o_x'	=> false
+				),
+			);
+			foreach($allVariations as $permString=>$testPermArray) {
+				$parsedPerms = $this->permObj->parse_perm_string($permString);
+				$this->assertEqual($parsedPerms, $testPermArray);
+			}
+		}
+		
 		//create some permissions.
 		{
 			$userKeys = array_keys($this->validUsers);
@@ -310,27 +430,27 @@ class testOfCSGenericPermissions extends testDbAbstract {
 				'/content/dev',
 				'/content/dev/corner',
 				'/content/dev/coner/cs',
-				
-				//The following items fail for no apparent reason (that I can find)...
 				'/admin',
 				'/cntenx',
-				'/content/dev/corner/cs/content', //fails due to duplicate objects in path ("content" is in there twice).
-			);
-			$testPerms = array(
-				'rwxrwxrwx',
-				'rwxrwx---',
-				'rwx---rwx',
-				'---rwxrwx',
-				'rwx------',
-				'---------',
-				'r--r--r--',
-				'-w--w--w-',
-				'--x--x--x'
+				'/content/dev/corner/cs/content',
 			);
 			foreach($testPaths as $tPath) {
-				$tPermString = 'rwxrwx---';
+				$tPermString = '-w--w----';
 				$newPermId = $this->permObj->create_permission($tPath, $this->chosenOneUid, $this->defaultGroupId, $tPermString);
 				$this->assertTrue(is_numeric($newPermId));
+				
+				//retrieve the permission & check some things out...
+				$permData = $this->permObj->get_permission($tPath);
+				$this->assertEqual($permData['permission_id'], $newPermId);
+				if(!$this->assertEqual($permData['object_path'], $this->permObj->clean_object_path($tPath))) {
+					#$this->permObj->translate_id_path($permData['id_path'], 1);
+					$this->gfObj->debug_print($permData);
+				}
+				$this->assertEqual($permData['perm_string'], $tPermString);
+				if(!$this->assertEqual($this->permObj->parse_perm_string($tPermString), $this->permObj->parse_perm_string($permData['perm_string']))) {
+					$this->gfObj->debug_print($this->permObj->parse_perm_string($tPermString));
+					$this->gfObj->debug_print($this->permObj->parse_perm_string($permData['perm_string']));
+				}
 			}
 		}///*/
 	}//end test_permissions
