@@ -236,12 +236,12 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 				}
 			}
 			
-			$orderBYStr = ' ORDER BY '. $this->pkeyField;
-			if($is_string($orderBy) && strlen($orderBy)) {
+			$orderByStr = ' ORDER BY '. $this->pkeyField;
+			if(is_string($orderBy) && strlen($orderBy)) {
 				$orderByStr = ' ORDER BY '. $orderBy;
 			}
 			
-			$sql = 'SELECT * FROM '. $this->tableName . $filter . $orderByStr . $limitOffsetStr;
+			$sql = 'SELECT * FROM '. $this->tableName ." WHERE ". $filter . $orderByStr . $limitOffsetStr;
 			try {
 				$data = $this->dbObj->run_query($sql, $this->pkeyField);
 			}
@@ -268,7 +268,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @RETURN (int)	SUCCESS: (int) is the number of records updated (should always be 1)
 	 * @EXCEPTION		FAIL: exception indicates the error.
 	 */
-	public function update_record($recId, array $updates, $removeEmptyVals=true) {
+	public function update_record($recId, array $updates, $removeEmptyVals=true, $appendToUpdateString=null) {
 		if(is_numeric($recId) && $recId >= 0 && is_array($updates) && count($updates) > 0) {
 			$updateString = $this->gfObj->string_from_array($updates, 'update', null, $this->cleanStringArr, $removeEmptyVals);
 			if(is_null($updateString) || !strlen($updateString) || strlen($updateString) < 3) {
@@ -276,7 +276,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 			}
 			else {
 				$sql = 'UPDATE '. $this->tableName .' SET '
-					. $updateString
+					. $updateString . $appendToUpdateString
 					.' WHERE '. $this->pkeyField .'='. $recId;
 				try {
 					$retval = $this->dbObj->run_update($sql, true);
