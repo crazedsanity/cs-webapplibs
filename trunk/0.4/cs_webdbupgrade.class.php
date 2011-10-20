@@ -527,7 +527,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 					$retval = "minor";
 				}
 				else {
-					$this->error_handler(__METHOD__ .": downgrading minor versions is unsupported");
+					$this->error_handler(__METHOD__ .": downgrading minor versions is unsupported, project_name=(". $this->get_project() ."), ".
+						"file version=(". $versionFileData['version_string'] ."), dbVersion=(". $dbVersion['version_string'] ."");
 				}
 			}
 			elseif($versionFileData['version_major'] > $dbVersion['version_major']) {
