@@ -197,7 +197,7 @@ class cs_phpDB__pgsql extends cs_phpDBAbstract {
 				$retval = $this->connectionID;
 			}
 			else {
-				throw new exception(__METHOD__ .": FATAL ERROR: ". $connectError);
+				throw new exception(__METHOD__ .": FATAL ERROR: ". $connectError . "\n CONNSTR: ". $connStr);
 			}
 		}
 		else {
