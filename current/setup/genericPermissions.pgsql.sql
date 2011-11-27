@@ -1,7 +1,7 @@
 
 --
 -- Group table
--- Enumerates a list of permissions for a specific group: i.e. for "blog", this could list "create", "edit", and "delete" (among others).
+-- Enumerates a list of permissions for a specific group: e.g. for "blog", this could list "create", "edit", and "delete" (among others).
 --
 CREATE TABLE cswal_group_table (
 	group_id serial NOT NULL PRIMARY KEY,
