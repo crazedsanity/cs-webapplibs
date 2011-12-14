@@ -46,7 +46,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	 */
 	public function __construct($type='pgsql', $writeCommandsToFile=null) {
 		
-		if(is_null($type) || !strlen($type)) {
+		if(is_null($type) || !strlen($type) || !is_string($type)) {
 			$type = 'pgsql';
 		}
 		
@@ -69,7 +69,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 			$this->fsObj = new cs_fileSystem(constant('RWDIR'));
 			$lsData = $this->fsObj->ls();
 			if(!isset($lsData[$this->logFile])) {
-				$this->fsObj->create_file($this->logFile);
+				$this->fsObj->create_file($this->logFile, true);
 			}
 			$this->fsObj->openFile($this->logFile, 'a');	
 		}
@@ -103,7 +103,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 			$retval = call_user_func_array(array($this->dbLayerObj, $methodName), $args);
 		}
 		else {
-			throw new exception(__METHOD__ .': unsupported method ('. $methodName .') for database of type ('. $this->dbType .')');
+			throw new exception(__METHOD__ .': uninitialized ('. $this->isInitialized .'), no database layer ('. is_object($this->dbLayerObj) .'), or unsupported method ('. $methodName .') for database of type ('. $this->dbType .')');
 		}
 		return($retval);
 	}//end __call()	

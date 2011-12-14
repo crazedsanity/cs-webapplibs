@@ -11,7 +11,7 @@
  * $LastChangedRevision$
  */
 
-class cs_genericPermission extends cs_genericObjectAbstract {
+class cs_genericPermission extends cs_genericUserGroupAbstract {
 	
 	/** Database object. */
 	public $db;
@@ -28,9 +28,6 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 	/** List of valid keys... */
 	protected $keys = array();
 	
-	/** Determine object path pieces based on this... */
-	protected $objectDelimiter="/";
-	
 	/** How to clean the path (if at all); boolean true = use cs_globalFunctions::clean_url(); boolean false will 
 		cause it to not be cleaned at all; a string will use cs_globalFunctions::cleanString({string})*/
 	protected $pathCleaner=true;
@@ -42,7 +39,7 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 	/**
 	 * Generic permission system based on *nix filesystem permissions.
 	 */
-	public function __construct(cs_phpDB $db, $objectDelimiter=NULL, $useUrlCleaner=true) {
+	public function __construct(cs_phpDB $db, $useUrlCleaner=true) {
 		$this->db = $db;
 		parent::__construct($db);
 		$this->gfObj = new cs_globalFunctions;
@@ -57,15 +54,12 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 			7	=> 'o_w',
 			8	=> 'o_x'
 		);
-		if(!is_null($objectDelimiter) && is_string($objectDelimiter) && strlen($objectDelimiter)) {
-			$this->objectDelimiter=$objectDelimiter;
-		}
 		if(is_bool($useUrlCleaner) || (is_string($useUrlCleaner) && strlen($useUrlCleaner))) {
 			$this->pathCleaner = $useUrlCleaner;
 		}
 		$cleanString = array(
 			'system_name'		=> 'integer',
-			'object_path'		=> 'email_plus',
+			'path'				=> 'email_plus',
 			'user_id'			=> 'integer',
 			'group_id'			=> 'integer',
 			'inherit'			=> 'bool',
@@ -130,6 +124,7 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 	 * Create permission string based on an array (the opposite of parse_permission_string())
 	 */
 	protected function build_permission_string(array $perms) {
+cs_debug_backtrace(1);
 		$this->_sanityCheck();
 		
 		//NOTE:: the incoming $perms must have more (or equal) items vs. $this->keys so that it can accept arrays with extra
@@ -174,7 +169,7 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 		if(is_string($name) && strlen($name) && is_numeric($userId) && $userId >= 0 && is_numeric($groupId) && $groupId >= 0) {
 			try{
 				$insertArr = $this->parse_permission_string($permString);
-				$insertArr['id_path'] = $this->create_id_path($name);
+				$insertArr['path'] = $name;
 				$insertArr['user_id'] = $userId;
 				$insertArr['group_id'] = $groupId;
 				
@@ -200,13 +195,10 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 	 */
 	public function get_permission($name) {
 		try {
-			if(!$this->is_id_path($name)) {
-				$name = $this->create_id_path($name);
-			}
-			$retval = $this->dbTableHandler->get_single_record(array('id_path'=>$name));
+			$retval = $this->dbTableHandler->get_single_record(array('path'=>$name));
 			
+$this->gfObj->debug_var_dump($retval,1);
 			//now translate the object_path...
-			$retval['object_path'] = $this->translate_id_path($retval['id_path']);
 			$retval['perm_string'] = $this->build_permission_string($retval);
 		}
 		catch(Exception $e) {
@@ -246,10 +238,7 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 	/**
 	 * Check available permissions...
 	 */
-	public function check_permission($objectName, $userId) {
-		if(!$this->is_id_path($objectName)) {
-			$objectName = $this->create_id_path($objectName,false);
-		}
+	public function check_permission($path, $userId) {
 		$availablePerms = array(
 			'r'	=> false,
 			'w'	=> false,
@@ -258,7 +247,7 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 			
 		try {
 			//get the object.
-			$permission = $this->get_permission($objectName);
+			$permission = $this->get_permission($path);
 			
 			//now figure out what permissions they have.
 			if($permission['user_id'] == $userId) {
@@ -394,41 +383,6 @@ class cs_genericPermission extends cs_genericObjectAbstract {
 		}
 		return($retval);
 	}//end has_execute_permission()
-	//============================================================================
-	
-	
-	
-	//============================================================================
-	public function explode_path($path) {
-		if(is_string($path) && strlen($path)) {
-			$path = preg_replace('/^'. addcslashes($this->objectDelimiter, '/') .'/', '', $path);
-			$path = preg_replace('/'. addcslashes($this->objectDelimiter, '/') .'{2,}/', $this->objectDelimiter, $path);
-			$bits = explode($this->objectDelimiter, $path);
-#$this->gfObj->debug_print(__METHOD__ .": path=(". $path ."), bits::: ". $this->gfObj->debug_print($bits,0,1));
-		}
-		else {
-			throw new exception(__METHOD__ .": invalid path (". $path .")");
-		}
-		return($bits);
-	}//end explode_path()
-	//============================================================================
-	
-	
-	
-	//============================================================================
-	public function create_id_path($path) {
-		//Get the list of objects from the path.
-		$bits = $this->explode_path($path);
-		
-		//now create the path.
-		$newPath = $this->create_id_path_from_objects($bits);
-#$this->gfObj->debug_print(__METHOD__ .": newPath=(". $newPath ."), bits::: ". $this->gfObj->debug_print($bits,0,1));
-		if(!$this->is_id_path($newPath)) {
-			throw new exception(__METHOD__ .": failed to create ID path from (". $path .")");
-		}
-		
-		return($newPath);
-	}//end create_id_path()
 	//============================================================================
 	
 	

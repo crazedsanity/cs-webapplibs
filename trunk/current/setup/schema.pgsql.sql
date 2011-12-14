@@ -8,7 +8,26 @@
 --	Last Updated:::::::: $Date$
 --
 
+--
+-- The user status table is a list of statuses indicating what state a user's
+--	account is in.
+--
+CREATE TABLE cs_user_status_table (
+    user_status_id serial NOT NULL PRIMARY KEY,
+    description text NOT NULL,
+    is_active boolean DEFAULT true NOT NULL
+);
 
+CREATE TABLE cs_authentication_table (
+    uid serial NOT NULL PRIMARY KEY,
+    username text NOT NULL,
+    passwd character varying(32),
+    is_active boolean DEFAULT true NOT NULL,
+    date_created date DEFAULT now() NOT NULL,
+    last_login timestamp with time zone,
+    email text,
+    user_status_id integer REFERENCES cs_user_status_table(user_status_id)
+);
 --
 -- The category is the high-level view of the affected system.  If this were 
 --	a project management system with projects and issues, then there would 
@@ -58,7 +77,7 @@ CREATE TABLE cswal_log_table (
 	log_id serial NOT NULL PRIMARY KEY,
 	creation timestamp NOT NULL DEFAULT NOW(),
 	event_id integer NOT NULL REFERENCES cswal_event_table(event_id),
-	uid integer NOT NULL,
+	uid integer NOT NULL REFERENCES cs_authentication_table(uid),
 	affected_uid integer NOT NULL,
 	details text NOT NULL
 );
@@ -94,7 +113,7 @@ CREATE TABLE cswal_version_table (
 
 CREATE TABLE cswal_auth_token_table (
 	auth_token_id serial NOT NULL PRIMARY KEY,
-	uid integer NOT NULL DEFAULT 0,
+	uid integer NOT NULL REFERENCES cs_authentication_table(uid),
 	checksum text NOT NULL,
 	token text NOT NULL,
 	max_uses integer DEFAULT NULL,
@@ -113,7 +132,7 @@ CREATE TABLE cswal_auth_token_table (
 CREATE TABLE cswal_session_store_table (
 	session_store_id serial NOT NULL PRIMARY KEY,
 	session_id varchar(32) NOT NULL DEFAULT '' UNIQUE,
-	user_id varchar(16),
+	uid integer REFERENCES cs_authentication_table(uid),
 	date_created timestamp NOT NULL DEFAULT NOW(),
 	last_updated timestamp NOT NULL DEFAULT NOW(),
 	session_data text

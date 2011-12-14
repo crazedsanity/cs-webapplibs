@@ -21,8 +21,7 @@
  * too many id's that might need to be changed later.  Yay, dynamic code!
  * 
  * QUERY TO GET LAST COUPLE OF LOGS::::
- SELECT l.log_id as id, l.creation, l.event_id as lid, le.description AS event, l.details 
- FROM cswal_log_table AS l INNER JOIN cswal_event_table AS le USING (event_id) ORDER BY log_id DESC LIMIT 25;
+ SELECT l.log_id as id, l.creation, l.event_id as lid, le.description AS event, l.details FROM cswal_log_table AS l INNER JOIN cswal_event_table AS le USING (event_id) ORDER BY log_id DESC LIMIT 25;
  */
 
 //NOTE::: this class **REQUIRES** cs-content for its "cs_phpDB" class.
