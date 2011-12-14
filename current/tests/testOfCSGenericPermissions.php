@@ -25,7 +25,13 @@ class testOfCSGenericPermissions extends testDbAbstract {
 	function setUp() {
 		$this->gfObj = new cs_globalFunctions;
 		$this->gfObj->debugPrintOpt=1;
-		parent::__construct('postgres','', 'localhost', '5432');
+		parent::__construct(
+			//'postgres','', 'localhost', '5432');
+			constant('cs_webapplibs-DB_CONNECT_USER'), 
+			constant('cs_webapplibs-DB_CONNECT_PASSWORD'), 
+			constant('cs_webapplibs-DB_CONNECT_HOST'), 
+			constant('cs_webapplibs-DB_CONNECT_PORT')
+		);
 		$this->permObj = new _gpTester($this->db);
 		$this->permObj->do_schema();
 		$this->get_valid_users();
@@ -53,15 +59,6 @@ class testOfCSGenericPermissions extends testDbAbstract {
 			}
 		}
 		
-		//create some objects...
-		{
-		$requiredItems = array('{APPURL}', 'member');
-			foreach($requiredItems as $name) {
-				$newId = $this->permObj->create_object($name);
-				$this->assertTrue(is_numeric($newId));
-			}
-		}
-
 	}//end setUp()
 	//--------------------------------------------------------------------------
 	
@@ -133,71 +130,6 @@ class testOfCSGenericPermissions extends testDbAbstract {
 			$this->assertFalse(isset($ugList['group_name']));
 		}
 	}//end test_userGroups
-	//--------------------------------------------------------------------------
-	
-	
-	
-	//--------------------------------------------------------------------------
-	public function test_object_paths() {
-		//basic functionality test for ID Path creation.
-		{
-			$expectThis = ':5::30::2::18::5:';
-			
-			//make the expected string into something that be broken into an array of numbers.
-			$chunktify = preg_replace('/^:(.*):$/', '$1', $expectThis);
-			$chunktify = preg_replace('/:{2,}/', ':', $chunktify);
-			$bits = explode(':', $chunktify);
-			
-			$this->assertEqual($bits, $this->permObj->explode_id_path($expectThis));
-			
-			$this->assertEqual(count($bits), 5, 'could not break string into id bits');
-			
-			$derivedIdPath = "";
-			foreach($bits as $id) {
-				$derivedIdPath .= $this->permObj->create_id_path_part($id);
-			}
-			$this->assertEqual($derivedIdPath, $expectThis, 'Invalid idPath, expected=('. $expectThis .'), actual=('. $derivedIdPath .')');
-			
-			$idPathList = array(':9:', ':9::5:', ':0::0::0:', ':-1:', ':-1::-1:', ':-400::1::3:', ':51041::600000::8109223::999999999999999999999999999999999:');
-			foreach($idPathList as $tPath) {
-				$this->assertTrue($this->permObj->is_id_path($tPath), "valid path (". $tPath .") not recognized as such");
-			}
-			
-			$invalidIdPathList = array('', ':--1:', '1::3::4:', ':1::3::4', ':1:3:4:');
-			foreach($invalidIdPathList as $tPath) {
-				$this->assertFalse($this->permObj->is_id_path($tPath), "invalid path (". $tPath .") evaluated as valid");
-			}
-		}
-		
-		//Search for existing items (should have been created from setUp())
-		{
-			$requiredItems = array('{APPURL}', 'member');
-			$existingItems = $this->permObj->get_object_ids($requiredItems, false);
-			$this->assertEqual(count($existingItems), 2, 'Required items not present... '. $this->gfObj->debug_print($existingItems,0,1));
-			
-			//in the event the required items aren't there, create them.
-			$testExistingItems = $this->permObj->get_object_ids($requiredItems, true);
-			$this->assertEqual(count($requiredItems), count($testExistingItems), 'failed to create some existing items');
-			$this->assertEqual(count($testExistingItems), count($existingItems), 'WARNING: some required items were not found');
-		}
-		
-		//Build new ID paths...
-		{
-			$newObjects = array('admin', 'logs', 'view');
-			$idPath = $this->permObj->create_id_path('/admin/logs/view');
-			$this->assertTrue(preg_match('/^:[0-9]{1,}::[0-9]{1,}::[0-9]{1,}:/', $idPath), 'path appears syntactically incorrect ('. $idPath .')');
-			
-			//make sure the manually-created ID Path matches what was actually created.
-			$idList = $this->permObj->get_object_ids($newObjects, false);
-			$this->assertEqual(count($idList), count($newObjects), "there must be missing objects, counts don't match");
-			
-			$expectedIdPath = "";
-			foreach($idList as $id=>$n) {
-				$expectedIdPath .= $this->permObj->create_id_path_part($id);
-			}
-			$this->assertEqual($expectedIdPath, $idPath, "Manually created path (". $expectedIdPath .") does not match idPath (". $idPath .")");
-		}
-	}//end test_object_paths()
 	//--------------------------------------------------------------------------
 	
 	
@@ -442,10 +374,6 @@ class testOfCSGenericPermissions extends testDbAbstract {
 				//retrieve the permission & check some things out...
 				$permData = $this->permObj->get_permission($tPath);
 				$this->assertEqual($permData['permission_id'], $newPermId);
-				if(!$this->assertEqual($permData['object_path'], $this->permObj->clean_object_path($tPath))) {
-					#$this->permObj->translate_id_path($permData['id_path'], 1);
-					$this->gfObj->debug_print($permData);
-				}
 				$this->assertEqual($permData['perm_string'], $tPermString);
 				if(!$this->assertEqual($this->permObj->parse_perm_string($tPermString), $this->permObj->parse_perm_string($permData['perm_string']))) {
 					$this->gfObj->debug_print($this->permObj->parse_perm_string($tPermString));
