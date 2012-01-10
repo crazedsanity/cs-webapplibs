@@ -79,6 +79,8 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		'logAttrib'		=> "cswal_log_attribute_table_log_attribute_id_seq"
 	);
 	
+	public $cometDebug = "NONE";
+	
 	//=========================================================================
 	/**
 	 * The constructor.
@@ -439,7 +441,8 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	/**
 	 * Retrieves logs with the given criteria.
 	 */
-	public function get_logs(array $criteria, array $orderBy=NULL, $limit=20) {
+	public function get_logs(array $criteria, array $orderBy=NULL, $limit=20, $greaterThanLogId=null) {
+		$originalCrit = $criteria;
 		//set a default for the limit.
 		if(!is_numeric($limit) || $limit < 1) {
 			//set it again.
@@ -471,6 +474,9 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 				$myFieldData = $allowedCritFields[$field];
 				$cleanStringArg = $myFieldData[1];
 				
+				//set the prefixed column name.
+				$prefixedName = $myFieldData[0] .'.'. $field;
+				
 				//clean the data.
 				if($field == 'creation' && is_numeric($value)) {
 					$value = $this->gfObj->cleanString($value, 'numeric');
@@ -480,9 +486,6 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 					$cleanedData = $this->gfObj->cleanString($value, $cleanStringArg);
 				}
 				
-				//set the prefixed column name.
-				$prefixedName = $myFieldData[0] .'.'. $field;
-				
 				//now add it to our array.
 				$sqlArr[$prefixedName] = $cleanedData;
 			}
@@ -490,7 +493,10 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		
 		
 		//build the criteria.
-		$sqlArr['ca.category_id'] = '>0';
+		if(!isset($sqlArr['ca.category_id'])) {
+			$sqlArr['ca.category_id'] = '>0';
+			$cleanStringArr['ca.category_id'] = "select";
+		}
 		$critString = $this->gfObj->string_from_array($sqlArr, 'select');
 		
 		//check if "timeperiod" is in there (it's special)
@@ -499,6 +505,9 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			$myTime = $criteria['timeperiod'];
 			$addThis = "(l.creation >= '". $myTime['start'] ."'::date AND l.creation <= '". $myTime['end'] ."'::date + interval '1 day')";
 			$critString = create_list($critString, $addThis, ' AND ');
+		}
+		if(!is_null($greaterThanLogId) && is_numeric($greaterThanLogId)) {
+			$critString = $this->gfObj->create_list($critString, "log_id > ". $greaterThanLogId, ' AND ');
 		}
 		
 		$orderString = $this->gfObj->string_from_array($orderBy, 'limit');
@@ -521,6 +530,10 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		
 		try {
 			//run it.
+			$this->cometDebug = array(
+				'criteria'			=> $criteria,
+				'sql'				=> $sql
+			);
 			$data = $this->db->run_query($sql, 'log_id');
 			
 			$retval = array();
