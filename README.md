@@ -88,7 +88,7 @@ from
 	INNER JOIN cswal_class_table AS rcl USING (class_id) 
 	INNER JOIN cswal_category_table AS rca USING (category_id) 
 limit 5;
-danf@Juggernaut:~/git/crazedlime/stinkyMonkey/lib/cs-webapplibs (master)$ psql -U postgres cs__test
+user@localhost:~$ psql -U postgres cs__test
 psql (9.1.3)
 Type "help" for help.
 
