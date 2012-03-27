@@ -1,11 +1,12 @@
 How to Work With CS-WebAppLibs
 ========
 
-=== Basic Database Interaction ===
+Basic Database Interaction
+--------
 
 Interacting with the database is fairly straightforward.  First, create an object to work with:
 
-[code]
+<pre>
 	$dbType = "pgsql";//PostgreSQL
 	$params = array(
 		'host'		=> "localhost",
@@ -16,17 +17,17 @@ Interacting with the database is fairly straightforward.  First, create an objec
 	);
 	$db = new cs_phpDB($dbType);
 	$db->connect($params);
-[/code]
+</pre>
 
 Performing a basic query is simple.  This example runs the query and returns an array of records, indexed on the value of the "user_id" column:
 
-[code]
+<pre>
 	$myArray = $db->run_query("SELECT * FROM users WHERE user_status <> 0", "user_id");
-[/code]
+</pre>
 
 So now there's an array of records.
 
-[code]
+<pre>
 	foreach($myArray as $key=>$subArray) {
 		print "KEY: ". $key;
 		foreach($subArray as $sKey => $val) {
@@ -39,7 +40,7 @@ So now there's an array of records.
 	 * KEY: 2 [username]=(bob@dole.com) [user_status]=(1)
 	 * KEY: 2 [username]=(jake@dole.com) [user_status]=(3)
 	 */
-[/code]
+</pre>
 
 You should be off and running with that! For some great examples, look at the code in "abstract/cs_singleTableHandler.abstract.class.php".  That class deals with pretty much everything regarding a single database table.  There are some tests that hopefully provide some insight.  Dig into the other class files, as most of them deal with database manipulation of some sort. 
 
