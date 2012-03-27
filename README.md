@@ -78,7 +78,7 @@ UNDERSTANDING THE DATABASE SCHEMA:::
 I understand things best from real data, so here goes::::
 
 <pre>
-user@localhost:~$ cat docs/log_test.sql 
+user@localhost:~/cs-webapplibs$ cat docs/log_test.sql 
 select 
 	rca.category_name as category, 
 	rcl.class_name as class, 
@@ -88,7 +88,7 @@ from
 	INNER JOIN cswal_class_table AS rcl USING (class_id) 
 	INNER JOIN cswal_category_table AS rca USING (category_id) 
 limit 5;
-user@localhost:~$ psql -U postgres cs__test
+user@localhost:~/cs-webapplibs$ psql -U postgres cs__test
 psql (9.1.3)
 Type "help" for help.
 
@@ -108,10 +108,8 @@ generic way of indicating what type of action it is.
 
 
 
-
 CS Web DB Upgrade
 --------
-
 
 This system is built to make upgrading a database-driven app seamless.  No need
 to coordinate SQL or schema changes with the code updates: previously, one would 
