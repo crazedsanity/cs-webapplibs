@@ -49,17 +49,20 @@ CS Web DB Logger
 
 Once the appropriate schema has been built, code can be updated easily to start logging:
 
+<pre>
 //Create the class...
 $this->log = new cs_webdblogger($dbObj, 'Generic Activity');
 
 //Now call the logger.
 $this->log->log_by_class('User viewed page', 'info', $this->userId);
+</pre>
 
 
 
 UNDERSTANDING THE DATABASE SCHEMA:::
 I understand things best from real data, so here goes::::
 
+<pre>
 live_cs_project=# select rca.name as category, rcl.name as class, le.description from log_event_table AS le INNER JOIN log_class_table AS rcl USING (log_class_id) INNER JOIN log_category_table AS rca USING (log_category_id) limit 5;
  category | class  |       description
 ----------+--------+--------------------------
@@ -69,6 +72,7 @@ live_cs_project=# select rca.name as category, rcl.name as class, le.description
  Project  | Error  | Project: ERROR
  Helpdesk | Create | Helpdesk: Created record
 (5 rows)
+</pre>
 
 The category indicates what system it is attached to, and class is a more 
 generic way of indicating what type of action it is. 
@@ -114,6 +118,7 @@ version (or remove it) as necessary.
 
 MySQL TRANSACTION INFO::: http://dev.mysql.com/doc/refman/5.0/en/implicit-commit.html
 
+<pre>
 WORK FLOW:
 
  --> Is there an existing LOCK file?
@@ -137,12 +142,14 @@ WORK FLOW:
 	 					--> stop upgrade process.
 	 					--> HALT
  --> (continues as before)
+</pre>
 
 
 CS Generic Permissions 
 --------
 
 This permissions system is built to be flexible enough to be used in virtually any application for any purpose.  The "permissions" are stored in a way that basically mimics *nix filesystem permissions.  The code must know what the object is for which the user is asking permission.  That object has the following traits:
+<pre>
 	* Object Name: the name of the item that is being assigned permissions.
 		-- Examples:
 			++ A URL (i.e. "/authenticated" would only be accessible to the owner + group members)
@@ -165,4 +172,5 @@ This permissions system is built to be flexible enough to be used in virtually a
 			++ "o_r":  Other read permission; users that are not owners or members of the group can/cannot "read" (view) it
 			++ "o_w":  Other write permission; users that are not owners or members of the group can/cannot write (create/update) the object.
 			++ "o_x":  Other execute permission; users that are... you get the idea.
+</pre>
 
