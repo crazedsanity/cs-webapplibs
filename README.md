@@ -1,5 +1,7 @@
-How to Work With CS-WebAppLibs
+Crazed Sanity Web Application Libraries ("CS-WebAppLibs" or "CSWAL")
 ========
+
+This is a set of libraries for working with PHP-based web applications.  It builds upon the foundation of CS-Content, which can be found at [ http://github.com/crazedsanity/cs-content ].  
 
 Basic Database Interaction
 --------
