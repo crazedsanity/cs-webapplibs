@@ -1,4 +1,8 @@
+How to Work With CS-WebAppLibs
+==============================
+
 === Basic Database Interaction ===
+
 Interacting with the database is fairly straightforward.  First, create an object to work with:
 
 [code]
