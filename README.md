@@ -1,12 +1,19 @@
-Crazed Sanity Web Application Libraries ("CS-WebAppLibs" or "CSWAL")
+Crazed Sanity Web Application Libraries 
 ========
 
-This is a set of libraries for working with PHP-based web applications.  It builds upon the foundation of CS-Content, which can be found at [ http://github.com/crazedsanity/cs-content ].  
+(a.k.a. "CS-WebAppLibs" or "CSWAL")
+
+This is a set of libraries for working with PHP-based web applications.  It 
+builds upon the foundation of CS-Content, which can be found at 
+[ http://github.com/crazedsanity/cs-content ]; it also builds upon CS-PHPXML, 
+which is just an XML library, and can be found at 
+[ http://github.com/crazedsanity/cs-phpxml ].
 
 Basic Database Interaction
 --------
 
-Interacting with the database is fairly straightforward.  First, create an object to work with:
+Interacting with the database is fairly straightforward.  First, create an 
+object to work with:
 
 <pre>
 	$dbType = "pgsql";//PostgreSQL
@@ -21,7 +28,8 @@ Interacting with the database is fairly straightforward.  First, create an objec
 	$db->connect($params);
 </pre>
 
-Performing a basic query is simple.  This example runs the query and returns an array of records, indexed on the value of the "user_id" column:
+Performing a basic query is simple.  This example runs the query and returns an 
+array of records, indexed on the value of the "user_id" column:
 
 <pre>
 	$myArray = $db->run_query("SELECT * FROM users WHERE user_status <> 0", "user_id");
@@ -44,12 +52,17 @@ So now there's an array of records.
 	 */
 </pre>
 
-You should be off and running with that! For some great examples, look at the code in "abstract/cs_singleTableHandler.abstract.class.php".  That class deals with pretty much everything regarding a single database table.  There are some tests that hopefully provide some insight.  Dig into the other class files, as most of them deal with database manipulation of some sort. 
+You should be off and running with that! For some great examples, look at the 
+code in "abstract/cs_singleTableHandler.abstract.class.php".  That class deals 
+with pretty much everything regarding a single database table.  There are some 
+tests that hopefully provide some insight.  Dig into the other class files, as 
+most of them deal with database manipulation of some sort. 
 
 CS Web DB Logger
 --------
 
-Once the appropriate schema has been built, code can be updated easily to start logging:
+Once the appropriate schema has been built, code can be updated easily to start 
+logging:
 
 <pre>
 //Create the class...
@@ -65,7 +78,21 @@ UNDERSTANDING THE DATABASE SCHEMA:::
 I understand things best from real data, so here goes::::
 
 <pre>
-live_cs_project=# select rca.name as category, rcl.name as class, le.description from log_event_table AS le INNER JOIN log_class_table AS rcl USING (log_class_id) INNER JOIN log_category_table AS rca USING (log_category_id) limit 5;
+user@localhost:~$ cat docs/log_test.sql 
+select 
+	rca.category_name as category, 
+	rcl.class_name as class, 
+	le.description 
+from 
+	cswal_event_table AS le 
+	INNER JOIN cswal_class_table AS rcl USING (class_id) 
+	INNER JOIN cswal_category_table AS rca USING (category_id) 
+limit 5;
+danf@Juggernaut:~/git/crazedlime/stinkyMonkey/lib/cs-webapplibs (master)$ psql -U postgres cs__test
+psql (9.1.3)
+Type "help" for help.
+
+live_cs_project=# \i docs/log_test.sql
  category | class  |       description
 ----------+--------+--------------------------
  Project  | Create | Project: created record
