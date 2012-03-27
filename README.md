@@ -44,7 +44,9 @@ So now there's an array of records.
 
 You should be off and running with that! For some great examples, look at the code in "abstract/cs_singleTableHandler.abstract.class.php".  That class deals with pretty much everything regarding a single database table.  There are some tests that hopefully provide some insight.  Dig into the other class files, as most of them deal with database manipulation of some sort. 
 
-=== CS Web DB Logger ===
+CS Web DB Logger
+--------
+
 Once the appropriate schema has been built, code can be updated easily to start logging:
 
 //Create the class...
@@ -74,7 +76,8 @@ generic way of indicating what type of action it is.
 
 
 
-=== CS Web DB Upgrade ===
+CS Web DB Upgrade
+--------
 
 
 This system is built to make upgrading a database-driven app seamless.  No need
@@ -136,7 +139,8 @@ WORK FLOW:
  --> (continues as before)
 
 
-=== CS Generic Permissions === 
+CS Generic Permissions 
+--------
 
 This permissions system is built to be flexible enough to be used in virtually any application for any purpose.  The "permissions" are stored in a way that basically mimics *nix filesystem permissions.  The code must know what the object is for which the user is asking permission.  That object has the following traits:
 	* Object Name: the name of the item that is being assigned permissions.
