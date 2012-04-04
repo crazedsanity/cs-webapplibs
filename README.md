@@ -1,4 +1,4 @@
-Crazed Sanity Web Application Libraries 
+Web Application Libraries 
 ========
 
 (a.k.a. "CS-WebAppLibs" or "CSWAL")
