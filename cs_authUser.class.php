@@ -14,7 +14,7 @@ require_once(dirname(__FILE__) .'/cs-content/cs_session.class.php');
 require_once(dirname(__FILE__) .'/cs-webapplibs/cs_phpDB.class.php');
 require_once(dirname(__FILE__) .'/cs-content/cs_globalFunctions.class.php');
 
-class authUser extends cs_session {
+class cs_authUser extends cs_session {
 	
 	/** Database connection object */
 	protected $dbObj;

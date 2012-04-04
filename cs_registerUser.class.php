@@ -10,7 +10,7 @@
  * $LastChangedBy: danf $
  */
 
-class registerUser {
+class cs_registerUser {
 	
 	/** Database connection object */
 	private $dbObj;
