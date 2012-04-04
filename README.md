@@ -3,6 +3,17 @@ Crazed Sanity Web Application Libraries
 
 (a.k.a. "CS-WebAppLibs" or "CSWAL")
 
+WARNING #1: If you don't read what sparse documentation there is, you probably won't 
+get it.
+
+WARNING #2: This code was not written for the faint of heart. The naming conventions 
+may be inconsistent. Some of these classes, such as the WebDBUpgrade system, is made 
+to be transparent, so interacting with it can be difficult; others, such as the 
+logging system, are meant to be used with little need to understand their inner-
+workings. 
+
+*On to the documentation...*
+
 This is a set of libraries for working with PHP-based web applications.  It 
 builds upon the foundation of CS-Content, which can be found at 
 [ http://github.com/crazedsanity/cs-content ]; it also builds upon CS-PHPXML, 
