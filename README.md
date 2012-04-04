@@ -3,10 +3,10 @@ Crazed Sanity Web Application Libraries
 
 (a.k.a. "CS-WebAppLibs" or "CSWAL")
 
-WARNING #1: If you don't read what sparse documentation there is, you probably won't 
+_WARNING #1:_ If you don't read what sparse documentation there is, you probably won't 
 get it.
 
-WARNING #2: This code was not written for the faint of heart. The naming conventions 
+_WARNING #2:_ This code was not written for the faint of heart. The naming conventions 
 may be inconsistent. Some of these classes, such as the WebDBUpgrade system, is made 
 to be transparent, so interacting with it can be difficult; others, such as the 
 logging system, are meant to be used with little need to understand their inner-
