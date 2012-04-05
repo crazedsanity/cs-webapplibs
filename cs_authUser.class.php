@@ -10,10 +10,6 @@
  * $LastChangedBy: danf $
  */
 
-require_once(dirname(__FILE__) .'/cs-content/cs_session.class.php');
-require_once(dirname(__FILE__) .'/cs-webapplibs/cs_phpDB.class.php');
-require_once(dirname(__FILE__) .'/cs-content/cs_globalFunctions.class.php');
-
 class cs_authUser extends cs_session {
 	
 	/** Database connection object */
