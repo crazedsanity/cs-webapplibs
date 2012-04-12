@@ -1,15 +1,5 @@
 <?php
 
-
-/* SVN INFORMATION::::
- * --------------------------
- * $HeadURL: https://svn.crazedsanity.com/svn/main/sites/crazedsanity.com/trunk/lib/authUser.class.php $
- * $Id: authUser.class.php 1908 2011-07-20 00:50:31Z danf $
- * $LastChangedDate: 2011-07-19 19:50:31 -0500 (Tue, 19 Jul 2011) $
- * $LastChangedRevision: 1908 $
- * $LastChangedBy: danf $
- */
-
 class cs_authUser extends cs_session {
 	
 	/** Database connection object */
@@ -87,7 +77,7 @@ class cs_authUser extends cs_session {
 	//-------------------------------------------------------------------------
 	public function check_sid() {
 		//check the database to see if the sid is valid.
-		$sql = "SELECT * FROM cs_session_table WHERE session_id='". $this->sid ."'";
+		$sql = "SELECT * FROM cswal_session_table WHERE session_id='". $this->sid ."'";
 		$numrows = $this->run_sql($sql);
 		
 		$retval = false;
@@ -138,13 +128,13 @@ class cs_authUser extends cs_session {
 				$this->userInfo = $data;
 				$this->update_auth_data($this->userInfo);
 				$insertData = array(
-					'create_date'	=> "NOW()",
 					'session_id'	=> $this->sid,
+					'date_created'	=> "NOW()",
 					'uid'			=> $data['uid'],
 					'ip'			=> $_SERVER['REMOTE_ADDR']
 				);
 				
-				$sql = 'INSERT INTO cs_session_table '. $this->gfObj->string_from_array($insertData, 'insert', NULL, 'sql');
+				$sql = 'INSERT INTO cswal_session_table '. $this->gfObj->string_from_array($insertData, 'insert', NULL, 'sql');
 				$retval = $this->run_sql($sql);
 				
 				$this->run_sql("UPDATE cs_authentication_table SET last_login='NOW()' WHERE uid=". $data['uid']);
@@ -219,7 +209,7 @@ class cs_authUser extends cs_session {
 	public function logout_sid() {
 		$retval = false;
 		if($this->isAuthenticated) {
-			$sql = "DELETE FROM cs_session_table WHERE session_id='". $this->sid ."'";
+			$sql = "DELETE FROM cswal_session_table WHERE session_id='". $this->sid ."'";
 			$retval = $this->run_sql($sql);
 			$dropCookieRes = $this->drop_cookie(self::COOKIE_NAME);
 			$this->do_log("Logged-out user with result (". $retval ."), removed cookie (". self::COOKIE_NAME .") with result (". $dropCookieRes .")", 'debug');
@@ -253,7 +243,7 @@ class cs_authUser extends cs_session {
 	public function checkin() {
 		$retval = NULL;
 		if($this->is_authenticated()) {
-			$sql = "UPDATE cs_session_table SET last_checkin='NOW()', " .
+			$sql = "UPDATE cswal_session_table SET last_updated='NOW()', " .
 				"num_checkins=num_checkins+1 WHERE session_id='". $this->sid ."';";
 			$retval = $this->run_sql($sql);
 		}
@@ -283,7 +273,7 @@ class cs_authUser extends cs_session {
 		if(defined('SESSION_MAX_IDLE')) {
 			$maxIdle = constant('SESSION_MAX_IDLE');
 		}
-		$sql = "DELETE FROM cs_session_table WHERE last_checkin  < (NOW() - interval '". $maxIdle ."')";
+		$sql = "DELETE FROM cswal_session_table WHERE last_updated  < (NOW() - interval '". $maxIdle ."')";
 		$numrows = $this->run_sql($sql);
 		
 		if($numrows < 0 || !is_numeric($numrows)) {
@@ -296,3 +286,4 @@ class cs_authUser extends cs_session {
 	}//end logout_inactive_sessions()
 	//-------------------------------------------------------------------------
 }//end authUser{}
+

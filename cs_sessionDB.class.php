@@ -1,13 +1,4 @@
 <?php
-/*
- * FILE INFORMATION:
- * $HeadURL$
- * $Id$
- * $LastChangedDate$
- * $LastChangedBy$
- * $LastChangedRevision$
- */
-
 
 class cs_sessionDB extends cs_session {
 

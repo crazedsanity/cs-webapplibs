@@ -21,7 +21,7 @@ CREATE TABLE cs_user_status_table (
 CREATE TABLE cs_authentication_table (
     uid serial NOT NULL PRIMARY KEY,
     username text NOT NULL,
-    passwd character varying(32),
+    passwd character varying(40),
     is_active boolean DEFAULT true NOT NULL,
     date_created date DEFAULT now() NOT NULL,
     last_login timestamp with time zone,
@@ -129,12 +129,12 @@ CREATE TABLE cswal_auth_token_table (
 -- Idea originally from: http://www.developertutorials.com/tutorials/php/saving-php-session-data-database-050711
 --
 
-CREATE TABLE cswal_session_store_table (
-	session_store_id serial NOT NULL PRIMARY KEY,
-	session_id varchar(32) NOT NULL DEFAULT '' UNIQUE,
+CREATE TABLE cswal_session_table (
+	session_id varchar(40) NOT NULL PRIMARY KEY,
 	uid integer REFERENCES cs_authentication_table(uid),
 	date_created timestamp NOT NULL DEFAULT NOW(),
 	last_updated timestamp NOT NULL DEFAULT NOW(),
+	ip varchar(15) NOT NULL,
 	session_data text
 );
 
