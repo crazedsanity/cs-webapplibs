@@ -211,4 +211,3 @@ This permissions system is built to be flexible enough to be used in virtually a
 			++ "o_w":  Other write permission; users that are not owners or members of the group can/cannot write (create/update) the object.
 			++ "o_x":  Other execute permission; users that are... you get the idea.
 </pre>
-
