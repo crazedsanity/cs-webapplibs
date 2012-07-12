@@ -34,9 +34,9 @@ class cs_sessionDB extends cs_session {
 		$this->db = new cs_phpDB(constant('DBTYPE'));
 		$this->db->connect($dbParams);
 		
-		$this->tableName = 'cswal_session_store_table';
+		$this->tableName = 'cswal_session_table';
 		$this->tablePKey = 'session_store_id';
-		$this->sequenceName = 'cswal_session_store_table_session_store_id_seq';
+		$this->sequenceName = 'cswal_session_table_session_id_seq';
 		
 		//create a logger (this will automatically cause any upgrades to happen).
 		$this->logger = new cs_webdblogger($this->db, 'Session DB', true);
