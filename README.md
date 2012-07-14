@@ -23,27 +23,24 @@ which is just an XML library, and can be found at
 Basic Database Interaction
 --------
 
-Interacting with the database is fairly straightforward.  First, create an 
-object to work with:
+Interacting with the database is fairly straightforward: cs_phpDB is basically 
+just a wrapper for PDO (if you're not familiar, go read it []).  First, create 
+an object to work with:
 
 <pre>
-	$dbType = "pgsql";//PostgreSQL
-	$params = array(
-		'host'		=> "localhost",
-		'port'		=> "5432",
-		'dbname'	=> "test",
-		'user'		=> "username",
-		'password'	=> "myP@ssw0rd"
-	);
-	$db = new cs_phpDB($dbType);
-	$db->connect($params);
+	$dsn = "psql:host=localhost;dbname=test";
+	$username = "username";
+	$password = "myP@ssw0rd";
+	$db = new cs_phpDB($dsn, $username, $password);
 </pre>
 
 Performing a basic query is simple.  This example runs the query and returns an 
 array of records, indexed on the value of the "user_id" column:
 
 <pre>
-	$myArray = $db->run_query("SELECT * FROM users WHERE user_status <> 0", "user_id");
+	$numRows = $db->run_query("SELECT * FROM users WHERE user_status <> :uid", array('uid'=>0));
+	echo "got ". $numRows ." back!";
+	$myArray = $db->farray_fieldnames();
 </pre>
 
 So now there's an array of records.
