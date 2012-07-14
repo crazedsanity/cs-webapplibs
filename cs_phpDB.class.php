@@ -249,6 +249,31 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		return($retval);
 	}//end farray_fieldnames()
 	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function farray_nvp($name, $value) {
+		$myData = $this->farray_fieldnames();
+		$retval = array();
+		foreach($myData as $i=>$rowData) {
+			if(isset($rowData[$name]) && isset($rowData[$value])) {
+				if(!isset($retval[$name])) {
+					$tKey = $rowData[$name];
+					$tVal = $rowData[value];
+					$retval[$tKey] = $tVal;
+				}
+				else {
+					throw new exception(__METHOD__ .': duplicate values for column ('. $name .') found for record #'. $i);
+				}
+			}
+			else {
+				throw new exception(__METHOD__ .': missing name ('. $name .') or value ('. $value .') from dataset');
+			}
+		}
+		return($retval);
+	}//end farray_nvp()
+	//=========================================================================
 
 
 
