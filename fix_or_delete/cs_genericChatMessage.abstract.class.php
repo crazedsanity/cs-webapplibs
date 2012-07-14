@@ -105,7 +105,7 @@ abstract class cs_genericChatMessageAbstract extends cs_genericChatRoomAbstract 
 			//get_records(array $filter=null, $orderBy=null, $limit=null, $offset=null)
 			$filterArr = array();
 			if(!is_null($lastMessageId) && $lastMessageId > 0) {
-				$filterArr['message_id'] => '> '. $lastMessageId;
+				$filterArr['message_id'] = '> '. $lastMessageId;
 			}
 			$messages = $this->dbTableHandler->get_records_using_custom_filter($filter, NULL, $limit);
 			if(!is_array($messages) && $messages === false) {

@@ -13,21 +13,39 @@
 --	account is in.
 --
 CREATE TABLE cs_user_status_table (
-    user_status_id serial NOT NULL PRIMARY KEY,
+    user_status_id integer NOT NULL PRIMARY KEY,
     description text NOT NULL,
     is_active boolean DEFAULT true NOT NULL
 );
+INSERT INTO cs_user_status_table (user_status_id, description, is_active)
+	VALUES 
+		(0, 'Disabled User', false),
+		(1, 'Active User', true),
+		(2, 'Registration Pending', false);
 
+
+--
+-- The authentication table is where usernames & passwords are stored.
+-- The "passwd" column is created like this (on a Linux system): 
+--		echo "administrator-changeMe" | sha1sum
+-- 
 CREATE TABLE cs_authentication_table (
     uid serial NOT NULL PRIMARY KEY,
-    username text NOT NULL,
+    username text NOT NULL UNIQUE,
     passwd character varying(40),
-    is_active boolean DEFAULT true NOT NULL,
     date_created date DEFAULT now() NOT NULL,
     last_login timestamp with time zone,
     email text,
-    user_status_id integer REFERENCES cs_user_status_table(user_status_id)
+    user_status_id integer NOT NULL DEFAULT 0 
+		REFERENCES cs_user_status_table(user_status_id)
 );
+INSERT INTO cs_authentication_table (uid,username, user_status_id) 
+	VALUES (0, 'anonymous', 0);
+INSERT INTO cs_authentication_table (username, passwd, user_status_id)
+	VALUES	('test', '75eba0f69d185ef816d0cee43ad44d4b2240de02', 1),			-- "letMeIn"
+			('administrator', 'c2fc1fdc72ef8b92cf3d98bd1a60725cafdebdaa', 1);	-- "changeMe"
+
+
 --
 -- The category is the high-level view of the affected system.  If this were 
 --	a project management system with projects and issues, then there would 
@@ -35,7 +53,7 @@ CREATE TABLE cs_authentication_table (
 --
 CREATE TABLE cswal_category_table (
 	category_id serial NOT NULL PRIMARY KEY,
-	category_name text NOT NULL
+	category_name text NOT NULL UNIQUE
 );
 
 
@@ -46,10 +64,10 @@ CREATE TABLE cswal_category_table (
 --
 CREATE TABLE cswal_class_table (
 	class_id serial NOT NULL PRIMARY KEY,
-	class_name text NOT NULL
+	class_name text NOT NULL UNIQUE
 );
 
-
+	
 --
 -- Events are where the categories and rather generic events come together. 
 --	This explains what the actual action was (via the description). Once the 
@@ -97,7 +115,7 @@ CREATE TABLE cswal_attribute_table (
 CREATE TABLE cswal_log_attribute_table (
 	log_attribute_id serial NOT NULL PRIMARY KEY,
 	log_id int NOT NULL REFERENCES cswal_log_table(log_id),
-	attribute_id int NOT NULL REFERENCES cswal_attribute_table(attribute_id),
+	attribute_id int NOT NULL UNIQUE REFERENCES cswal_attribute_table(attribute_id),
 	value_text text
 );
 
