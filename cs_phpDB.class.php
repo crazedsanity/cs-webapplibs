@@ -109,6 +109,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	public function get_dbtype() {
+		//TODO: pull dbtype out of the DSN.
 		throw new exception(__METHOD__ .": not supported");
 	}//end get_dbtype()
 	//=========================================================================
@@ -181,6 +182,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	public function run_query($sql, array $params=null, array $driverOptions=array()) {
 		try {
 			$this->sth = $this->dbh->prepare($sql, $driverOptions);
+			// TODO: throw an exception on error (and possibly if there were no rows returned)
 			$this->numRows = $this->sth->execute($params); 
 		}
 		catch(PDOException $px) {
@@ -188,6 +190,23 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		}
 		return($this->numRows);
 	}//end run_query()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function run_insert($sql, array $params, array $driverOptions=array()) {
+		$numRows = $this->run_query($sql, $params, $driverOptions);
+		$retval = null;
+		if($numRows > 0) {
+			// TODO: throw exception on error
+			$retval = $this->dbh->lastInsertId();
+		}
+		else {
+			throw new exception(__METHOD__ .': no rows created');
+		}
+		return($retval);
+	}//end run_insert()
 	//=========================================================================
 	
 	
@@ -274,6 +293,17 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		return($retval);
 	}//end farray_nvp()
 	//=========================================================================
+	
+	
+	// wrapper methods (for backwards-compatibility)
+	public function beginTrans() {return($this->dbh->beginTransaction());}
+	public function commitTrans() {return($this->dbh->commit());}
+	public function rollbackTrans() {return($this->dbh->rollback());}
+	public function get_transaction_status() {return($this->dbh->inTransaction());}
+	
+	
+	
+	
 
 
 

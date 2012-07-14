@@ -188,7 +188,8 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		$sql = "SELECT attribute_id, lower(attribute_name) AS attribute_name FROM ". $this->tables['attrib'];
 		
 		try {
-			$data = $this->db->run_query($sql, 'attribute_name', 'attribute_id');
+			$this->db->run_query($sql);
+			$data = $this->db->farray_nvp('attribute_name', 'attribute_id');
 			
 			if(is_array($data)) {
 				$this->attributeCache = $data;
@@ -246,7 +247,8 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			"class_id=:classId AND category_id=:categoryId";
 		
 		try {
-			$data = $this->db->run_query($sql);
+			$this->db->run_query($sql, $params);
+			$data = $this->db->farray_fieldnames(null,false);
 			
 			
 			if($data === false) {
@@ -326,7 +328,8 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 					" VALUES (:eventId, :uid, :affectedUid, :details)";
 			
 			try {
-				$newId = $this->db->run_insert($sql, $this->seqs['log']);
+				$this->db->run_query($sql, $params);
+				$newId = $this->db->lastInsertId();
 				
 				if(is_numeric($newId) && $newId > 0) {
 					$retval = $newId;
