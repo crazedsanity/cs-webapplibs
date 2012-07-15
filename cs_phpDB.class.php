@@ -219,7 +219,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	 * "unsetIndex" means that the index field will be removed from the record's 
 	 *		array.
 	 */
-	public function farray_fieldnames($index=null, $numbered=true, $unsetIndex=false) {
+	public function farray_fieldnames($index=null) {
 		$retval = null;
 		if(is_object($this->sth)) {
 			$oData = $this->sth->fetchAll(PDO::FETCH_ASSOC);
@@ -227,33 +227,17 @@ class cs_phpDB extends cs_webapplibsAbstract {
 			
 			if($this->numRows > 0) {
 				$retval = $oData;
-				if($unsetIndex == true) {
-					foreach($retval as $i=>$rowData) {
-						unset($retval[$i][$index]);
-					}
-				}
-				if($this->numRows == 1) {
-					// Just one record, $numbered matters!
-					if($numbered === false) {
-						$retval = $retval[0];
-					}
-				}
-				else {
-					foreach($oData as $i=>$rowData) {
-						if(isset($rowData[$index])) {
-							if(!isset($retval[$index])) {
-								if($unsetIndex === true) {
-									unset($rowData[$index]);
-								}
-								$retval[$rowData[$index]] = $rowData;
-							}
-							else {
-								throw new exception(__METHOD__ .': duplicate records exist for index=('. $index .'), first duplicate was ('. $rowData[$index] .')');
-							}
+				foreach($oData as $rowData) {
+					if(isset($rowData[$index])) {
+						if(!isset($retval[$index])) {
+							$retval[$rowData[$index]] = $rowData;
 						}
 						else {
-							throw new exception(__METHOD__ .': record does not contain column "'. $index .'"');
+							throw new exception(__METHOD__ .': duplicate records exist for index=('. $index .'), first duplicate was ('. $rowData[$index] .')');
 						}
+					}
+					else {
+						throw new exception(__METHOD__ .': record does not contain column "'. $index .'"');
 					}
 				}
 			}
@@ -267,6 +251,23 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		}
 		return($retval);
 	}//end farray_fieldnames()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function get_single_record($index=null) {
+		$retval = array();
+		if(is_object($this->sth)) {
+			$retval = $this->sth->fetch_all(PDO::FETCH_ASSOC);
+			$retval = $retval[0];
+		}
+		else {
+			throw new exception(__METHOD__ .': statement handle was not created');
+		}
+		
+		return($retval);
+	}//end get_single_record()
 	//=========================================================================
 	
 	

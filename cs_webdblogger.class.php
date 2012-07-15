@@ -248,7 +248,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		
 		try {
 			$this->db->run_query($sql, $params);
-			$data = $this->db->farray_fieldnames(null,false);
+			$data = $this->db->get_single_record();
 			
 			
 			if($data === false) {
@@ -371,6 +371,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		$this->logCategoryId = $originalCategoryId;
 		
 		throw new exception(__METHOD__ .": encountered error::: $details");
+		return($retval);
 	}//end log_dberror()
 	//=========================================================================
 	
@@ -406,7 +407,8 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 					'VALUES (:classId, :categoryId, :description)';
 			
 			try {
-				$newId = $this->db->run_query($sql, $this->seqs['event']);
+				$this->db->run_query($sql, $$sqlArr);
+				$newId = $this->db->lastInsertId();
 				
 				if(is_numeric($newId) && $newId > 0) {
 					$retval = $newId;
@@ -559,7 +561,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			try {
 				
 				$numrows = $this->db->run_query($sql, array('catName'=>$catName));
-				$data = $this->db->farray_fieldnames(null,false);
+				$data = $this->db->get_single_record();
 				
 				if($numrows == 1 && is_array($data) && isset($data['category_id']) && is_numeric($data['category_id'])) {
 					$retval = $data['category_id'];
@@ -678,7 +680,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			
 			try {
 				$this->db->run_query($sql, array('classId'=>$classId));
-				$data = $this->db->farray_fieldnames(null,false);
+				$data = $this->db->get_single_record();
 				
 				if(is_array($data) && isset($data['class_name']) && $this->db->numRows() == 1) {
 					$className = $data['class_name'];
@@ -713,7 +715,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			
 			try {
 				$this->db->run_query($sql, array('categoryId'=>$categoryId));
-				$data = $this->db->farray_fieldnames(null,false);
+				$data = $this->db->get_single_record();
 				
 				if(is_array($data) && isset($data['category_name']) && $this->db->numRows() == 1) {
 					$categoryName = $data['category_name'];
@@ -778,7 +780,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			$myLogs = $this->pendingLogs;
 			$this->build_cache();
 			$this->pendingLogs = array();
-			foreach($myLogs as $i=>$args) {
+			foreach($myLogs as $args) {
 				//this is potentially deadly: call self recursively to log the items prevously suspended.
 				$newId = call_user_func_array(array($this, 'log_by_class'), $args);
 				
