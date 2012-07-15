@@ -33,6 +33,8 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	 */
 	public function __construct($dsn, $username, $password, array $driverOptions=null, $writeCommandsToFile=null) {
 		try {
+			parent::__construct();
+			$this->gfObj = new cs_globalFunctions();
 			$this->dbh = new PDO($dsn, $username, $password, $driverOptions);
 			
 			// Use *real* prepares (for MySQL)
@@ -50,6 +52,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 				$subDsnBits = explode('=', $bit);
 				$this->connParams[$subDsnBits[0]] = $subDsnBits[1];
 			}
+			
 
 
 			$this->isInitialized = TRUE;
@@ -69,7 +72,8 @@ class cs_phpDB extends cs_webapplibsAbstract {
 				$this->fsObj->openFile($this->logFile, 'a');	
 			}
 		}
-		catch(PDOException $px) {
+		catch(PDOException $e) {
+			cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": failed to connect to database: ".
 					$e->getMessage());
 		}
@@ -141,7 +145,8 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	public function errorMsg() {
-		return($this->dbh->errorInfo());
+		$tRetval = $this->dbh->errorInfo();
+		return($tRetval[2]);
 	}//end errorMsg()
 	//=========================================================================
 	
@@ -195,12 +200,12 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	public function run_insert($sql, array $params, array $driverOptions=array()) {
+	public function run_insert($sql, array $params, $seqName, array $driverOptions=array()) {
 		$numRows = $this->run_query($sql, $params, $driverOptions);
 		$retval = null;
 		if($numRows > 0) {
 			// TODO: throw exception on error
-			$retval = $this->dbh->lastInsertId();
+			$retval = $this->dbh->lastInsertId($seqName);
 		}
 		else {
 			throw new exception(__METHOD__ .': no rows created');
@@ -256,7 +261,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	public function get_single_record($index=null) {
+	public function get_single_record() {
 		$retval = array();
 		if(is_object($this->sth)) {
 			$retval = $this->sth->fetch_all(PDO::FETCH_ASSOC);
@@ -301,6 +306,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	public function commitTrans() {return($this->dbh->commit());}
 	public function rollbackTrans() {return($this->dbh->rollback());}
 	public function get_transaction_status() {return($this->dbh->inTransaction());}
+	public function lastId() {return($this->dbh->lastInsertId());}
 	
 	
 	

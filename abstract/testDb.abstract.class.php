@@ -1,12 +1,11 @@
 <?php
 
-
+//TODO: make this work for more than just PostgreSQL.
 abstract class testDbAbstract extends UnitTestCase {
 	
 	protected $config = array();
 	protected $db;
 	private $templateDb;
-	private $templateConfig;
 	
 	//-----------------------------------------------------------------------------
 	public function __construct($superUserName, $password, $hostname, $port) {
@@ -18,22 +17,11 @@ abstract class testDbAbstract extends UnitTestCase {
 				'password'	=> $this->password
 		*/
 		$this->config = array(
+			'dsn'		=> "pgsql:hostname=". $hostname .";port=". $port .";database=",
 			'user'		=> $superUserName,
 			'password'	=> $password,
-			'host'		=> $hostname,
-			'port'		=> $port,
-			
-			//make sure the database name is unique and has (almost) no chance of clashing.
-			'dbname'	=> $this->set_dbname(__CLASS__)
 		);
-		$this->templateConfig = $this->config;
-		$this->templateConfig['dbname'] = 'template1';
-		$this->templateDb = new cs_phpdb('pgsql');
-		$this->templateDb->connect($this->templateConfig);
-
 		$this->gfObj = new cs_globalFunctions;
-		
-		$this->db = new cs_phpdb('pgsql');
 		$this->create_db();
 	}//end __construct()
 	//-----------------------------------------------------------------------------
@@ -41,20 +29,15 @@ abstract class testDbAbstract extends UnitTestCase {
 	
 	
 	//-----------------------------------------------------------------------------
-	private function set_dbname($prefix) {
-		return(strtolower(__CLASS__ .'_'. preg_replace('/\./', '', microtime(true))));
-	}//end set_dbname()
-	//-----------------------------------------------------------------------------
-	
-	
-	
-	//-----------------------------------------------------------------------------
 	protected function create_db() {
-		$sql = "CREATE DATABASE ". $this->config['dbname'];
-		$this->templateDb->exec($sql);
+		$myDbName = strtolower(__CLASS__ .'_'. preg_replace('/\./', '', microtime(true)));
+		$this->templateDb = new cs_phpDB($this->config['dsn']. 'template1', $this->config['username'], $this->config['password']);
+		
+		$this->templateDb->exec("CREATE DATABASE ". $myDbName);
+		$this->templateDb = null;
 		
 		//now run the SQL file.
-		$this->db->connect($this->config);
+		$this->db = new cs_phpdb($this->config['dsn']. $myDbName, $this->config['username'], $this->config['password']);
 		$this->db->run_sql_file(dirname(__FILE__) .'/../tests/files/test_db.sql');
 	}//end create_db()
 	//-----------------------------------------------------------------------------

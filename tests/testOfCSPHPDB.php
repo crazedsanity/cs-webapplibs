@@ -20,7 +20,7 @@ class TestOfCSPHPDB extends UnitTestCase {
 	
 	
 	//-------------------------------------------------------------------------
-	public function setUp() {
+	public function skip() {
 		$this->skipUnless($this->check_requirements(), "Skipping database tests, not configured");
 	}
 	//-------------------------------------------------------------------------
@@ -34,20 +34,24 @@ class TestOfCSPHPDB extends UnitTestCase {
 		$globalPrefix = 'UNITTEST__';
 		
 		$requirements = array(
-			'host'		=> 'DB_HOST',
-			'user'		=> 'DB_USER',
-			'password'	=> 'DB_PASS',
-			'dbname'	=> 'DB_NAME'
+			'dsn'		=> 'DB_DSN',
+			'user'		=> 'DB_USERNAME',
+			'pass'	=> 'DB_PASSWORD'
 		);
 		
+		//TODO: add mysql to this list (someday)
 		$dbTypes = array(
-			'mysql'	=> "MY_",
 			'pgsql'	=> "PG_");
 		
 		foreach($dbTypes as $type=>$prefix) {
 			foreach($requirements as $index => $name) {
 				$myIndex = $globalPrefix . $prefix . $name;
-				$this->dbParams[$type][$index] = constant($myIndex);
+				if(defined($myIndex)) {
+					$this->dbParams[$type][$index] = constant($myIndex);
+				}
+				else {
+					$this->gfObj->debug_print(__METHOD__ .": missing required index (". $myIndex .")",1);
+				}
 			}
 		}
 		
@@ -55,7 +59,7 @@ class TestOfCSPHPDB extends UnitTestCase {
 		
 		$validDbs = 0;
 		foreach($this->dbParams as $dbType=>$data) {
-			if(count($data) >= 4) {
+			if(count($data) >= count($requirements)) {
 				$validDbs++;
 			}
 			else {
@@ -64,7 +68,7 @@ class TestOfCSPHPDB extends UnitTestCase {
 			}
 		}
 		
-		if($dbTypes >= 1) {
+		if($validDbs >= 1) {
 			$retval = true;
 		}
 		
@@ -76,29 +80,24 @@ class TestOfCSPHPDB extends UnitTestCase {
 	
 	//-------------------------------------------------------------------------
 	private function internal_connect_db($connect=true) {
-		$this->dbObjs['pgsql'] = new cs_phpDB('pgsql');
-		$this->dbObjs['mysql'] = new cs_phpDB('mysql');
-		
 		if($connect) {
-			$this->dbObjs['pgsql']->connect($this->dbParams['pgsql']);
-			$this->dbObjs['mysql']->connect($this->dbParams['mysql']);
+			foreach($this->dbParams as $type=>$config) {
+				$this->dbObjs[$type] = new cs_phpDB($config['dsn'], $config['user'], $config['pass']);
+			}
 		}
-		
+		$this->gfObj = new cs_globalFunctions();
 	}//end internal_connect_db()
 	//-------------------------------------------------------------------------
 	
 	
 	
 	//-------------------------------------------------------------------------
-	private function handle_sql($dbType, $sql) {
+	private function handle_sql($dbType, $sql, array $params = null) {
 		if(strlen($dbType) && isset($this->dbObjs[$dbType])) {
 			$this->dbObjs[$dbType]->exec($sql);
 			
 			
 			$numrows = $this->dbObjs[$dbType]->numRows();
-			if(!$numrows) {
-				$numrows = $this->dbObjs[$dbType]->numAffected();
-			}
 			$dberror = $this->dbObjs[$dbType]->errorMsg();
 			
 			if(strlen($dberror) || !is_numeric($numrows) || $numrows < 0) {
@@ -122,31 +121,33 @@ class TestOfCSPHPDB extends UnitTestCase {
 	
 	//-------------------------------------------------------------------------
 	public function test_transactions() {
-		$this->assertTrue(true);
-		$this->skipUnless($this->check_requirements(), "Skipping transaction tests (not configured: ". $this->check_requirements() .")");
-
+		
 		$this->internal_connect_db();
-		//
-		$beginTransRes = $this->dbObjs['pgsql']->beginTrans();
-		$transactionStatus = $this->dbObjs['pgsql']->get_transaction_status();
-		$beginTransRes = true;
-		if($this->assertTrue($beginTransRes, "Start of transaction failed (". $beginTransRes .")")) {
-			
-			$createRes = $this->handle_sql('pgsql', 'CREATE TABLE test (id serial not null, data text not null);');
-			$this->assertTrue($createRes, "failed to create table (". $createRes .") -- affected: (". $this->dbObjs['pgsql']->numAffected() .")");
-			
-			$data = array(
-				'test1', 'test2'
-			);
-			$i=1;
-			foreach($data as $val) {
-				#$this->assertTrue($this->handle_sql('pgsql', "INSERT INTO test (data) VALUES ('". $val ."')"));
-				#$this->assertEqual($i, $this->dbObjs['pgsql']->lastID());
+		$this->assertTrue(count($this->dbObjs), "No database objects to test");
+		foreach($this->dbObjs as $type => $dbObj) {
+			//
+			$beginTransRes = $dbObj->beginTrans();
+			$transactionStatus = $dbObj->get_transaction_status();
+			$beginTransRes = true;
+			if($this->assertTrue($beginTransRes, "Start of transaction failed (". $beginTransRes ."), status=(". $transactionStatus .")")) {
+
+				$dbObj->exec('CREATE TABLE test (id serial not null, data text not null);');
+
+				$data = array(
+					'test1', 'test2'
+				);
+				$i=1;
+				foreach($data as $val) {
+					$createdId = $dbObj->run_insert("INSERT INTO test (data) VALUES (:val)", array('val'=>$val), 'test_id_seq');
+					$this->assertTrue(is_numeric($createdId), "Insert did not yield integer value (". $createdId .")");
+					$this->assertEqual($i, $createdId, "Expected Id (". $i .") does not match created id (". $createdId .") for test data (". $val .")");
+					$i++;
+				}
+
+				$this->assertTrue($dbObj->rollbackTrans());
 			}
-			
-			$this->assertTrue($this->handle_sql('pgsql', 'ROLLBACK'));
-		}
-		else {
+			else {
+			}
 		}
 	}//end test_transactions()
 	//-------------------------------------------------------------------------
