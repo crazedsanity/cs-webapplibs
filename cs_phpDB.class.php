@@ -306,7 +306,6 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	public function commitTrans() {return($this->dbh->commit());}
 	public function rollbackTrans() {return($this->dbh->rollback());}
 	public function get_transaction_status() {return($this->dbh->inTransaction());}
-	public function lastId() {return($this->dbh->lastInsertId());}
 	
 	
 	

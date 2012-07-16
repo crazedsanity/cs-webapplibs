@@ -143,11 +143,12 @@ class TestOfCSPHPDB extends UnitTestCase {
 					$this->assertEqual($i, $createdId, "Expected Id (". $i .") does not match created id (". $createdId .") for test data (". $val .")");
 					$i++;
 				}
-
-				$this->assertTrue($dbObj->rollbackTrans());
+				
 			}
 			else {
+				// transaction failed
 			}
+			$this->assertTrue($dbObj->rollbackTrans());
 		}
 	}//end test_transactions()
 	//-------------------------------------------------------------------------
