@@ -66,18 +66,16 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	);
 	
 	//=========================================================================
-	public function __construct($versionFileLocation, $upgradeConfigFile, array $dbParams=null, $lockFile='upgrade.lock') {
+	public function __construct($versionFileLocation, $upgradeConfigFile, cs_phpDB $db=null, $lockFile='upgrade.lock') {
 		
 		//setup configuration parameters for database connectivity.
 		$this->set_version_file_location(dirname(__FILE__) .'/VERSION');
-		if(!is_array($dbParams) || !count($dbParams)) {
+		if(!is_object($db)) {
 			$prefix = preg_replace('/-/', '_', $this->get_project());
 			$dbParams = array(
-				'host'		=> constant($prefix .'-DB_CONNECT_HOST'),
-				'port'		=> constant($prefix .'-DB_CONNECT_PORT'),
-				'dbname'	=> constant($prefix .'-DB_CONNECT_DBNAME'),
-				'user'		=> constant($prefix .'-DB_CONNECT_USER'),
-				'password'	=> constant($prefix .'-DB_CONNECT_PASSWORD')
+				'dsn'	=> constant($prefix .'-DB_CONNECT_DSN'),
+				'user'	=> constant($prefix .'-DB_CONNECT_USER'),
+				'pass'	=> constant($prefix .'-DB_CONNECT_PASSWORD')
 			);
 		}
 		$this->config['DBPARAMS'] = $dbParams;
@@ -87,6 +85,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			throw new exception(__METHOD__ .": required constant 'LIBDIR' not set");
 		}
 		if(!defined('SITE_ROOT')) {
+			// TODO: this should really be using a "RW" directory.
+			// TODO: make the "rwDir" code (further down) more apparent.
 			throw new exception(__METHOD__ .": required constant 'SITE_ROOT' not set");
 		}
 		
@@ -125,9 +125,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		$this->lockfile = $this->config['RWDIR'] .'/'. $lockFile;
 		
-		$this->db = new cs_phpDB($this->dbType);
 		try {
-			$this->db->connect($this->config['DBPARAMS']);
+			$this->db = new cs_phpDB($this->config['dsn'], $this->config['user'], $this->config['pass']);
 		}
 		catch(exception $e) {
 			throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
@@ -142,8 +141,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		$this->check_internal_upgrades();
 		
 		try {
-			$loggerDb = new cs_phpDB($this->dbType);
-			$loggerDb->connect($this->config['DBPARAMS'], true);
+			$loggerDb = new cs_phpDB($this->config['dsn'], $this->config['user'], $this->config['pass']);
 			$this->logsObj = new cs_webdblogger($loggerDb, "Upgrade ". $this->projectName, false);
 		}
 		catch(exception $e) {
@@ -223,7 +221,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		else {
 			//okay, all files present: check the version in the VERSION file.
-			$versionFileVersion = $this->read_version_file();
+			$this->read_version_file();
 			$dbVersion = $this->get_database_version();
 			if(!is_array($dbVersion)) {
 				$this->load_initial_version();
@@ -379,7 +377,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 					$i=0;
 					$this->do_log(__METHOD__ .": starting to run through the upgrade list, starting at (". $this->databaseVersion ."), " .
 							"total number of upgrades to perform: ". count($upgradeList), 'debug');
-					$this->db->beginTrans(__METHOD__);
+					$this->db->beginTrans();
 					foreach($upgradeList as $fromVersion=>$toVersion) {
 						
 						$details = __METHOD__ .": upgrading from ". $fromVersion ." to ". $toVersion ."... ";
@@ -550,10 +548,10 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		$this->gfObj->debugPrintOpt=1;
 		//create a database object & attempt to read the database version.
 		
-		$sql = "SELECT * FROM ". $this->config['DB_TABLE'] ." WHERE project_name='" .
-				$this->gfObj->cleanString($this->projectName, 'sql') ."'";
+		$sql = "SELECT * FROM ". $this->config['DB_TABLE'] ." WHERE ".
+				"project_name=:projectName";
 		
-		$numrows = $this->db->exec($sql);
+		$numrows = $this->db->run_query($sql, array('projectName'=>$this->projectName));
 		$dberror = $this->db->errorMsg();
 		
 		if(strlen($dberror) || $numrows != 1) {
@@ -563,11 +561,11 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 				$loadTableResult = $this->load_table();
 				if($loadTableResult === TRUE) {
 					//now try the SQL...
-					$numrows = $this->db->exec($sql);
+					$numrows = $this->db->run_query($sql, array('projectName'=>$this->projectName));
 					$dberror = $this->db->errorMsg();
 					
 					//retrieve the data...
-					$data = $this->db->farray_fieldnames();
+					$data = $this->db->get_single_record();
 					$this->databaseVersion = $data['version_string'];
 					$retval = $this->parse_version_string($data['version_string']);
 				}
@@ -589,7 +587,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			}
 		}
 		else {
-			$data = $this->db->farray_fieldnames();
+			$data = $this->db->get_single_record();
 			$this->databaseVersion = $data['version_string'];
 			$retval = $this->parse_version_string($data['version_string']);
 		}
@@ -611,8 +609,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		else {
 			//scripted upgrade...
-			$scriptIndex = $versionIndex;
-			
 			$upgradeData = $this->config['matchingData'][$versionIndex];
 			
 			if(isset($upgradeData['TARGET_VERSION']) && count($upgradeData) > 1) {
@@ -643,14 +639,14 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	 */
 	protected function update_database_version($newVersionString) {
 		$versionInfo = $this->parse_version_string($newVersionString);
+		$sql = "UPDATE ". $this->config['DB_TABLE'] ." SET version_string=:vStr WHERE project_name=:pName";
+		$params = array(
+			'vStr'	=> $versionInfo['version_string'],
+			'pName'	=> $this->projectName
+		);
 		
-		$sql = "UPDATE ". $this->config['DB_TABLE'] ." SET version_string='". 
-				$this->gfObj->cleanString($versionInfo['version_string'], 'sql') 
-				."' WHERE project_name='". 
-				$this->gfObj->cleanString($this->projectName, 'sql') ."'";
 		
-		
-		$updateRes = $this->db->run_update($sql,false);
+		$updateRes = $this->db->run_update($sql, $params);
 		if($updateRes == 1) {
 			$retval = $updateRes;
 		}
@@ -898,7 +894,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 					if(isset($myData['value'])) {
 						$val = $myData['value'];
 					}
-					$oldData = $myA2p->get_data();
 					$myA2p->set_data($path, $val);
 					$this->tempXmlConfig = $myA2p->get_data();
 				}
@@ -1075,14 +1070,15 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		$versionInfo = $this->parse_version_string($parseThis);
 		$insertData = array(
-			'project_name'		=> $this->projectName,
-			'version_string'	=> $versionInfo['version_string']
+			'projectName'		=> $this->projectName,
+			'versionString'		=> $versionInfo['version_string']
 		);
 		
-		$sql = 'INSERT INTO '. $this->config['DB_TABLE'] . $this->gfObj->string_from_array($insertData, 'insert');
+		$sql = 'INSERT INTO '. $this->config['DB_TABLE'] . ' (project_name, version_string) '
+				. 'VALUES (:projectName, :versionString)';
 		
 		try {
-			if($this->db->run_insert($sql, $this->sequenceName)) {
+			if($this->db->run_insert($sql, $insertData, $this->sequenceName)) {
 				$loadRes = true;
 				$this->do_log("Created data for '". $this->projectName ."' with version '". $insertData['version_string'] ."'", 'initialize');
 			}

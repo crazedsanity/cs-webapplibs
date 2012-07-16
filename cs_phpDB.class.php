@@ -14,7 +14,8 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	protected $dsn = "";
 	protected $connParams = array();
 	protected $username = null;
-	protected $passname = null;
+	protected $password = null;
+	protected $dbType = null;
 	
 	protected $gfObj;
 	protected $fsObj;
@@ -52,7 +53,14 @@ class cs_phpDB extends cs_webapplibsAbstract {
 				$subDsnBits = explode('=', $bit);
 				$this->connParams[$subDsnBits[0]] = $subDsnBits[1];
 			}
-			
+			$bits = array();
+			if(preg_match('/^([aA-zZ]{2,}):/', $dsn, $bits)) {
+				$this->dbType = $bits[1];
+			}
+			else {
+				$this->gfObj->debug_print($bits,1);
+				throw new exception(__METHOD__ .": unable to determine dbType");
+			}
 
 
 			$this->isInitialized = TRUE;
@@ -113,8 +121,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	public function get_dbtype() {
-		//TODO: pull dbtype out of the DSN.
-		throw new exception(__METHOD__ .": not supported");
+		return($this->dbType);
 	}//end get_dbtype()
 	//=========================================================================
 	
@@ -200,7 +207,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	public function run_insert($sql, array $params, $seqName, array $driverOptions=array()) {
+	public function run_insert($sql, array $params=null, $seqName, array $driverOptions=array()) {
 		$numRows = $this->run_query($sql, $params, $driverOptions);
 		$retval = null;
 		if($numRows > 0) {
@@ -212,6 +219,14 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		}
 		return($retval);
 	}//end run_insert()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function run_update($sql, array $params=null, array $driverOptions=array()) {
+		return($this->run_query($sql, $params, $driverOptions));
+	}//end run_update()
 	//=========================================================================
 	
 	
