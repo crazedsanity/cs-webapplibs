@@ -120,11 +120,14 @@ class TestOfCSPHPDB extends UnitTestCase {
 	
 	
 	//-------------------------------------------------------------------------
-	public function test_transactions() {
+	public function test_basics() {
 		
 		$this->internal_connect_db();
 		$this->assertTrue(count($this->dbObjs), "No database objects to test");
 		foreach($this->dbObjs as $type => $dbObj) {
+			
+			$this->assertEqual($type, $dbObj->get_dbType(), "Database type mismatch, expecting (". $type ."), got (". $dbObj->get_dbType() .")");
+			
 			//
 			$beginTransRes = $dbObj->beginTrans();
 			$transactionStatus = $dbObj->get_transaction_status();
@@ -150,7 +153,7 @@ class TestOfCSPHPDB extends UnitTestCase {
 			}
 			$this->assertTrue($dbObj->rollbackTrans());
 		}
-	}//end test_transactions()
+	}//end test_basics()
 	//-------------------------------------------------------------------------
 	
 	
