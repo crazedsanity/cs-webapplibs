@@ -16,16 +16,16 @@
 class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	/** cs_fileSystem{} object: for filesystem read/write operations. */
-	private $fsObj;
+	protected $fsObj;
 	
 	/** cs_globalFunctions{} object: debugging, array, and string operations. */
 	protected $gfObj;
 	
 	/** Array of configuration parameters. */
-	private $config = NULL;
+	protected $config = NULL;
 	
 	/** Name of primary key sequence of main table (for handling inserts with PostgreSQL) */
-	private $sequenceName;
+	protected $sequenceName;
 	
 	/** Database object. */
 	protected $db;
@@ -37,29 +37,29 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	protected $projectName;
 	
 	/** Internal cache of the version string from the VERSION file. */
-	private $versionFileVersion = NULL;
+	protected $versionFileVersion = NULL;
 	
 	/** Stored database version. */
-	private $databaseVersion = NULL;
+	protected $databaseVersion = NULL;
 	
 	/** Name (absolute location) of *.lock file that indicates an upgrade is running. */
-	private $lockfile;
+	protected $lockfile;
 	
 	/** Determines if an internal upgrade is happening (avoids some infinite loops) */
-	private $internalUpgradeInProgress = false;
+	protected $internalUpgradeInProgress = false;
 	
 	/**  */
-	private $allowNoDBVersion=true;
+	protected $allowNoDBVersion=true;
 	
 	/** Log messages to store during an internal upgrade (to avoid problems) */
-	private $storedLogs = array();
-	private $debugLogs=array();
+	protected $storedLogs = array();
+	protected $debugLogs=array();
 	
-	private $dbType=null;
+	protected $dbType=null;
 	
 	/** List of acceptable suffixes; example "1.0.0-BETA3" -- NOTE: these MUST be in 
 	 * an order that reflects newest -> oldest; "ALPHA happens before BETA, etc. */
-	private $suffixList = array(
+	protected $suffixList = array(
 		'ALPHA', 	//very unstable
 		'BETA', 	//kinda unstable, but probably useable
 		'RC'		//all known bugs fixed, searching for unknown ones
@@ -126,9 +126,11 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		$this->lockfile = $this->config['RWDIR'] .'/'. $lockFile;
 		
 		try {
-			$this->db = new cs_phpDB($this->config['dsn'], $this->config['user'], $this->config['pass']);
+			$this->db = new cs_phpDB($this->config['DBPARAMS']['dsn'], $this->config['DBPARAMS']['user'], $this->config['DBPARAMS']['pass']);
 		}
 		catch(exception $e) {
+$gf = new cs_globalFunctions();
+$gf->debug_print($this->config,1);
 			throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
 		}
 		
@@ -158,7 +160,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	/**
 	 * Determine if there are any upgrades that need to be performed...
 	 */
-	private function check_internal_upgrades() {
+	protected function check_internal_upgrades() {
 		$oldVersionFileLocation = $this->versionFileLocation;
 		$oldUpgradeConfigFile = $this->config['UPGRADE_CONFIG_FILE'];
 		$this->config['UPGRADE_CONFIG_FILE'] = dirname(__FILE__) .'/upgrades/upgrade.xml';
@@ -291,7 +293,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	/**
 	 * Read information from our config file, so we know what to expect.
 	 */
-	private function read_upgrade_config_file() {
+	protected function read_upgrade_config_file() {
 		try {
 			$xmlString = $this->fsObj->read($this->config['UPGRADE_CONFIG_FILE']);
 		}
@@ -339,7 +341,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	private function perform_upgrade() {
+	protected function perform_upgrade() {
 		//make sure there's not already a lockfile.
 		if($this->upgrade_in_progress()) {
 			//ew.  Can't upgrade.
@@ -488,7 +490,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	 * (string)	== upgrade applicable (indicates "major"/"minor"/"maintenance").
 	 * NULL		== encountered error
 	 */
-	private function check_for_version_conflict() {
+	protected function check_for_version_conflict() {
 		//set a default return...
 		$retval = NULL;
 		
@@ -544,7 +546,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	private function get_database_version() {
+	protected function get_database_version() {
 		$this->gfObj->debugPrintOpt=1;
 		//create a database object & attempt to read the database version.
 		
@@ -588,6 +590,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		else {
 			$data = $this->db->get_single_record();
+$this->gfObj->debug_print($data,1);
 			$this->databaseVersion = $data['version_string'];
 			$retval = $this->parse_version_string($data['version_string']);
 		}
@@ -599,7 +602,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	private function do_single_upgrade($fromVersion, $toVersion=null) {
+	protected function do_single_upgrade($fromVersion, $toVersion=null) {
 		//Use the "matching_syntax" data in the upgrade.xml file to determine the filename.
 		$versionIndex = "V". $this->get_full_version_string($fromVersion);
 		if(!isset($this->config['matchingData'][$versionIndex])) {
@@ -671,7 +674,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	 * Checks consistency of version information in the database, and optionally 
 	 * against a given version string.
 	 */
-	private function check_database_version() {
+	protected function check_database_version() {
 		//retrieve the internal version information.
 		if(!is_null($this->newVersion)) {
 			$data = $this->get_database_version();
@@ -700,7 +703,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	private function do_scripted_upgrade(array $upgradeData) {
+	protected function do_scripted_upgrade(array $upgradeData) {
 		$myConfigFile = $upgradeData['SCRIPT_NAME'];
 		
 		$this->do_log("Preparing to run script '". $myConfigFile ."'", 'debug');
@@ -774,7 +777,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	 * run the scripted upgrade at 1.0.4, then update the database version to 
 	 * 1.0.5 (keeps from skipping the upgrade at 1.0.4)
 	 */
-	private function get_upgrade_list() {
+	protected function get_upgrade_list() {
 		$this->get_database_version();
 		$dbVersion = $this->databaseVersion;
 		$newVersion = $this->versionFileVersion;
@@ -861,7 +864,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	private function fix_xml_config($config, $path=null) {
+	protected function fix_xml_config($config, $path=null) {
 		$this->xmlLoops++;
 		if($this->xmlLoops > 1000) {
 			$this->error_handler(__METHOD__ .": infinite loop detected...");
@@ -1005,7 +1008,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	/**
 	 * Destroy the *.lock file that indicates an upgrade is underway.
 	 */
-	private function remove_lockfile() {
+	protected function remove_lockfile() {
 		if($this->check_lockfile()) {
 			if(!$this->fsObj->rm($this->lockfile)) {
 				$this->error_handler(__METHOD__ .": failed to remove lockfile (". $this->lockfile .")");
@@ -1020,7 +1023,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	private function get_full_version_string($versionString) {
+	protected function get_full_version_string($versionString) {
 		if(strlen($versionString)) {
 			$bits = $this->parse_version_string($versionString);
 			
