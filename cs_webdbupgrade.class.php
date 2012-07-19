@@ -344,6 +344,8 @@ $this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 			$this->error_handler(__METHOD__ .": failed to retrieve 'UPGRADE' section; " .
 					"make sure upgrade.xml's ROOT element is 'UPGRADE'");
 		}
+		
+		return($xmlParser);
 	}//end read_upgrade_config_file()
 	//=========================================================================
 	
@@ -931,10 +933,7 @@ $this->gfObj->debug_print($data,1);
 	
 	//=========================================================================
 	public function load_table() {
-$gf = new cs_globalFunctions();
-$gf->debug_print($this,1);
-cs_debug_backtrace();
-exit;
+
 		$schemaFileLocation = dirname(__FILE__) .'/setup/schema.'. $this->db->get_dbtype() .'.sql';
 		$schema = file_get_contents($schemaFileLocation);
 		$this->db->exec($schema);

@@ -97,38 +97,62 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		$upgObj->gfObj = new cs_globalFunctions();
 		$upgObj->fsObj = new cs_fileSystem(dirname(__FILE__) .'/files');
 		
-		$numToPass = 4;
+		$numToPass = 8;
 		$passed = 0;
-		if($this->assertTrue(file_exists(dirname(__FILE__) .'/files/VERSION-1'))) {
-			$passed++;
-		}
-		if($this->assertTrue(file_exists(dirname(__FILE__) .'/files/VERSION-2'))) {
-			$passed++;
-		}
-		if($this->assertTrue(file_exists(dirname(__FILE__) .'/files/VERSION-3'))) {
-			$passed++;
+		
+		$fileToVersion = array(
+			dirname(__FILE__). '/files/VERSION-1'	=> "1.0.0-RC8000312",
+			dirname(__FILE__) .'/files/VERSION-2'	=> "1.9",
+			dirname(__FILE__) .'/files/VERSION-3'	=> "8.0.4003-RC2"
+		);
+		
+		foreach($fileToVersion as $file=>$version) {
+			$upgObj->versionFileLocation = $file;
+			if($this->assertTrue(file_exists($file))) {
+				$passed++;
+				if($this->assertEqual($version, $upgObj->read_version_file())) {
+					$passed++;
+				}
+			}
 		}
 		
-		$upgObj->versionFileLocation = dirname(__FILE__). '/files/VERSION-1';
-		if($this->assertEqual("1.0.0-RC8000312", $upgObj->read_version_file())) {
+		$upgradeConfigFile = dirname(__FILE__). '/files/upgrade.xml';
+		
+		$configArr = array('UPGRADE_CONFIG_FILE' => $upgradeConfigFile);
+		$upgObj->config = $configArr;
+		
+		#$upgObj->config['UPGRADE_CONFIG_FILE'] = $upgradeConfigFile;
+		if($this->assertTrue(file_exists($upgObj->config['UPGRADE_CONFIG_FILE']), "Upgrade file (". $upgObj->config['UPGRADE_CONFIG_FILE'] .") missing")) {
 			$passed++;
+			
+			$upgObj->read_upgrade_config_file();
+			
+			// now make sure things seem to line-up.
+			$this->assertEqual($upgObj->config['INITIALVERSION'], "0.1.0", "Initial version didn't match expected version, parsing failed");
+			
+			#$this->gfObj->debug_var_dump($upgObj->read_upgrade_config_file(),1);
+			
+			#$this->gfObj->debug_print(new cs_phpxmlparser(file_get_contents($upgradeConfigFile)),1);
 		}
-//		
-//		if($this->assertEqual($numToPass, $passed)) {
-//			
-//			// attempt to load the required database table.
-//			#$this->assertTrue($upgObj->load_table() === true, "Failed loading version table");
-//			
-//			$versionFileLocation = dirname(__FILE__). '/files/VERSION-1';
-//			$upgradeConfigFile = dirname(__FILE__). '/files/upgrade.xml';
-//			$upgObj->doSetup($versionFileLocation, $upgradeConfigFile, $this->dbObjs['pgsql']);
-//			
-//			$this->assertEqual(get_class($upgObj->db), 'cs_phpDB');
-//			
-//			// now make sure we've got the correct version loaded.
-//			$this->assertEqual("1.0.0-RC8000312", $upgObj->get_database_version());
-//			$this->assertNotEqual(false, $upgObj->get_database_version());
-//		}
+		
+		$upgObj->versionFileLocation = dirname(__FILE__) .'/files/VERSION-3';
+		
+		
+		if($this->assertEqual($numToPass, $passed, "Some required tests failed, see previous errors for some hints")) {
+			$upgObj->db = $this->dbObjs['pgsql'];
+			// attempt to load the required database table.
+			$this->assertTrue($upgObj->load_table() === true, "Failed loading version table");
+			
+			$versionFileLocation = dirname(__FILE__). '/files/VERSION-1';
+			$upgObj->doSetup($versionFileLocation, $upgradeConfigFile, $this->dbObjs['pgsql']);
+			
+			$this->assertEqual(get_class($upgObj->db), 'cs_phpDB');
+			
+			// now make sure we've got the correct version loaded.
+			$this->assertEqual("1.0.0-RC8000312", $upgObj->get_database_version());
+			$this->assertNotEqual(false, $upgObj->get_database_version());
+			exit;
+		}
 		
 		//$upgObj->doSetup();
 	}//end test_load_schema()
@@ -157,7 +181,7 @@ class upgradeTester extends cs_webdbupgrade {
 	
 	
 	public function read_upgrade_config_file() {
-		parent::read_upgrade_config_file();
+		return(parent::read_upgrade_config_file());
 	}//end read_upgrade_config_file()
 	
 	
