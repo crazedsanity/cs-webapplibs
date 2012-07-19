@@ -26,6 +26,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 	/** Sequence name for the given table (for PostgreSQL) */
 	private $seq = 'cswal_auth_token_table_auth_token_id_seq';
 	
+	
 	//=========================================================================
 	/**
 	 * The CONSTRUCTOR.  Sets internal properties & such.
@@ -33,18 +34,13 @@ class cs_authToken extends cs_webapplibsAbstract {
 	public function __construct(cs_phpDB $db) {
 		
 		if(is_object($db)) {
-			if($db->is_connected()) {
-				$this->db = $db;
-			}
-			else {
-				throw new exception(__METHOD__ .": database object not connected");
-			}
 			parent::__construct(true);
 			
 			$upg = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml');
 			$upg->check_versions(true);
 		}
 		else {
+			cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": invalid database object (". $db .")");
 		}
 	}//end __construct()
