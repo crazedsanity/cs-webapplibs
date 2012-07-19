@@ -17,6 +17,10 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	function setUp() {
 		$this->gfObj = new cs_globalFunctions;
 		$this->gfObj->debugPrintOpt=1;
+		
+		$upgObj = new upgradeTester();
+		$this->skipUnless($this->assertFalse($upgObj->upgrade_in_progress()), "An upgrade is already in progress....???");
+		
 		parent::setUp();
 	}//end setUp()
 	//--------------------------------------------------------------------------
@@ -33,13 +37,65 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	
 	//--------------------------------------------------------------------------
 	public function test_basic_functions() {
+		$upgObj = new upgradeTester();
+		
+		// These should all pass muster.
+		$testVersions = array(
+			"1.2.3-BETA4", "1.0", "85.20005.1-BETA33", "1.01", "1.10"
+		);
+		foreach($testVersions as $testThis) {
+			// Check how it parses version strings.
+			$vArr = $upgObj->parse_version_string($testThis);
+			$this->assertTrue(isset($vArr['version_string']));
+			$this->assertTrue(isset($vArr['version_major']));
+			$this->assertTrue(isset($vArr['version_minor']));
+			$this->assertTrue(isset($vArr['version_maintenance']));
+			$this->assertTrue(isset($vArr['version_suffix']));
+			$this->assertEqual(count($vArr), 5, "Version info (". $testThis .") has unexpected number of elements (". count($vArr) .")");
+		}
+		
+		// enumerate each piece of a fairly static version string, make sure it works.
+		$vArr = $upgObj->parse_version_string("1.2.3-BETA12");
+		$this->assertEqual($vArr['version_string'], '1.2.3-BETA12');
+		$this->assertEqual($vArr['version_major'], '1');
+		$this->assertEqual($vArr['version_minor'], '2');
+		$this->assertEqual($vArr['version_maintenance'], '3');
+		$this->assertEqual($vArr['version_suffix'], 'BETA12');
+		
+		
+		// use a condensed version string, make sure it still passes.
+		$vArr = $upgObj->parse_version_string("1.2");
+		$this->assertEqual($vArr['version_string'], '1.2');
+		$this->assertEqual($vArr['version_major'], '1');
+		$this->assertEqual($vArr['version_minor'], '2');
+		$this->assertEqual($vArr['version_maintenance'], '');
+		$this->assertEqual($vArr['version_suffix'], '');
+		
+		
+		// Parse some suffixes, make sure they're okay.
+		$testArray = array("BETA1", "ALPHA2", "RC3");
+		foreach($testArray as $suffix) {
+			$vArr = $upgObj->parse_suffix($suffix);
+			
+			$this->assertEqual(count($vArr), 2, "Invalid number of returned elements in (". $suffix .")");
+			
+			$this->assertTrue(isset($vArr['type']), "Missing index 'type'");
+			$this->assertTrue(isset($vArr['number']), "Missing index 'number'");
+			
+			$this->assertFalse(is_numeric($vArr['type']), "Type (". $vArr['type'] .") appears to be numeric?");
+			$this->assertTrue(is_numeric($vArr['number']), "Number (". $vArr['number'] .") isn't a number...?");
+		}
 		
 	}//end test_basic_functions()
 	//--------------------------------------------------------------------------
 	
 	
 	
-	
+	//--------------------------------------------------------------------------
+	public function test_load_schema() {
+		
+	}//end test_load_schema()
+	//--------------------------------------------------------------------------
 }
 
 
@@ -47,6 +103,17 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
  * Exposes some of the innards of cs_webdbupgrade{}
  */
 class upgradeTester extends cs_webdbupgrade {
+	
+	public function __construct() {
+		return;
+	}//end __construct()
+	
+	
+	public function doSetup($versionFileLocation, $upgradeConfigFile, cs_phpDB $db = null, $lockFile = 'upgrade.lock') {
+		parent::__construct($versionFileLocation, $upgradeConfigFile, $db, $lockFile);
+	}//end doSetup()
+	
+	
 	public function read_version_file() {
 		return(parent::read_version_file());
 	}//end read_version_file()
