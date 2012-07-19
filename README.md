@@ -69,6 +69,8 @@ most of them deal with database manipulation of some sort.
 CS Web DB Logger
 --------
 
+__WARNING:::__ I am considering replacing this with log4php for the sake of simplicity (and less code to support).
+
 Once the appropriate schema has been built, code can be updated easily to start 
 logging:
 
@@ -182,6 +184,10 @@ WORK FLOW:
 
 CS Generic Permissions 
 --------
+
+__TODO:__ *Instead of using "rwx", use "crud" create (INSERT), read (SELECT), update, delete*
+
+__TODO:__ *Consider using bitwise operators... see [http://stackoverflow.com/questions/1380045/why-should-i-use-bitwise-bitmask-in-php]*
 
 This permissions system is built to be flexible enough to be used in virtually any application for any purpose.  The "permissions" are stored in a way that basically mimics *nix filesystem permissions.  The code must know what the object is for which the user is asking permission.  That object has the following traits:
 <pre>
