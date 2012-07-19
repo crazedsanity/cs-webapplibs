@@ -92,8 +92,45 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	
 	
 	//--------------------------------------------------------------------------
-	public function test_load_schema() {
+	public function test_stuff() {
+		$upgObj = new upgradeTester();
+		$upgObj->gfObj = new cs_globalFunctions();
+		$upgObj->fsObj = new cs_fileSystem(dirname(__FILE__) .'/files');
 		
+		$numToPass = 4;
+		$passed = 0;
+		if($this->assertTrue(file_exists(dirname(__FILE__) .'/files/VERSION-1'))) {
+			$passed++;
+		}
+		if($this->assertTrue(file_exists(dirname(__FILE__) .'/files/VERSION-2'))) {
+			$passed++;
+		}
+		if($this->assertTrue(file_exists(dirname(__FILE__) .'/files/VERSION-3'))) {
+			$passed++;
+		}
+		
+		$upgObj->versionFileLocation = dirname(__FILE__). '/files/VERSION-1';
+		if($this->assertEqual("1.0.0-RC8000312", $upgObj->read_version_file())) {
+			$passed++;
+		}
+//		
+//		if($this->assertEqual($numToPass, $passed)) {
+//			
+//			// attempt to load the required database table.
+//			#$this->assertTrue($upgObj->load_table() === true, "Failed loading version table");
+//			
+//			$versionFileLocation = dirname(__FILE__). '/files/VERSION-1';
+//			$upgradeConfigFile = dirname(__FILE__). '/files/upgrade.xml';
+//			$upgObj->doSetup($versionFileLocation, $upgradeConfigFile, $this->dbObjs['pgsql']);
+//			
+//			$this->assertEqual(get_class($upgObj->db), 'cs_phpDB');
+//			
+//			// now make sure we've got the correct version loaded.
+//			$this->assertEqual("1.0.0-RC8000312", $upgObj->get_database_version());
+//			$this->assertNotEqual(false, $upgObj->get_database_version());
+//		}
+		
+		//$upgObj->doSetup();
 	}//end test_load_schema()
 	//--------------------------------------------------------------------------
 }

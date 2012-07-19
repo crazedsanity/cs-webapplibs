@@ -70,13 +70,25 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		
 		//setup configuration parameters for database connectivity.
 		$this->set_version_file_location(dirname(__FILE__) .'/VERSION');
-		if(!is_object($db)) {
+		if(is_object($db)) {
+			$this->db = $db;
+		}
+		else {
 			$prefix = preg_replace('/-/', '_', $this->get_project());
 			$dbParams = array(
 				'dsn'	=> constant($prefix .'-DB_CONNECT_DSN'),
 				'user'	=> constant($prefix .'-DB_CONNECT_USER'),
 				'pass'	=> constant($prefix .'-DB_CONNECT_PASSWORD')
 			);
+			
+			try {
+				$this->db = new cs_phpDB($this->config['DBPARAMS']['dsn'], $this->config['DBPARAMS']['user'], $this->config['DBPARAMS']['pass']);
+			}
+			catch(exception $e) {
+	$gf = new cs_globalFunctions();
+	$gf->debug_print($this->config,1);
+				throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
+			}
 		}
 		$this->config['DBPARAMS'] = $dbParams;
 		//Check for some required constants.
@@ -114,6 +126,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			throw new exception(__METHOD__ .": unable to locate version file (". $versionFileLocation .")");
 		}
 		$this->set_version_file_location($versionFileLocation);
+$this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 		
 		$rwDir = dirname(__FILE__) .'/../../rw';
 		if(defined(__CLASS__ .'-RWDIR')) {
@@ -125,14 +138,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		$this->lockfile = $this->config['RWDIR'] .'/'. $lockFile;
 		
-		try {
-			$this->db = new cs_phpDB($this->config['DBPARAMS']['dsn'], $this->config['DBPARAMS']['user'], $this->config['DBPARAMS']['pass']);
-		}
-		catch(exception $e) {
-$gf = new cs_globalFunctions();
-$gf->debug_print($this->config,1);
-			throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
-		}
 		
 		$this->fsObj =  new cs_fileSystem(constant('SITE_ROOT'));
 		if($this->check_lockfile()) {
@@ -260,27 +265,31 @@ $gf->debug_print($this->config,1);
 		$retval = NULL;
 		
 		//okay, all files present: check the version in the VERSION file.
-		$versionFileContents = $this->fsObj->read($this->versionFileLocation);
-		
-		
-		$versionMatches = array();
-		preg_match_all('/\nVERSION: (.*)\n/', $versionFileContents, $versionMatches);
-		if(count($versionMatches) == 2 && count($versionMatches[1]) == 1) {
-			$retval = trim($versionMatches[1][0]);
-			$this->versionFileVersion = $this->get_full_version_string($retval);
-			
-			//now retrieve the PROJECT name.
-			$projectMatches = array();
-			preg_match_all('/\nPROJECT: (.*)\n/', $versionFileContents, $projectMatches);
-			if(count($projectMatches) == 2 && count($projectMatches[1]) == 1) {
-				$this->projectName = trim($projectMatches[1][0]);
+		if(file_exists($this->versionFileLocation)) {
+			$versionFileContents = $this->fsObj->read($this->versionFileLocation);
+
+			$versionMatches = array();
+			preg_match_all('/\nVERSION: (.*)\n/', $versionFileContents, $versionMatches);
+			if(count($versionMatches) == 2 && count($versionMatches[1]) == 1) {
+				$retval = trim($versionMatches[1][0]);
+				$this->versionFileVersion = $this->get_full_version_string($retval);
+
+				//now retrieve the PROJECT name.
+				$projectMatches = array();
+				preg_match_all('/\nPROJECT: (.*)\n/', $versionFileContents, $projectMatches);
+				if(count($projectMatches) == 2 && count($projectMatches[1]) == 1) {
+					$this->projectName = trim($projectMatches[1][0]);
+				}
+				else {
+					$this->error_handler(__METHOD__ .": failed to find PROJECT name");
+				}
 			}
 			else {
-				$this->error_handler(__METHOD__ .": failed to find PROJECT name");
+				$this->error_handler(__METHOD__ .": could not find VERSION data");
 			}
 		}
 		else {
-			$this->error_handler(__METHOD__ .": could not find VERSION data");
+			$this->error_handler(__METHOD__ .": Version file (". $this->versionFileLocation .") does not exist");
 		}
 		
 		return($retval);
@@ -922,6 +931,10 @@ $this->gfObj->debug_print($data,1);
 	
 	//=========================================================================
 	public function load_table() {
+$gf = new cs_globalFunctions();
+$gf->debug_print($this,1);
+cs_debug_backtrace();
+exit;
 		$schemaFileLocation = dirname(__FILE__) .'/setup/schema.'. $this->db->get_dbtype() .'.sql';
 		$schema = file_get_contents($schemaFileLocation);
 		$this->db->exec($schema);
@@ -1047,7 +1060,7 @@ $this->gfObj->debug_print($data,1);
 	public function error_handler($details) {
 		//log the error.
 		if(!is_object($this->logsObj)) {
-			throw new exception(__METHOD__ .": error while running an internal upgrade::: ". $details);
+			throw new exception(__METHOD__ .": error encountered::: ". $details);
 		}
 		if($this->internalUpgradeInProgress === false) {
 			$this->do_log($details, 'exception in code');
