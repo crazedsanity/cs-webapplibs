@@ -47,7 +47,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 			$this->password = $password;
 
 			//break the DSN into bits...
-			$tmpDsn = preg_replace('/^[aA-zZ]{2,}/', '', $dsn);
+			$tmpDsn = preg_replace('/^[aA-zZ]{2,}:/', '', $dsn);
 			$tmpDsn = explode(';', $tmpDsn);
 			foreach($tmpDsn as $bit) {
 				$subDsnBits = explode('=', $bit);
@@ -111,7 +111,8 @@ class cs_phpDB extends cs_webapplibsAbstract {
 			$retval = call_user_func_array(array($this->dbh, $methodName), $args);
 		}
 		else {
-			throw new exception(__METHOD__ .': uninitialized ('. $this->isInitialized .'), no database layer ('. is_object($this->dbh) .'), or unsupported method ('. $methodName .') for database of type ('. $this->dbType .')');
+			cs_debug_backtrace();
+			throw new exception(__METHOD__ .': FATAL: unsupported method ('. $methodName .') for database of type ('. $this->dbType .')');
 		}
 		return($retval);
 	}//end __call()	
@@ -279,7 +280,9 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	public function get_single_record() {
 		$retval = array();
 		if(is_object($this->sth)) {
-			$retval = $this->sth->fetch_all(PDO::FETCH_ASSOC);
+			$retval = $this->sth->fetchAll(PDO::FETCH_ASSOC);
+$this->gfObj->debug_print($retval,1);
+$this->gfObj->debug_print($this,1);
 			$retval = $retval[0];
 		}
 		else {

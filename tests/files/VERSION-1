@@ -1,0 +1,6 @@
+## Stores the current version of the cs-versionparse system, and it's source.  
+## Please do NOT modify this file.
+
+VERSION: 1.0.0-RC8000312
+PROJECT: cs-webapplibs
+
