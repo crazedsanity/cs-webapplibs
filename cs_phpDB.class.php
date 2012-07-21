@@ -81,7 +81,6 @@ class cs_phpDB extends cs_webapplibsAbstract {
 			}
 		}
 		catch(PDOException $e) {
-			cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": failed to connect to database: ".
 					$e->getMessage());
 		}
@@ -281,8 +280,6 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		$retval = array();
 		if(is_object($this->sth)) {
 			$retval = $this->sth->fetchAll(PDO::FETCH_ASSOC);
-$this->gfObj->debug_print($retval,1);
-$this->gfObj->debug_print($this,1);
 			$retval = $retval[0];
 		}
 		else {
@@ -323,6 +320,10 @@ $this->gfObj->debug_print($this,1);
 	public function beginTrans() {return($this->dbh->beginTransaction());}
 	public function commitTrans() {return($this->dbh->commit());}
 	public function rollbackTrans() {return($this->dbh->rollback());}
+	
+	/***
+	 * Test
+	 */
 	public function get_transaction_status() {return($this->dbh->inTransaction());}
 	
 	

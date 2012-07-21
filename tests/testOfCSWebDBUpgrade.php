@@ -97,7 +97,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		$upgObj->gfObj = new cs_globalFunctions();
 		$upgObj->fsObj = new cs_fileSystem(dirname(__FILE__) .'/files');
 		
-		$numToPass = 8;
+		$numToPass = 7;
 		$passed = 0;
 		
 		$fileToVersion = array(
@@ -118,17 +118,17 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		
 		$upgradeConfigFile = dirname(__FILE__). '/files/upgrade.xml';
 		
-		$configArr = array('UPGRADE_CONFIG_FILE' => $upgradeConfigFile);
-		$upgObj->config = $configArr;
+		//$configArr = array('UPGRADE_CONFIG_FILE' => $upgradeConfigFile);
+		$upgObj->upgradeConfigFile = $upgradeConfigFile;
 		
 		#$upgObj->config['UPGRADE_CONFIG_FILE'] = $upgradeConfigFile;
-		if($this->assertTrue(file_exists($upgObj->config['UPGRADE_CONFIG_FILE']), "Upgrade file (". $upgObj->config['UPGRADE_CONFIG_FILE'] .") missing")) {
+		if($this->assertTrue(file_exists($upgObj->upgradeConfigFile), "Upgrade file (". $upgObj->upgradeConfigFile .") missing")) {
 			$passed++;
 			
 			$upgObj->read_upgrade_config_file();
 			
 			// now make sure things seem to line-up.
-			$this->assertEqual($upgObj->config['INITIALVERSION'], "0.1.0", "Initial version didn't match expected version, parsing failed");
+			$this->assertEqual($upgObj->initialVersion, "0.1.0", "Initial version didn't match expected version, parsing failed");
 			
 			#$this->gfObj->debug_var_dump($upgObj->read_upgrade_config_file(),1);
 			
@@ -139,7 +139,9 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		
 		
 		if($this->assertEqual($numToPass, $passed, "Some required tests failed, see previous errors for some hints")) {
+			$this->dbObjs['pgsql']->beginTrans();
 			$upgObj->db = $this->dbObjs['pgsql'];
+			
 			// attempt to load the required database table.
 			$this->assertTrue($upgObj->load_table() === true, "Failed loading version table");
 			
@@ -151,7 +153,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 			// now make sure we've got the correct version loaded.
 			$this->assertEqual("1.0.0-RC8000312", $upgObj->get_database_version());
 			$this->assertNotEqual(false, $upgObj->get_database_version());
-			exit;
+			//$this->dbObjs['pgsql']->rollBackTrans();
 		}
 		
 		//$upgObj->doSetup();

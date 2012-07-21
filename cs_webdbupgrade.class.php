@@ -25,7 +25,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	protected $config = NULL;
 	
 	/** Name of primary key sequence of main table (for handling inserts with PostgreSQL) */
-	protected $sequenceName;
+	protected $sequenceName = 'cswal_version_table_version_id_seq';
 	
 	/** Database object. */
 	protected $db;
@@ -57,6 +57,15 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	protected $dbType=null;
 	
+	protected $dbTable = 'cswal_version_table';
+	protected $dbPrimaryKey = 'version_id';
+	protected $upgradConfigFile;
+	protected $dbParams = array();
+	protected $rwDir = "";
+	protected $initialVersion = "";
+	protected $matchingData = array();
+	
+	
 	/** List of acceptable suffixes; example "1.0.0-BETA3" -- NOTE: these MUST be in 
 	 * an order that reflects newest -> oldest; "ALPHA happens before BETA, etc. */
 	protected $suffixList = array(
@@ -75,22 +84,20 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		else {
 			$prefix = preg_replace('/-/', '_', $this->get_project());
-			$dbParams = array(
+			$this->dbParams = array(
 				'dsn'	=> constant($prefix .'-DB_CONNECT_DSN'),
 				'user'	=> constant($prefix .'-DB_CONNECT_USER'),
 				'pass'	=> constant($prefix .'-DB_CONNECT_PASSWORD')
 			);
 			
 			try {
-				$this->db = new cs_phpDB($this->config['DBPARAMS']['dsn'], $this->config['DBPARAMS']['user'], $this->config['DBPARAMS']['pass']);
+				$this->db = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
 			}
 			catch(exception $e) {
-	$gf = new cs_globalFunctions();
-	$gf->debug_print($this->config,1);
 				throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
 			}
 		}
-		$this->config['DBPARAMS'] = $dbParams;
+		
 		//Check for some required constants.
 		$requisiteConstants = array('LIBDIR');
 		if(!defined('LIBDIR')) {
@@ -108,10 +115,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			$this->gfObj->debugPrintOpt = constant('DEBUGPRINTOPT');
 		}
 		
-		$this->config['DB_TABLE'] = 'cswal_version_table';
-		$this->config['DB_PRIMARYKEY'] = 'version_id';
-		$this->sequenceName = $this->config['DB_TABLE'] .'_'. $this->config['DB_PRIMARYKEY'] .'_seq';
-		
 		if(defined('DBTYPE')) {
 			$this->dbType = constant('DBTYPE');
 		}
@@ -120,23 +123,22 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			throw new exception(__METHOD__ .": required upgrade config file location (". $upgradeConfigFile .") not set or unreadable");
 		}
 		else {
-			$this->config['UPGRADE_CONFIG_FILE'] = $upgradeConfigFile;
+			$this->upgradConfigFile = $upgradeConfigFile;
 		}
 		if(!strlen($versionFileLocation) || !file_exists($versionFileLocation)) {
 			throw new exception(__METHOD__ .": unable to locate version file (". $versionFileLocation .")");
 		}
 		$this->set_version_file_location($versionFileLocation);
-$this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 		
 		$rwDir = dirname(__FILE__) .'/../../rw';
 		if(defined(__CLASS__ .'-RWDIR')) {
 			$rwDir = constant(__CLASS__ .'-RWDIR');
 		}
-		$this->config['RWDIR'] = $rwDir;
+		$this->rwDir = $rwDir;
 		if(is_null($lockFile) || !strlen($lockFile)) {
 			$lockFile = 'upgrade.lock';
 		}
-		$this->lockfile = $this->config['RWDIR'] .'/'. $lockFile;
+		$this->lockfile = $this->rwDir .'/'. $lockFile;
 		
 		
 		$this->fsObj =  new cs_fileSystem(constant('SITE_ROOT'));
@@ -148,10 +150,11 @@ $this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 		$this->check_internal_upgrades();
 		
 		try {
-			$loggerDb = new cs_phpDB($this->config['dsn'], $this->config['user'], $this->config['pass']);
+			$loggerDb = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
 			$this->logsObj = new cs_webdblogger($loggerDb, "Upgrade ". $this->projectName, false);
 		}
 		catch(exception $e) {
+$this->gfObj->debug_print(__METHOD__ .": database params: " .$this->gfObj->debug_print($this->dbparams,0));
 			throw new exception(__METHOD__ .": failed to create logger::: ". $e->getMessage());
 		}
 		
@@ -167,8 +170,8 @@ $this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 	 */
 	protected function check_internal_upgrades() {
 		$oldVersionFileLocation = $this->versionFileLocation;
-		$oldUpgradeConfigFile = $this->config['UPGRADE_CONFIG_FILE'];
-		$this->config['UPGRADE_CONFIG_FILE'] = dirname(__FILE__) .'/upgrades/upgrade.xml';
+		$oldUpgradeConfigFile = $this->upgradConfigFile;
+		$this->upgradeConfigFile = dirname(__FILE__) .'/upgrades/upgrade.xml';
 		
 		
 		//set a status flag so we can store log messages (for now).
@@ -199,7 +202,7 @@ $this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 		
 		//reset internal vars.
 		$this->set_version_file_location($oldVersionFileLocation);
-		$this->config['UPGRADE_CONFIG_FILE'] = $oldUpgradeConfigFile;
+		$this->upgradeConfigFile = $oldUpgradeConfigFile;
 		$this->read_version_file();
 		
 	}//end check_internal_upgrades()
@@ -304,7 +307,7 @@ $this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 	 */
 	protected function read_upgrade_config_file() {
 		try {
-			$xmlString = $this->fsObj->read($this->config['UPGRADE_CONFIG_FILE']);
+			$xmlString = $this->fsObj->read($this->upgradeConfigFile);
 		}
 		catch(exception $e) {
 			throw new exception(__METHOD__ .": failed to read upgrade config file::: ". $e->getMessage());
@@ -317,7 +320,7 @@ $this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 			
 			//see if there's an "initial version" setting.
 			try {
-				$this->config['INITIALVERSION'] = $xmlParser->get_tag_value('/UPGRADE/INITIALVERSION');
+				$this->initialVersion = $xmlParser->get_tag_value('/UPGRADE/INITIALVERSION');
 			}
 			catch(Exception $e) {
 				//no worries, this only happens when the tag doesn't exist or it doesn't have data (that is okay).
@@ -338,7 +341,7 @@ $this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 					}
 				}
 			}
-			$this->config['matchingData'] = $tConfig;
+			$this->matchingDatad = $tConfig;
 		}
 		else {
 			$this->error_handler(__METHOD__ .": failed to retrieve 'UPGRADE' section; " .
@@ -354,6 +357,7 @@ $this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 	//=========================================================================
 	protected function perform_upgrade() {
 		//make sure there's not already a lockfile.
+		$transactionStartedExternally = $this->db->get_transaction_status();
 		if($this->upgrade_in_progress()) {
 			//ew.  Can't upgrade.
 			$this->error_handler(__METHOD__ .": upgrade already in progress...????");
@@ -390,7 +394,9 @@ $this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 					$i=0;
 					$this->do_log(__METHOD__ .": starting to run through the upgrade list, starting at (". $this->databaseVersion ."), " .
 							"total number of upgrades to perform: ". count($upgradeList), 'debug');
-					$this->db->beginTrans();
+					if(!$transactionStartedExternally) {
+						$this->db->beginTrans();
+					}
 					foreach($upgradeList as $fromVersion=>$toVersion) {
 						
 						$details = __METHOD__ .": upgrading from ". $fromVersion ." to ". $toVersion ."... ";
@@ -418,12 +424,16 @@ $this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 					}
 					$this->remove_lockfile();
 					
-					$this->db->commitTrans();
+					if(!$transactionStartedExternally) {
+						$this->db->commitTrans();
+					}
 				}
 				catch(exception $e) {
 					$transactionStatus = $this->db->get_transaction_status(false);
 					$this->error_handler(__METHOD__ .": transaction status=(". $transactionStatus ."), upgrade aborted:::". $e->getMessage());
-					$this->db->rollbackTrans();
+					if(!$transactionStartedExternally) {
+						$this->db->rollbackTrans();
+					}
 				}
 				$this->do_log("Upgrade process complete", 'end');
 			}
@@ -561,7 +571,7 @@ $this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 		$this->gfObj->debugPrintOpt=1;
 		//create a database object & attempt to read the database version.
 		
-		$sql = "SELECT * FROM ". $this->config['DB_TABLE'] ." WHERE ".
+		$sql = "SELECT * FROM ". $this->dbTable ." WHERE ".
 				"project_name=:projectName";
 		
 		$numrows = $this->db->run_query($sql, array('projectName'=>$this->projectName));
@@ -601,7 +611,6 @@ $this->gfObj->debug_print(__FILE__ .", line #". __LINE__ .": check!");
 		}
 		else {
 			$data = $this->db->get_single_record();
-$this->gfObj->debug_print($data,1);
 			$this->databaseVersion = $data['version_string'];
 			$retval = $this->parse_version_string($data['version_string']);
 		}
@@ -616,14 +625,14 @@ $this->gfObj->debug_print($data,1);
 	protected function do_single_upgrade($fromVersion, $toVersion=null) {
 		//Use the "matching_syntax" data in the upgrade.xml file to determine the filename.
 		$versionIndex = "V". $this->get_full_version_string($fromVersion);
-		if(!isset($this->config['matchingData'][$versionIndex])) {
+		if(!isset($this->matchingData[$versionIndex])) {
 			//version-only upgrade.
 			$this->newVersion = $toVersion;
 			$this->update_database_version($toVersion);
 		}
 		else {
 			//scripted upgrade...
-			$upgradeData = $this->config['matchingData'][$versionIndex];
+			$upgradeData = $this->matchingData[$versionIndex];
 			
 			if(isset($upgradeData['TARGET_VERSION']) && count($upgradeData) > 1) {
 				$this->newVersion = $upgradeData['TARGET_VERSION'];
@@ -653,7 +662,7 @@ $this->gfObj->debug_print($data,1);
 	 */
 	protected function update_database_version($newVersionString) {
 		$versionInfo = $this->parse_version_string($newVersionString);
-		$sql = "UPDATE ". $this->config['DB_TABLE'] ." SET version_string=:vStr WHERE project_name=:pName";
+		$sql = "UPDATE ". $this->dbTable ." SET version_string=:vStr WHERE project_name=:pName";
 		$params = array(
 			'vStr'	=> $versionInfo['version_string'],
 			'pName'	=> $this->projectName
@@ -721,7 +730,7 @@ $this->gfObj->debug_print($data,1);
 		
 		//we've got the filename, see if it exists.
 		
-		$scriptsDir = dirname($this->config['UPGRADE_CONFIG_FILE']);
+		$scriptsDir = dirname($this->upgradeConfigFile);
 		$fileName = $scriptsDir .'/'. $myConfigFile;
 		
 		if(file_exists($fileName)) {
@@ -797,9 +806,9 @@ $this->gfObj->debug_print($data,1);
 		if(!$this->is_higher_version($dbVersion, $newVersion)) {
 			$this->error_handler(__METHOD__ .": version (". $newVersion .") isn't higher than (". $dbVersion .")... something is broken");
 		}
-		elseif(is_array($this->config['matchingData'])) {
+		elseif(is_array($this->matchingData)) {
 			$lastVersion = $dbVersion;
-			foreach($this->config['matchingData'] as $matchVersion=>$data) {
+			foreach($this->configmatchingData as $matchVersion=>$data) {
 				
 				$matchVersion = preg_replace('/^V/', '', $matchVersion);
 				if($matchVersion == $data['TARGET_VERSION']) {
@@ -957,7 +966,7 @@ $this->gfObj->debug_print($data,1);
 			$logRes = 'Failed to load';
 			$logType = 'error';
 		}
-		$this->do_log($logRes .' table ('. $this->config['DB_TABLE'] .') into ' .
+		$this->do_log($logRes .' table ('. $this->dbTable .') into ' .
 				'database::: '. $loadTableResult, $logType);
 		
 		return($loadTableResult);
@@ -1077,8 +1086,8 @@ $this->gfObj->debug_print($data,1);
 		//if there's an INITIAL_VERSION in the upgrade config file, use that.
 		$this->read_upgrade_config_file();
 		$insertData = array();
-		if(isset($this->config['INITIALVERSION'])) {
-			$parseThis = $this->config['INITIALVERSION'];
+		if(isset($this->initialVersion)) {
+			$parseThis = $this->initialVersion;
 		}
 		else {
 			$parseThis = $this->versionFileVersion;
@@ -1089,7 +1098,7 @@ $this->gfObj->debug_print($data,1);
 			'versionString'		=> $versionInfo['version_string']
 		);
 		
-		$sql = 'INSERT INTO '. $this->config['DB_TABLE'] . ' (project_name, version_string) '
+		$sql = 'INSERT INTO '. $this->dbTable . ' (project_name, version_string) '
 				. 'VALUES (:projectName, :versionString)';
 		
 		try {
@@ -1113,12 +1122,14 @@ $this->gfObj->debug_print($data,1);
 	
 	//=========================================================================
 	protected function do_log($message, $type) {
-		$this->debugLogs[] = array('project'=>$this->projectName,'upgradeFile'=>$this->config['UPGRADE_CONFIG_FILE'],'message'=>$message,'type'=>$type);
+		$this->debugLogs[] = array('project'=>$this->projectName,'upgradeFile'=>$this->upgradeConfigFile,'message'=>$message,'type'=>$type);
 		if($this->internalUpgradeInProgress === true) {
 			$this->storedLogs[] = func_get_args();
 		}
 		else {
-			$this->logsObj->log_by_class($message, $type);
+			if(is_object($this->logsObj)) {
+				$this->logsObj->log_by_class($message, $type);
+			}
 		}
 	}//end do_log()
 	//=========================================================================
