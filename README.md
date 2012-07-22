@@ -23,6 +23,8 @@ which is just an XML library, and can be found at
 Basic Database Interaction
 --------
 
+__WARNING #1:__ Due to lack of help, the only officially-supported database is PostgreSQL.  Most things should be fairly well database-agnostic, though some of the fancier features (such as transactions within the upgrade system) may not work as expected: MySQL can sometimes automatically commit changes without warning, such as when transactions cross transactionable and transactionless tables.
+
 Interacting with the database is fairly straightforward: cs_phpDB is basically 
 just a wrapper for PDO (if you're not familiar, go read it []).  First, create 
 an object to work with:
