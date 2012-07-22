@@ -18,8 +18,6 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		$this->gfObj = new cs_globalFunctions;
 		$this->gfObj->debugPrintOpt=1;
 		
-		$upgObj = new upgradeTester();
-		$this->skipUnless($this->assertFalse($upgObj->upgrade_in_progress()), "An upgrade is already in progress....???");
 		
 		parent::setUp();
 	}//end setUp()
@@ -139,7 +137,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		
 		
 		if($this->assertEqual($numToPass, $passed, "Some required tests failed, see previous errors for some hints")) {
-			$this->dbObjs['pgsql']->beginTrans();
+			#$this->dbObjs['pgsql']->beginTrans();
 			$upgObj->db = $this->dbObjs['pgsql'];
 			
 			// attempt to load the required database table.
@@ -151,9 +149,18 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 			$this->assertEqual(get_class($upgObj->db), 'cs_phpDB');
 			
 			// now make sure we've got the correct version loaded.
-			$this->assertEqual("1.0.0-RC8000312", $upgObj->get_database_version());
-			$this->assertNotEqual(false, $upgObj->get_database_version());
+			$dbVersion = $upgObj->get_database_version();
+			$this->assertEqual("8.0.4003-RC2", $dbVersion['version_string']);
+			$this->assertNotEqual(false, $dbVersion);
 			//$this->dbObjs['pgsql']->rollBackTrans();
+			
+			
+			try {
+				$upgObj->db->exec(file_get_contents(dirname(__FILE__) .'/files/destroy_test_db.sql'));
+			}
+			catch (Exception $e) {
+				// It's all good.  Probably just failed to drop some tables or something.
+			}
 		}
 		
 		//$upgObj->doSetup();

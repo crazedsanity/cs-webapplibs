@@ -45,28 +45,29 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	/** Global functions class from cs-content */
 	protected $gfObj;
 	
+	/**  */
+	protected $fsObj;
+	
 	protected $pendingLogs;
 	private $suspendLogging=false;
 	
 	/** List of tables keyed off an internal reference name. */
-	protected $tables = array(
-		'category'	=> 'cswal_category_table',
-		'class'		=> 'cswal_class_table',
-		'event'		=> 'cswal_event_table',
-		'log'		=> 'cswal_log_table',
-		'attrib'	=> 'cswal_attribute_table',
-		'logAttrib'	=> 'cswal_log_attribute_table'
-	);
+	const categoryTable = 'cswal_category_table';
+	const classTable = 'cswal_class_table';
+	const eventTable = 'cswal_event_table';
+	const logTable = 'cswal_log_table';
+	const attribTable = 'cswal_attribute_table';
+	const logAttribTable = 'cswal_log_attribute_table';
+	
+	
 	
 	/** List of sequences keyed off an internal reference name (MUST match references above) */
-	protected $seqs = array(
-		'category'		=> "cswal_category_table_category_id_seq",
-		'class'			=> "cswal_class_table_class_id_seq",
-		'event'			=> "cswal_event_table_event_id_seq",
-		'log'			=> "cswal_log_table_log_id_seq",
-		'attrib'		=> "cswal_attribute_table_attribute_id_seq",
-		'logAttrib'		=> "cswal_log_attribute_table_log_attribute_id_seq"
-	);
+	const categoryTableSeq = 'cswal_category_table_category_id_seq';
+	const classTableSeq = 'cswal_class_table_class_id_seq';
+	const eventTableSeq = 'cswal_event_table_event_id_seq';
+	const logTableSeq = 'cswal_log_table_log_id_seq';
+	const attribTableSeq = 'cswal_attribute_table_attribute_id_seq';
+	const logAttribTableSeq = 'cswal_log_attribute_table_log_attribute_id_seq';
 	
 	public $cometDebug = "NONE";
 	
@@ -133,7 +134,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	final public function run_sql_file($filename) {
 		if(!is_object($this->fsObj)) {
 			if(class_exists('cs_fileSystem')) {
-				$fsObj = new cs_fileSystem;
+				$this->fsObj = new cs_fileSystem;
 			}
 			else {
 				throw new exception(__METHOD__ .": required library (cs_fileSystem) not found");
@@ -142,7 +143,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		
 		$this->lastSQLFile = $filename;
 		
-		$fileContents = $fsObj->read($filename);
+		$fileContents = $this->fsObj->read($filename);
 		try {
 			$this->db->exec($fileContents);
 			$this->build_cache();
@@ -164,7 +165,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	 */
 	private function build_cache() {
 		//build query, run it, check for errors.
-		$sql = "SELECT class_id, lower(class_name) as name FROM ". $this->tables['class'];
+		$sql = "SELECT class_id, lower(class_name) as name FROM ". self::classTable;
 		
 		try {
 			$this->db->run_query($sql);
@@ -185,7 +186,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		}
 		
 		//now build cache for attributes.
-		$sql = "SELECT attribute_id, lower(attribute_name) AS attribute_name FROM ". $this->tables['attrib'];
+		$sql = "SELECT attribute_id, lower(attribute_name) AS attribute_name FROM ". self::attribTable;
 		
 		try {
 			$this->db->run_query($sql);
@@ -243,7 +244,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			'classId'		=> $this->get_class_id($logClassName),
 			'categoryId'	=> $this->logCategoryId
 		);
-		$sql = "SELECT event_id FROM ". $this->tables['event'] ." WHERE " .
+		$sql = "SELECT event_id FROM ". self::eventTable ." WHERE " .
 			"class_id=:classId AND category_id=:categoryId";
 		
 		try {
@@ -324,12 +325,12 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			);
 			
 			//build, run, error-checking.
-			$sql = "INSERT INTO ". $this->tables['log'] ." (event_id, uid, affected_uid, details) ". 
+			$sql = "INSERT INTO ". self::logTable ." (event_id, uid, affected_uid, details) ". 
 					" VALUES (:eventId, :uid, :affectedUid, :details)";
 			
 			try {
 				$this->db->run_query($sql, $params);
-				$newId = $this->db->lastInsertId();
+				$newId = $this->db->lastInsertId(self::logTableSeq);
 				
 				if(is_numeric($newId) && $newId > 0) {
 					$retval = $newId;
@@ -403,12 +404,12 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			);
 			
 			//now run the insert.
-			$sql = 'INSERT INTO '. $this->tables['event'] .' (class_id, category_id, description) '. 
+			$sql = 'INSERT INTO '. self::eventTable .' (class_id, category_id, description) '. 
 					'VALUES (:classId, :categoryId, :description)';
 			
 			try {
 				$this->db->run_query($sql, $$sqlArr);
-				$newId = $this->db->lastInsertId();
+				$newId = $this->db->lastInsertId(self::eventTableSeq);
 				
 				if(is_numeric($newId) && $newId > 0) {
 					$retval = $newId;
@@ -427,125 +428,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	//=========================================================================
 	
 	
-	//TODO: fix this to be more parameterized....
-	//=========================================================================
-	/**
-	 * Retrieves logs with the given criteria.
-	 *
-	public function get_logs(array $criteria, array $orderBy=NULL, $limit=20, $greaterThanLogId=null) {
-		$originalCrit = $criteria;
-		//set a default for the limit.
-		if(!is_numeric($limit) || $limit < 1) {
-			//set it again.
-			$limit = 20;
-		}
-		
-		if(is_null($orderBy) || count($orderBy) < 1) {
-			//set it.
-			$orderBy = array(
-				'log_id DESC'
-			);
-		}
-		
-		//set the fields that can be used, along with what alias for the table & cleaning type to use on the data.
-		$allowedCritFields = array(
-			'class_id'			=> array('cl',	'numeric'),
-			'category_id'		=> array('ca',	'numeric'),
-			'uid'				=> array('l',	'numeric'),
-			'affected_uid'		=> array('l',	'numeric')
-		);
-		
-		//loop through the data to create our cleaned, prefixed array of criteria.
-		$sqlArr = array();
-		foreach($criteria AS $field => $value) {
-			//is this field in the allowed list?
-			if(isset($allowedCritFields[$field])) {
-				//grab data for this field.
-				$myFieldData = $allowedCritFields[$field];
-				$cleanStringArg = $myFieldData[1];
-				
-				//set the prefixed column name.
-				$prefixedName = $myFieldData[0] .'.'. $field;
-				
-				//now add it to our array.
-				$sqlArr[$prefixedName] = $value;
-			}
-		}
-		
-		
-		//build the criteria.
-		if(!isset($sqlArr['ca.category_id'])) {
-			$sqlArr['ca.category_id'] = '>0';
-			$cleanStringArr['ca.category_id'] = "select";
-		}
-		$critString = $this->gfObj->string_from_array($sqlArr, 'select');
-		
-		//check if "timeperiod" is in there (it's special)
-		if(isset($criteria['timeperiod']) && isset($criteria['timeperiod']['start']) && isset($criteria['timeperiod']['end'])) {
-			//add it in!
-			$myTime = $criteria['timeperiod'];
-			$addThis = "(l.creation >= '". $myTime['start'] ."'::date AND l.creation <= '". $myTime['end'] ."'::date + interval '1 day')";
-			$critString = create_list($critString, $addThis, ' AND ');
-		}
-		if(!is_null($greaterThanLogId) && is_numeric($greaterThanLogId)) {
-			$critString = $this->gfObj->create_list($critString, "log_id > ". $greaterThanLogId, ' AND ');
-		}
-		
-		$orderString = $this->gfObj->string_from_array($orderBy, 'limit');
-		$sql = "select " .
-				"l.creation, " .
-				"l.log_id, " .
-				"l.uid, " .
-				"cl.class_name, " .
-				"ca.category_name, " .
-				"ev.description, " .
-				"l.details " .
-			"FROM ". $this->tables['log'] ." AS l " .
-				"INNER JOIN ". $this->tables['event'] ." AS ev ON (l.event_id=ev.event_id) " .
-				"INNER JOIN ". $this->tables['class'] ." AS cl ON (cl.class_id=ev.class_id) " .
-				"INNER JOIN ". $this->tables['category'] ." AS ca ON (ca.category_id=ev.category_id) " .
-			"WHERE " . $critString . " " .
-			"ORDER BY " .
-				"log_id DESC " .
-			"LIMIT ". $limit;
-		
-		try {
-			//run it.
-			$this->cometDebug = array(
-				'criteria'			=> $criteria,
-				'sql'				=> $sql
-			);
-			$data = $this->db->run_query($sql, 'log_id');
-			
-			$retval = array();
-			if(is_array($data)) {
-				$retval = $data;
-			}
-		}
-		catch(exception $e) {
-			throw new exception(__METHOD__ .": failed to retrieve logs::: ". $e->getMessage());
-		}
-		
-		return($retval);
-	}//end get_logs()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	***
-	 * Uses arbitrary criteria to retrieve the last X log entries.
-	 **
-	public function get_recent_logs($numEntries=null) {
-		if(!is_numeric($numEntries) || $numEntries < 1) {
-			$numEntries = 20;
-		}
-		
-		//set the criteria so we only get the last few entries.
-		$retval = $this->get_logs(array(), NULL, $numEntries);
-		return($retval);
-	}//end get_recent_logs()
-	//=========================================================================
+	//TODO: create methods for log retrieval that are parameterized...
 	
 	
 	
@@ -556,7 +439,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	private function get_category_id($catName) {
 		if(strlen($catName) && is_string($catName)) {
 			$catName = trim($catName);
-			$sql = "SELECT category_id FROM ". $this->tables['category'] ." WHERE lower(category_name) = :catName";
+			$sql = "SELECT category_id FROM ". self::categoryTable ." WHERE lower(category_name) = :catName";
 			
 			try {
 				
@@ -613,12 +496,11 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	 * Create a category_id based on the given name.
 	 */
 	private function create_log_category($catName) {
-		$sql = "INSERT INTO ". $this->tables['category'] ." (category_name) ".
+		$sql = "INSERT INTO ". self::categoryTable ." (category_name) ".
 				" VALUES (:categoryName)";
-		
 		try {
-			$this->db->run_query($sql, array('categoryName', $catName));
-			$newId = $this->db->lastInsertId();
+			$this->db->run_query($sql, array('categoryName' => $catName));
+			$newId = $this->db->lastInsertId(self::categoryTableSeq);
 			
 			if(is_numeric($newId) && $newId > 0) {
 				$retval = $newId;
@@ -644,7 +526,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	 * Create a log_class_id based on the given name.
 	 */
 	private function create_class($className) {
-		$sql = "INSERT INTO ". $this->tables['class'] ." (class_name) VALUES ".
+		$sql = "INSERT INTO ". self::classTable ." (class_name) VALUES ".
 				"(:className)";
 		
 		
@@ -676,7 +558,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	 */
 	private function get_class_name($classId) {
 		if(is_numeric($classId)) {
-			$sql = "SELECT class_name FROM ". $this->tables['class'] ." WHERE class_id=:classId";
+			$sql = "SELECT class_name FROM ". self::classTable ." WHERE class_id=:classId";
 			
 			try {
 				$this->db->run_query($sql, array('classId'=>$classId));
@@ -711,7 +593,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	 */
 	private function get_category_name($categoryId) {
 		if(is_numeric($categoryId)) {
-			$sql = "SELECT category_name FROM ". $this->tables['category'] ." WHERE category_id=:categoryId";
+			$sql = "SELECT category_name FROM ". self::categoryTable ." WHERE category_id=:categoryId";
 			
 			try {
 				$this->db->run_query($sql, array('categoryId'=>$categoryId));
@@ -817,12 +699,12 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			$myId = $this->attributeCache[strtolower($attribName)];
 		}
 		else {
-			$sql = "INSERT INTO ". $this->tables['attrib'] ." (attribute_name) " .
+			$sql = "INSERT INTO ". self::attribTable ." (attribute_name) " .
 					"VALUES (:attribName)";
 			
 			try {
 				$this->db->run_query($sql, array('attribName'=>$attribName));
-				$myId = $this->db->lastInsertId();
+				$myId = $this->db->lastInsertId(self::attribTableSeq);
 			}
 			catch(exception $e) {
 				throw new exception(__METHOD__ .": fatal error while creating attribute (". $attribName .")::: ". $e->getMessage());
@@ -848,12 +730,12 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 				'attributeId'	=> $this->create_attribute($name, false),
 				'valueText'		=> $val
 			);
-			$sql = "INSERT INTO ". $this->tables['logAttrib'] ." (log_id, ".
+			$sql = "INSERT INTO ". self::logAttribTable ." (log_id, ".
 					"attribute_id, value_text) VALUES (:logId, :attributeId, :valueText)";
 			
 			try {
 				$this->db->run_query($sql, $insertData);
-				$myIds[$name][] = $this->db->lastInsertId();
+				$myIds[$name][] = $this->db->lastInsertId(self::logAttribTableSeq);
 			}
 			catch(exception $e) {
 				throw new exception(__METHOD__ .": fatal error while creating log attribute " .

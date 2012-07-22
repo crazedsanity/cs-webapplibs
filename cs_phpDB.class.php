@@ -107,7 +107,14 @@ class cs_phpDB extends cs_webapplibsAbstract {
 					$this->fsObj->append_to_file(date('D, d M Y H:i:s') . ' ('. microtime(true) . ')::: '. $args[0]);
 				}
 			}
-			$retval = call_user_func_array(array($this->dbh, $methodName), $args);
+			try {
+				
+				$retval = call_user_func_array(array($this->dbh, $methodName), $args);
+			}
+			catch (Exception $e) {
+				#cs_debug_backtrace(1);
+				throw $e;
+			}
 		}
 		else {
 			cs_debug_backtrace();
@@ -146,6 +153,22 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	public function get_dsn() {
 		return($this->dsn);
 	}//end get_dsn()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function get_username() {
+		return($this->username);
+	}//end get_username()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function get_password() {
+		return($this->password);
+	}//end get_password()
 	//=========================================================================
 	
 	
@@ -198,6 +221,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 			$this->numRows = $this->sth->execute($params); 
 		}
 		catch(PDOException $px) {
+cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": ". $px->getMessage());
 		}
 		return($this->numRows);
@@ -280,7 +304,9 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		$retval = array();
 		if(is_object($this->sth)) {
 			$retval = $this->sth->fetchAll(PDO::FETCH_ASSOC);
-			$retval = $retval[0];
+			if(is_array($retval) && count($retval)) {
+				$retval = $retval[0];
+			}
 		}
 		else {
 			throw new exception(__METHOD__ .': statement handle was not created');

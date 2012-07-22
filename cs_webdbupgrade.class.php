@@ -81,6 +81,12 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		$this->set_version_file_location(dirname(__FILE__) .'/VERSION');
 		if(is_object($db)) {
 			$this->db = $db;
+			
+			$this->dbParams = array(
+				'dsn'	=> $db->get_dsn(),
+				'user'	=> $db->get_username(),
+				'pass'	=> $db->get_password()
+			);
 		}
 		else {
 			$prefix = preg_replace('/-/', '_', $this->get_project());
@@ -99,7 +105,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		
 		//Check for some required constants.
-		$requisiteConstants = array('LIBDIR');
 		if(!defined('LIBDIR')) {
 			throw new exception(__METHOD__ .": required constant 'LIBDIR' not set");
 		}
@@ -154,7 +159,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			$this->logsObj = new cs_webdblogger($loggerDb, "Upgrade ". $this->projectName, false);
 		}
 		catch(exception $e) {
-$this->gfObj->debug_print(__METHOD__ .": database params: " .$this->gfObj->debug_print($this->dbparams,0));
+#$this->gfObj->debug_print(__METHOD__ .": database params: " .$this->gfObj->debug_print($this,0));
+			cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": failed to create logger::: ". $e->getMessage());
 		}
 		
@@ -808,7 +814,7 @@ $this->gfObj->debug_print(__METHOD__ .": database params: " .$this->gfObj->debug
 		}
 		elseif(is_array($this->matchingData)) {
 			$lastVersion = $dbVersion;
-			foreach($this->configmatchingData as $matchVersion=>$data) {
+			foreach($this->matchingData as $matchVersion=>$data) {
 				
 				$matchVersion = preg_replace('/^V/', '', $matchVersion);
 				if($matchVersion == $data['TARGET_VERSION']) {
@@ -940,7 +946,8 @@ $this->gfObj->debug_print(__METHOD__ .": database params: " .$this->gfObj->debug
 	
 	
 	
-	//=========================================================================
+	//=========================================================================cs_debug_backtrace(1);
+
 	public function load_table() {
 
 		$schemaFileLocation = dirname(__FILE__) .'/setup/schema.'. $this->db->get_dbtype() .'.sql';
@@ -1104,7 +1111,7 @@ $this->gfObj->debug_print(__METHOD__ .": database params: " .$this->gfObj->debug
 		try {
 			if($this->db->run_insert($sql, $insertData, $this->sequenceName)) {
 				$loadRes = true;
-				$this->do_log("Created data for '". $this->projectName ."' with version '". $insertData['version_string'] ."'", 'initialize');
+				$this->do_log("Created data for '". $this->projectName ."' with version '". $insertData['versionString'] ."'", 'initialize');
 			}
 			else {
 				$this->error_handler(__METHOD__ .": failed to load initial version::: ". $e->getMessage());
