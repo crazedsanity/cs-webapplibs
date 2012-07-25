@@ -8,6 +8,10 @@ class cs_sessionDB extends cs_session {
 	
 	protected $logCategory = "DB Sessions";
 	
+	const tableName = 'cswal_session_store_table';
+	const tablePKey = 'session_store_id';
+	const sequenceName = 'cswal_session_store_table_session_store_id_seq';
+	
 	//-------------------------------------------------------------------------
 	/**
 	 * The constructor.
@@ -18,25 +22,7 @@ class cs_sessionDB extends cs_session {
 	 */
 	function __construct() {
 		
-		
-		//map some constants to connection parameters.
-		//NOTE::: all constants should be prefixed...
-		$constantPrefix = 'SESSION_DB_';
-		$params = array('host', 'port', 'dbname', 'user', 'password');
-		foreach($params as $name) {
-			$value = null;
-			$constantName = $constantPrefix . strtoupper($name);
-			if(defined($constantName)) {
-				$value = constant($constantName);
-			}
-			$dbParams[$name] = $value;
-		}
-		$this->db = new cs_phpDB(constant('DBTYPE'));
-		$this->db->connect($dbParams);
-		
-		$this->tableName = 'cswal_session_store_table';
-		$this->tablePKey = 'session_store_id';
-		$this->sequenceName = 'cswal_session_store_table_session_store_id_seq';
+		$this->db = $this->connectDb();
 		
 		//create a logger (this will automatically cause any upgrades to happen).
 		$this->logger = new cs_webdblogger($this->db, 'Session DB', true);
@@ -60,13 +46,44 @@ class cs_sessionDB extends cs_session {
 	
 	
 	//-------------------------------------------------------------------------
+	protected function connectDb() {
+		
+		if(defined('SESSION_DB_dsn')) {
+			$dsn = constant('SESSION_DB_dsn');
+		}
+		else {
+			throw new exception(__METHOD__ .": missing DSN setting");
+		}
+		
+		if(defined('SESSION_DB_user')) {
+			$user = constant('SESSION_DB_user');
+		}
+		else {
+			throw new exception(__METHOD__ .": missing user setting");
+		}
+		
+		if(defined('SESSION_DB_password')) {
+			$pass = constant('SESSION_DB_password');
+		}
+		else {
+			throw new exception(__METHOD__ .": missing password setting");
+		}
+		
+		$db = new cs_phpDB($dsn, $user, $pass);
+		return($db);
+	}//end connectDb()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
 	/**
 	 * Determines if the appropriate table exists in the database.
 	 */
 	public function sessdb_table_exists() {
 		try {
-			$test = $this->db->run_query("SELECT * FROM ". $this->tableName .
-					" ORDER BY ". $this->tablePKey ." LIMIT 1");
+			$test = $this->db->run_query("SELECT * FROM ". self::tableName .
+					" ORDER BY ". self::tablePKey ." LIMIT 1");
 			$exists = true;
 		}
 		catch(exception $e) {
@@ -81,35 +98,12 @@ class cs_sessionDB extends cs_session {
 	
 	
 	//-------------------------------------------------------------------------
-	private function load_table() {
-		$filename = dirname(__FILE__) .'/schema/db_session_schema.'. $this->db->get_dbtype() .'.sql';
-		if(file_exists($filename)) {
-			try {
-				$this->db->run_update(file_get_contents($filename),true);
-			}
-			catch(exception $e) {
-				$this->exception_handler(__METHOD__ .": failed to load required table " .
-						"into your database automatically::: ". $e->getMessage(), true);
-			}
-		}
-		else {
-			$this->exception_handler(__METHOD__ .": while attempting to load required " .
-					"table into your database, discovered you have a missing schema " .
-					"file (". $filename .")", true);
-		}
-	}//end load_table()
-	//-------------------------------------------------------------------------
-	
-	
-	
-	//-------------------------------------------------------------------------
 	protected function is_valid_sid($sid) {
 		$isValid = false;
 		if(strlen($sid) >= 20) {
 			try {
-				$sql = "SELECT * FROM ". $this->tableName ." WHERE session_id='". 
-						$sid ."'";
-				$this->db->run_query($sql);
+				$sql = "SELECT * FROM ". self::tableName ." WHERE session_id=:sid";
+				$this->db->run_query($sql, array('sid'=>$sid));
 				$numrows = $this->db->numRows();
 				if($numrows == 1) {
 					$isValid = true;
@@ -159,9 +153,8 @@ class cs_sessionDB extends cs_session {
 	public function sessdb_read($sid) {
 		$retval = '';
 		try {
-			$sql = "SELECT * FROM ". $this->tableName ." WHERE session_id='". 
-				$sid ."'";
-			$data = $this->db->run_query($sql);
+			$sql = "SELECT * FROM ". self::tableName ." WHERE session_id=:sid";
+			$data = $this->db->run_query($sql, array('sid'=>$sid));
 			
 			if($this->db->numRows() == 1) {
 				$retval = $data['session_data'];
@@ -178,35 +171,84 @@ class cs_sessionDB extends cs_session {
 	
 	
 	//-------------------------------------------------------------------------
+	protected function doInsert($sid, $data) {
+		$sql = 'INSERT INTO '. self::tableName .' (session_id, session_data) VALUES (:sid, :data)';
+		
+		$this->db->run_insert($sql, array('sid'=>$sid, 'data'=>$data));
+		$retval = $this->db->lastInsertId(self::tablePKey);
+		
+		return($retval);
+	}//end doInsert()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	protected function doUpdate($sid, $data) {
+		$sql = 'UPDATE '. self::tableName .' SET'.
+			' session_data=:data'.
+			', last_updated=NOW()'.
+			' WHERE session_id=:sid';
+		$updateFields = array(
+			'data'			=> $data,
+			'session_id'	=> $sid
+		);
+		
+		$retval = $this->db->run_update($sql, $updateFields);
+		
+		return($retval);
+	}//end doUpdate()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public function updateUid($uid, $sid) {
+		$sql = 'UPDATE '. self::tableName .' SET uid=:uid WHERE sid=:sid';
+		
+		$params = array(
+			'uid'	=> $uid,
+			'sid'	=> $sid
+		);
+		
+		$retval = $this->db->run_query($sql, $params);
+		
+		return($retval);
+	}//end updateUid()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public function updateIp($ip) {
+		$sql = 'UPDATE '. self::tableName .' SET ip=:ip WHERE sid=:sid';
+		
+		$params = array(
+			'ip'	=> $ip,
+			'sid'	=> $sid
+		);
+		
+		$retval = $this->db->run_query($sql, $params);
+		
+		return($retval);
+	}//end updateIp()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
 	public function sessdb_write($sid, $data) {
 		if(is_string($sid) && strlen($sid) >= 20) {
-			$data = array(
-				'session_data'	=> $data
-			);
-			$cleanString = array(
-				'session_data'		=> 'sql',
-				'uid'			=> 'numeric'
-			);
-			
-			$afterSql = "";
-			if($this->is_valid_sid($sid)) {
-				$type = 'update';
-				$sql = "UPDATE ". $this->tableName ." SET ";
-				$afterSql = "WHERE session_id='". $sid ."'";
-				$data['last_updated'] = 'NOW()';
-				$secondArg = false;
-			}
-			else {
-				$type = 'insert';
-				$sql = "INSERT INTO ". $this->tableName ." ";
-				$data['session_id'] = $sid;
-				$secondArg = $this->sequenceName;
-			}
-			
-			$sql .= $this->gfObj->string_from_array($data, $type, null, $cleanString) .' '. $afterSql;
+			$type = "insert";
 			try {
-				$funcName = 'run_'. $type;
-				$res = $this->db->$funcName($sql, $secondArg);
+				if($this->is_valid_sid($sid)) {
+					$type = "update";
+					$res = $this->doUpdate($sid, $data);
+				}
+				else {
+					$type = "insert";
+					$res = $this->doInsert($sid, $data);
+				}
 			}
 			catch(exception $e) {
 				$this->exception_handler(__METHOD__ .": failed to perform action (". $type ."), sid=(". $sid ."), sid length=(". strlen($sid) ."), validSid=(". $this->is_valid_sid($sid) .")::: ". $e->getMessage());
@@ -225,8 +267,9 @@ class cs_sessionDB extends cs_session {
 	//-------------------------------------------------------------------------
 	public function sessdb_destroy($sid) {
 		try {
-			$sql = "DELETE FROM ". $this->tableName ." WHERE session_id='". $sid ."'";
-			$numDeleted = $this->db->run_update($sql, true);
+			$sql = "DELETE FROM ". self::tableName ." WHERE session_id=:sid";
+			$params = array('sid'=>$sid);
+			$numDeleted = $this->db->run_update($sql, $params);
 			
 			if($numDeleted > 0) {
 				$this->do_log("Destroyed session_id (". $sid .")", 'deleted');
@@ -248,21 +291,28 @@ class cs_sessionDB extends cs_session {
 	 */
 	public function sessdb_gc($maxLifetime=null) {
 		
-		$dateFormat = 'Y-m-d H:i:s';
+		$dateFormat = 'Y-m-d H:M:S';
 		$strftimeFormat = '%Y-%m-%d %H:%M:%S';
 		$nowTime = date($dateFormat);
 		$excludeCurrent = true;
+		$params = array();
+		
 		if(defined('SESSION_MAX_TIME') || defined('SESSION_MAX_IDLE')) {
 			$maxFreshness = null;
 			if(defined('SESSION_MAX_TIME')) {
+				//date_created < '2012-12-01 22:01:45''
 				$date = strtotime('- '. constant('SESSION_MAX_TIME'));
-				$maxFreshness = "date_created < '". strftime($strftimeFormat, $date) ."'";
+				$params ['dateCreated'] = strftime($strftimeFormat, $date);
+				$maxFreshness = "date_created < :dateCreated";	//". strftime($strftimeFormat, $date) ."'";
 				$excludeCurrent=false;
 			}
 			if(defined('SESSION_MAX_IDLE')) {
 				
 				$date = strtotime('- '. constant('SESSION_MAX_IDLE'));
-				$addThis = "last_updated < '". strftime($strftimeFormat, $date) ."'";
+				$params['lastUpdated'] = strftime($strftimeFormat, $date);
+				
+				$addThis = "last_updated < :lastUpdated";	//'". strftime($strftimeFormat, $date) ."'";
+				
 				$maxFreshness = $this->gfObj->create_list($maxFreshness, $addThis, ' OR ');
 			}
 		}
@@ -272,24 +322,20 @@ class cs_sessionDB extends cs_session {
 			$interval = $maxLifetime .' seconds';
 			
 			$dt1 = strtotime($nowTime .' - '. $interval);
-			$maxFreshness = "last_updated < '". date($dateFormat, $dt1) ."'";
+			$params['lastUpdated'] = date($dateFormat, $dt1);
+			$maxFreshness = "last_updated < :lastUpdated";//'". date($dateFormat, $dt1) ."'";
 		}
 		
 		
 		
 		try {
 			//destroy old sessions, but don't complain if nothing is deleted.
-			$sql = "DELETE FROM ". $this->tableName ." WHERE ". $maxFreshness;
+			$sql = "DELETE FROM ". self::tableName ." WHERE ". $maxFreshness;
 			if(strlen($this->sid) && $excludeCurrent === false) {
+				$params['session_id'] = $this->sid;
 				$sql .= " AND session_id != '". $this->sid ."'";
 			}
-			$numCleaned = $this->db->run_update($sql, true);
-			
-			#if($numCleaned > 0) {
-			#	$this->do_log("cleaned (". $numCleaned .") old sessions, " .
-			#			"excludeCurrent=(". $this->gfObj->interpret_bool($excludeCurrent) .")" .
-			#			", maxFreshness=(". $maxFreshness .")", "debug");
-			#}
+			$this->db->run_update($sql, $params);
 		}
 		catch(exception $e) {
 			$this->exception_handler(__METHOD__ .": exception while cleaning: ". $e->getMessage());
@@ -307,8 +353,7 @@ class cs_sessionDB extends cs_session {
 		
 		//check if the logger object has been created.
 		if(!is_object($this->logger)) {
-			$newDB = clone $this->db;
-			$newDB->reconnect(true);
+			$newDB = $this->connectDb();
 			$this->logger = new cs_webdblogger($newDB, $this->logCategory);
 		}
 		
