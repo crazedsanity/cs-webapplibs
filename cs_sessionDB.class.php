@@ -8,9 +8,8 @@ class cs_sessionDB extends cs_session {
 	
 	protected $logCategory = "DB Sessions";
 	
-	const tableName = 'cswal_session_store_table';
-	const tablePKey = 'session_store_id';
-	const sequenceName = 'cswal_session_store_table_session_store_id_seq';
+	const tableName = 'cswal_session_table';
+	const tablePKey = 'session_id';
 	
 	//-------------------------------------------------------------------------
 	/**
@@ -20,7 +19,7 @@ class cs_sessionDB extends cs_session {
 	 * 								this parameter is non-null and non-numeric, the value will be 
 	 * 								used as the session name.
 	 */
-	function __construct() {
+	public function __construct() {
 		
 		$this->db = $this->connectDb();
 		
@@ -46,27 +45,33 @@ class cs_sessionDB extends cs_session {
 	
 	
 	//-------------------------------------------------------------------------
-	protected function connectDb() {
+	protected function connectDb($dsn=null,$user=null,$password=null) {
 		
-		if(defined('SESSION_DB_dsn')) {
-			$dsn = constant('SESSION_DB_dsn');
-		}
-		else {
-			throw new exception(__METHOD__ .": missing DSN setting");
-		}
-		
-		if(defined('SESSION_DB_user')) {
-			$user = constant('SESSION_DB_user');
-		}
-		else {
-			throw new exception(__METHOD__ .": missing user setting");
+		if(is_null($dsn)) {
+			if(defined('SESSION_DB_DSN')) {
+				$dsn = constant('SESSION_DB_DSN');
+			}
+			else {
+				throw new exception(__METHOD__ .": missing DSN setting");
+			}
 		}
 		
-		if(defined('SESSION_DB_password')) {
-			$pass = constant('SESSION_DB_password');
+		if(is_null($user)) {
+			if(defined('SESSION_DB_USER')) {
+				$user = constant('SESSION_DB_USER');
+			}
+			else {
+				throw new exception(__METHOD__ .": missing user setting");
+			}
 		}
-		else {
-			throw new exception(__METHOD__ .": missing password setting");
+		
+		if(is_null($password)) {
+			if(defined('SESSION_DB_PASSWORD')) {
+				$pass = constant('SESSION_DB_PASSWORD');
+			}
+			else {
+				throw new exception(__METHOD__ .": missing password setting");
+			}
 		}
 		
 		$db = new cs_phpDB($dsn, $user, $pass);
@@ -82,7 +87,7 @@ class cs_sessionDB extends cs_session {
 	 */
 	public function sessdb_table_exists() {
 		try {
-			$test = $this->db->run_query("SELECT * FROM ". self::tableName .
+			$this->db->run_query("SELECT * FROM ". self::tableName .
 					" ORDER BY ". self::tablePKey ." LIMIT 1");
 			$exists = true;
 		}
@@ -175,9 +180,8 @@ class cs_sessionDB extends cs_session {
 		$sql = 'INSERT INTO '. self::tableName .' (session_id, session_data) VALUES (:sid, :data)';
 		
 		$this->db->run_insert($sql, array('sid'=>$sid, 'data'=>$data));
-		$retval = $this->db->lastInsertId(self::tablePKey);
 		
-		return($retval);
+		return($sid);
 	}//end doInsert()
 	//-------------------------------------------------------------------------
 	

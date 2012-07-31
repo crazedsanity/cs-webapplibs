@@ -222,6 +222,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		}
 		catch(PDOException $px) {
 cs_debug_backtrace(1);
+$this->gfObj->debug_print($this,1);
 			throw new exception(__METHOD__ .": ". $px->getMessage());
 		}
 		return($this->numRows);

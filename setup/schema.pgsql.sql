@@ -148,11 +148,10 @@ CREATE TABLE cswal_auth_token_table (
 --
 
 CREATE TABLE cswal_session_table (
-	session_id varchar(40) NOT NULL PRIMARY KEY,
+	session_id varchar(40) NOT NULL UNIQUE PRIMARY KEY,
 	uid integer REFERENCES cs_authentication_table(uid),
 	date_created timestamp NOT NULL DEFAULT NOW(),
 	last_updated timestamp NOT NULL DEFAULT NOW(),
-	ip varchar(15) NOT NULL,
 	session_data text
 );
 

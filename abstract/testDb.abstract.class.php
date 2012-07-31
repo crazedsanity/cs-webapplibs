@@ -103,7 +103,7 @@ abstract class testDbAbstract extends UnitTestCase {
 	
 	
 	//-----------------------------------------------------------------------------
-	public function create_db() {
+	public function create_db($schemaFile=null, $dbType='pgsql') {
 		$myDbName = strtolower(__CLASS__ .'_'. preg_replace('/\./', '', microtime(true)));
 		$this->templateDb = new cs_phpDB($this->config['dsn']. 'template1', $this->config['username'], $this->config['password']);
 		
@@ -112,7 +112,16 @@ abstract class testDbAbstract extends UnitTestCase {
 		
 		//now run the SQL file.
 		$this->db = new cs_phpdb($this->config['dsn']. $myDbName, $this->config['username'], $this->config['password']);
-		$this->db->run_sql_file(dirname(__FILE__) .'/../tests/files/test_db.sql');
+		if(is_null($schemaFile)) {
+			$schemaFile = dirname(__FILE__) .'/../tests/files/create_test_db.sql';
+		}
+		
+		if(file_exists($schemaFile)) {
+			$this->db->run_sql_file($schemaFile);
+		}
+		else {
+			throw new exception(__METHOD__ .": could not read schema file (". $schemaFile .")");
+		}
 	}//end create_db()
 	//-----------------------------------------------------------------------------
 	
