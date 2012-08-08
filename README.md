@@ -3,14 +3,19 @@ Web Application Libraries
 
 (a.k.a. "CS-WebAppLibs" or "CSWAL")
 
-__WARNING #1:__ If you don't read what sparse documentation there is, you probably won't 
-get it.
+__WARNING #1:__ Version 0.5.x and above utilize PDO and prepared statements. 
+Applications/libraries/frameworks that were written against a prior version may 
+need to be rewritten to handle the differences.  In theory, it is still fully 
+backwards-compatible... but I make no guarantees.
 
-__WARNING #2:__ This code was not written for the faint of heart. The naming conventions 
-may be inconsistent. Some of these classes, such as the WebDBUpgrade system, is made 
-to be transparent, so interacting with it can be difficult; others, such as the 
-logging system, are meant to be used with little need to understand their inner-
-workings. 
+__WARNING #2:__ If you don't read what sparse documentation there is, you 
+probably won't get it.
+
+__WARNING #3:__ This code was not written for the faint of heart. The naming 
+conventions may be inconsistent. Some of these classes, such as the WebDBUpgrade 
+system, is made to be transparent, so interacting with it can be difficult; 
+others, such as the logging system, are meant to be used with little need to 
+understand their inner-workings. 
 
 *On to the documentation...*
 
@@ -23,11 +28,16 @@ which is just an XML library, and can be found at
 Basic Database Interaction
 --------
 
-__WARNING #1:__ Due to lack of help, the only officially-supported database is PostgreSQL.  Most things should be fairly well database-agnostic, though some of the fancier features (such as transactions within the upgrade system) may not work as expected: MySQL can sometimes automatically commit changes without warning, such as when transactions cross transactionable and transactionless tables.
+__WARNING #1:__ Due to lack of help, the only officially-supported database is 
+PostgreSQL.  Most things should be fairly well database-agnostic, though some of 
+the fancier features (such as transactions within the upgrade system) may not 
+work as expected: MySQL can sometimes automatically commit changes without 
+warning, such as when transactions cross transactionable and transactionless 
+tables.
 
 Interacting with the database is fairly straightforward: cs_phpDB is basically 
-just a wrapper for PDO (if you're not familiar, go read it []).  First, create 
-an object to work with:
+just a wrapper for PDO (if you're not familiar, go read it 
+[http://php.net/manual/en/book.pdo.php]).  First, create an object to work with:
 
 <pre>
 	$dsn = "psql:host=localhost;dbname=test";
@@ -182,31 +192,10 @@ WORK FLOW:
 </pre>
 
 
-CS Generic Permissions 
+NOTE REGARDING OTHER CLASSES
 --------
 
-This permissions system is built to be flexible enough to be used in virtually any application for any purpose.  The "permissions" are stored in a way that basically mimics *nix filesystem permissions.  The code must know what the object is for which the user is asking permission.  That object has the following traits:
-<pre>
-	* Object Name: the name of the item that is being assigned permissions.
-		-- Examples:
-			++ A URL (i.e. "/authenticated" would only be accessible to the owner + group members)
-			++ A Blog (i.e. "/blog/harryjohnson" would be readable to everyone, but only writeable by user "harryjohnson")
-			++ A File (i.e. "/{WEBROOT}/files/hiddenData.sqlite" might only be allowed access by a certain user)
-			++ Executing a special script: (i.e. "/bin/importFiles.pl", run script using a web interface)
-	* User ID: indicates what user owns this object.
-	* Group ID: indicates a group that users must be part of (if not owner) to be assigned these permissions
-	* Permission Bits:
-		-- Each permission is a true/false value.  The name is in the form "{x}_{y}"
-			++ "{x}":  u/g/o (User/Group/Owner)
-			++ "{y}":  r/w/x (Read/Write/eXecute)
-		-- Full Explanation:
-			++ "u_r":  User's read permission; indicates if the owner can "read" (view) it.
-			++ "u_w":  User's write permission; indicates if the owner can write (create/update) the object.
-			++ "u_x":  User's execute permission; this rarely applies, and usage would vary greatly depending upon the object & associated code.
-			++ "g_r":  Group read permission; users assigned to the associated group can/cannot "read" (view) it.
-			++ "g_w":  Group write permission; users assigned to the associated group can/cannot write (create/update) the object.
-			++ "g_x":  Group execute permission; users assigned to the associated group are bound by this value (usage depends on code).
-			++ "o_r":  Other read permission; users that are not owners or members of the group can/cannot "read" (view) it
-			++ "o_w":  Other write permission; users that are not owners or members of the group can/cannot write (create/update) the object.
-			++ "o_x":  Other execute permission; users that are... you get the idea.
-</pre>
+There are other classes implemented.  As they're tested (and I have time), more 
+documentation will be added here.  For more (or less) up-to-date information, 
+take a look at the "Developer's Corner" on CrazedSanity.com: 
+[http://www.crazedsanity.com/content/devCorner/cs_webapplibs]
