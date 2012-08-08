@@ -26,6 +26,8 @@ abstract class testDbAbstract extends UnitTestCase {
 	
 	//-------------------------------------------------------------------------
 	public function check_requirements() {
+		// TODO: make *sure* to stop if there's a lockfile from cs_webdbupgrade.
+		
 		$retval=false;
 		
 		$globalPrefix = 'UNITTEST__';
@@ -78,7 +80,9 @@ abstract class testDbAbstract extends UnitTestCase {
 	
 	//-------------------------------------------------------------------------
 	public function internal_connect_db() {
-		$this->dbObj = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
+		if(!is_object($this->dbObj)) {
+			$this->dbObj = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
+		}
 		$this->gfObj = new cs_globalFunctions();
 	}//end internal_connect_db()
 	//-------------------------------------------------------------------------
@@ -89,26 +93,27 @@ abstract class testDbAbstract extends UnitTestCase {
 	public function reset_db($schemaFile=null) {
 		$retval = false;
 		
-		if(file_exists($schemaFile)) {
-			$this->db->run_sql_file($schemaFile);
-		}
-		else {
-			throw new exception(__METHOD__ .": could not read schema file (". $schemaFile .")");
+		if(!is_null($schemaFile) && !file_exists($schemaFile)) {
+			throw new exception(__METHOD__ .": schema file (". $schemaFile .") does not exist");
 		}
 		
 		try {
+			$this->internal_connect_db();
 			$this->dbObj->beginTrans();
-			
+
 			$this->dbObj->run_query("DROP SCHEMA public CASCADE");
-			$this->dbObj->run_query("CREATE SCHEMA public WITH AUTHORIZATION ". $this->dbParams['user']);
-			$this->dbObj->run_query(file_get_contents($schemaFile));
-			
+			$this->dbObj->run_query("CREATE SCHEMA public AUTHORIZATION " . $this->dbParams['user']);
+
+			if (!is_null($schemaFile)) {
+				$this->dbObj->run_sql_file($schemaFile);
+			}
+
 			$this->dbObj->commitTrans();
-			
+
 			$retval = true;
-		}
-		catch(Exception $e) {
+		} catch (Exception $e) {
 			$this->dbObj->rollbackTrans();
+			throw $e;
 		}
 		return ($retval);
 		

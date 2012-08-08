@@ -20,7 +20,7 @@ class testOfCSSessionDB extends testDbAbstract {
 	
 	
 	public function test_basics() {
-		$this->create_db(dirname(__FILE__) .'/../setup/schema.pgsql.sql');
+		$this->reset_db(dirname(__FILE__) .'/../setup/schema.pgsql.sql');
 		#$this->assertTrue(defined('SESSION_DB_DSN'), 'Missing DSN for SessionDB');
 		#$this->assertTrue(defined('SESSION_DB_USER'), 'Missing user for SessionDB');
 		#$this->assertTrue(defined('SESSION_DB_PASSWORD'), 'Missing password for SessionDB');

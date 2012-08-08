@@ -222,7 +222,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		}
 		catch(PDOException $px) {
 cs_debug_backtrace(1);
-$this->gfObj->debug_print($this,1);
+#$this->gfObj->debug_print($this,1);
 			throw new exception(__METHOD__ .": ". $px->getMessage());
 		}
 		return($this->numRows);
@@ -342,6 +342,15 @@ $this->gfObj->debug_print($this,1);
 	}//end farray_nvp()
 	//=========================================================================
 	
+	
+	
+	//=========================================================================
+	public function run_sql_file($sqlFile) {
+		$retval = $this->dbh->exec(file_get_contents($sqlFile));
+		
+		return($retval);
+	}
+	//=========================================================================
 	
 	// wrapper methods (for backwards-compatibility)
 	public function beginTrans() {return($this->dbh->beginTransaction());}

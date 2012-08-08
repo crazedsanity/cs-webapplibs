@@ -18,7 +18,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		$this->gfObj = new cs_globalFunctions;
 		$this->gfObj->debugPrintOpt=1;
 		
-		
+		$this->reset_db();
 		parent::setUp();
 	}//end setUp()
 	//--------------------------------------------------------------------------
