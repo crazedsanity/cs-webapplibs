@@ -5,12 +5,14 @@ abstract class testDbAbstract extends UnitTestCase {
 	
 	public $dbParams=array();
 	public $dbObj = array();
-	
+	protected $lock = null;
 	
 	//-------------------------------------------------------------------------
 	public function __construct() {
 		$this->gfObj = new cs_globalFunctions;
 		
+		// TODO: use a specific lockfile, created BEFORE tests happen and deleted after; should ensure that no other tests can run
+		$this->lock = new cs_lockfile();
 	}//end __construct()
 	//-------------------------------------------------------------------------
 	
@@ -18,8 +20,23 @@ abstract class testDbAbstract extends UnitTestCase {
 	
 	//-------------------------------------------------------------------------
 	public function skip() {
+		#$this->skipUnless(!$this->check_lockfile(), "Lockfile present (". $this->lock->get_lockfile() .")");
 		$this->skipUnless($this->check_requirements(), "Skipping tests for '". $this->getLabel() ."', database not configured");
 	}
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public function check_lockfile() {
+		$retval = false;
+		
+		if($this->lock->is_lockfile_present()) {
+			$retval = true;
+		}
+		
+		return($retval);
+	}//end check_lockfile()
 	//-------------------------------------------------------------------------
 	
 	
@@ -30,28 +47,35 @@ abstract class testDbAbstract extends UnitTestCase {
 		
 		$retval=false;
 		
-		$globalPrefix = 'UNITTEST__';
 		
-		$requirements = array(
-			'dsn'		=> 'DB_DSN',
-			'user'		=> 'DB_USERNAME',
-			'pass'		=> 'DB_PASSWORD'
-		);
-		
-		foreach($requirements as $index => $name) {
-			$myIndex = $globalPrefix . $name;
-			if(defined($myIndex)) {
-				$this->dbParams[$index] = constant($myIndex);
+		if($this->lock->is_lockfile_present()) {
+			$globalPrefix = 'UNITTEST__';
+
+			$requirements = array(
+				'dsn'		=> 'DB_DSN',
+				'user'		=> 'DB_USERNAME',
+				'pass'		=> 'DB_PASSWORD'
+			);
+
+			foreach($requirements as $index => $name) {
+				$myIndex = $globalPrefix . $name;
+				if(defined($myIndex)) {
+					$this->dbParams[$index] = constant($myIndex);
+				}
+				else {
+					#$this->gfObj->debug_print(__METHOD__ .": missing required index (". $myIndex .")",1);
+				}
 			}
-			else {
-				#$this->gfObj->debug_print(__METHOD__ .": missing required index (". $myIndex .")",1);
+			
+			
+			if(count($this->dbParams) == count($requirements)) {
+				$retval = true;
 			}
 		}
-		
-		
-		if(count($this->dbParams) == count($requirements)) {
-			$retval = true;
+		else {
+			$this->gfObj->debug_print(__METHOD__ .": lockfile missing (". cs_webdbupgrade::get_lockfile() .") while attempting to run test '". $this->getLabel() ."'");
 		}
+		
 		
 		#$this->gfObj->debug_print($this->dbParams,1);
 		#$this->gfObj->debug_print("RESULT: (". (count($this->dbParams) == count($requirements)) .")", 1);
@@ -125,6 +149,7 @@ abstract class testDbAbstract extends UnitTestCase {
 	//-----------------------------------------------------------------------------
 	public function __destruct() {
 		#$this->destroy_db();
+		$this->tearDown();
 	}//end __destruct()
 	//-----------------------------------------------------------------------------
 

@@ -48,8 +48,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	/** Determines if an internal upgrade is happening (avoids some infinite loops) */
 	protected $internalUpgradeInProgress = false;
 	
-	/**  */
-	protected $allowNoDBVersion=true;
+	/** Avoids an exception if the project has no version information in the database */
+	protected $allowNoDBVersion=true; //TODO: make allowNoDBVersion accessible or remove altogether
 	
 	/** Log messages to store during an internal upgrade (to avoid problems) */
 	protected $storedLogs = array();
@@ -65,6 +65,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	protected $initialVersion = "";
 	protected $matchingData = array();
 	
+	const lockfile = 'upgrade.lock';
+	
 	
 	/** List of acceptable suffixes; example "1.0.0-BETA3" -- NOTE: these MUST be in 
 	 * an order that reflects newest -> oldest; "ALPHA happens before BETA, etc. */
@@ -75,7 +77,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	);
 	
 	//=========================================================================
-	public function __construct($versionFileLocation, $upgradeConfigFile, cs_phpDB $db=null, $lockFile='upgrade.lock') {
+	public function __construct($versionFileLocation, $upgradeConfigFile, cs_phpDB $db=null) {
 		
 		//setup configuration parameters for database connectivity.
 		$this->set_version_file_location(dirname(__FILE__) .'/VERSION');
@@ -135,16 +137,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		$this->set_version_file_location($versionFileLocation);
 		
-		$rwDir = dirname(__FILE__) .'/../../rw';
-		if(defined(__CLASS__ .'-RWDIR')) {
-			$rwDir = constant(__CLASS__ .'-RWDIR');
-		}
-		$this->rwDir = $rwDir;
-		if(is_null($lockFile) || !strlen($lockFile)) {
-			$lockFile = 'upgrade.lock';
-		}
-		$this->lockfile = $this->rwDir .'/'. $lockFile;
-		
+		$this->rwDir = self::get_rwdir();
+		$this->lockfile = self::get_lockfile();
 		
 		$this->fsObj =  new cs_fileSystem(constant('SITE_ROOT'));
 		if($this->check_lockfile()) {
@@ -159,13 +153,35 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			$this->logsObj = new cs_webdblogger($loggerDb, "Upgrade ". $this->projectName, false);
 		}
 		catch(exception $e) {
-#$this->gfObj->debug_print(__METHOD__ .": database params: " .$this->gfObj->debug_print($this,0));
 			cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": failed to create logger::: ". $e->getMessage());
 		}
 		
 		$this->check_versions(false);
 	}//end __construct()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	static function get_rwdir() {
+		$rwDir = dirname(__FILE__) .'/../../rw';
+		if(defined(__CLASS__ .'-RWDIR')) {
+			$rwDir = constant(__CLASS__ .'-RWDIR');
+		}
+		return($rwDir);
+	}
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	static function get_lockfile() {
+		$rwDir = self::get_rwdir();
+		$lockFile = $rwDir .'/'. self::lockfile;
+		
+		return($lockFile);
+	}//end get_lockfile()
 	//=========================================================================
 	
 	
