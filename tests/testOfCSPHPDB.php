@@ -49,6 +49,22 @@ class TestOfCSPHPDB extends testDbAbstract {
 			}
 		}
 		$this->assertTrue($this->dbObj->rollbackTrans());
+		
+		// test to see that old-school SQL works...
+		$numRows = $this->dbObj->run_query('SELECT (CURRENT_TIMESTAMP = CURRENT_TIMESTAMP) as date_test, CURRENT_TIMESTAMP as date;');
+		$this->assertEqual($numRows, 1, "Expected one row, actually returned (". $numRows .")");
+		
+		
+		$data = $this->dbObj->farray_fieldnames();
+		$this->assertTrue(isset($data[0]), "Data does not contain zero-based index...");
+		$this->assertEqual(count($data), 1, "Returned too many records, or mal-formed array");
+		$this->assertTrue($data[0]['date_test'], "Current date doesn't match in database or mal-formed array");
+		$this->assertEqual(count($data[0]), 2, "Too many values beneath index 0");
+		
+		$dateString = strftime('%Y-%m-%d');
+		$this->assertTrue(preg_match('/^'. $dateString .'/', $data[0]['date']), "Date in database is invalid or malformed: (". $data[0]['date'] ." does not start with '". $dateString ."')");
+		
+		
 	}//end test_basics()
 	//-------------------------------------------------------------------------
 	

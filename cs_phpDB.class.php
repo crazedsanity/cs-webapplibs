@@ -273,16 +273,21 @@ cs_debug_backtrace(1);
 			if($this->numRows > 0) {
 				$retval = $oData;
 				foreach($oData as $rowData) {
-					if(isset($rowData[$index])) {
-						if(!isset($retval[$index])) {
-							$retval[$rowData[$index]] = $rowData;
+					if(!is_null($index)) {
+						if(isset($rowData[$index])) {
+							if(!isset($retval[$index])) {
+								$retval[$rowData[$index]] = $rowData;
+							}
+							else {
+								throw new exception(__METHOD__ .': duplicate records exist for index=('. $index .'), first duplicate was ('. $rowData[$index] .')');
+							}
 						}
 						else {
-							throw new exception(__METHOD__ .': duplicate records exist for index=('. $index .'), first duplicate was ('. $rowData[$index] .')');
+							throw new exception(__METHOD__ .': record does not contain column "'. $index .'"');
 						}
 					}
 					else {
-						throw new exception(__METHOD__ .': record does not contain column "'. $index .'"');
+						$retval = $oData;
 					}
 				}
 			}
@@ -296,6 +301,14 @@ cs_debug_backtrace(1);
 		}
 		return($retval);
 	}//end farray_fieldnames()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function farray() {
+		
+	}
 	//=========================================================================
 	
 	
