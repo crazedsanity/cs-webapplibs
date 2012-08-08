@@ -2,32 +2,69 @@
 /*
  * Created on Jan 25, 2009
  * 
- * FILE INFORMATION:
+ * This should be in a "public" folder (probably secured by the server) so it 
+ * can be accessed in a web browser.
  * 
- * $HeadURL$
- * $Id$
- * $LastChangedDate$
- * $LastChangedBy$
- * $LastChangedRevision$
  */
 
 
-require_once(dirname(__FILE__) .'/tests/testOfCSGenericChat.php');
-require_once(dirname(__FILE__) .'/tests/testOfCSGenericPermissions.php');
-require_once(dirname(__FILE__) .'/tests/testOfCSPHPDB.php');
-require_once(dirname(__FILE__) .'/tests/testOfCSWebAppLibs.php');
-/*
-tests/testOfCSGenericChat.php:class testOfCSGenericChat extends testDbAbstract {
-tests/testOfCSGenericPermissions.php:class testOfCSGenericPermissions extends testDbAbstract {
-tests/testOfCSGenericPermissions.php:class _gpTester extends cs_genericPermission {
-tests/testOfCSPHPDB.php:class TestOfCSPHPDB extends UnitTestCase {
-tests/testOfCSWebAppLibs.php:class testOfCSWebAppLibs extends testDbAbstract {
-tests/testOfCSWebAppLibs.php:class authTokenTester extends cs_authToken {
-*/
+	print "<pre>";
+	$GLOBALS['DEBUGPRINTOPT'] = 1;
+	define('DEBUGPRINTOPT', 1);	
 
-$test = new TestSuite('Tests for CS-WebAppLibs');
-$test->addTestCase(new TestOfCSPHPDB());
-$test->addTestCase(new testOfCSWebAppLibs());
-$test->addTestCase(new testOfCSGenericChat());
-$test->addTestCase(new testOfCSGenericPermissions());
+
+	if (defined('SIMPLE_TEST')) {
+		require_once(SIMPLE_TEST . 'unit_tester.php');
+		require_once(SIMPLE_TEST . 'reporter.php');
+	print "</pre>";
+
+		$lockObj = new cs_lockfile();
+		cs_lockfile::$lockfile = "unittester.lock";
+		if(!$lockObj->is_lockfile_present()) {
+			$lockObj->create_lockfile("Full suite of tests, started from ". __FILE__);
+
+			require_once(constant('LIBDIR') .'/cs-phpxml/tests/testOfA2P.php');
+			require_once(constant('LIBDIR') .'/cs-content/tests/testOfCSGlobalFunctions.php');
+			require_once(constant('LIBDIR') .'/cs-content/tests/testOfCSContent.php');
+			require_once(constant('LIBDIR') .'/cs-content/tests/testOfCSVersionAbstract.php');
+			require_once(constant('LIBDIR') .'/cs-phpxml/tests/testOfCSPHPXML.php');
+			#require_once(constant('LIBDIR') .'/cs-rssdb/tests/testOfCSRSSDB.php');
+
+			require_once(constant('LIBDIR') .'/cs-webapplibs/tests/testOfCSPHPDB.php');
+			require_once(constant('LIBDIR') .'/cs-webapplibs/tests/testOfCSWebDBUpgrade.php');
+			require_once(constant('LIBDIR') .'/cs-webapplibs/tests/testOfCSSessionDB.php');
+			#require_once(constant('LIBDIR') .'/cs-webapplibs/tests/testOfCSAuthToken.php');
+			#require_once(constant('LIBDIR') .'/cs-webapplibs/tests/testOfCSGenericPermissions.php');
+			#require_once(constant('LIBDIR') .'/cs-webapplibs/tests/testOfCSGenericChat.php');
+			#require_once(constant('LIBDIR') .'/cs-blogger/tests/testOfCSBlogger.php');
+			#require_once(constant('LIBDIR') .'/cs-battletrack/tests/testOfCSBattleTrack.php');
+
+			$test = new TestSuite('All Unit Tests');
+
+			$test->addTestCase(new testOfA2p());
+			$test->addTestCase(new testOfCSGlobalFunctions());
+			#$test->addTestCase(new testOfCSContent());
+			$test->addTestCase(new testOfCSPHPXML());
+			#$test->addTestCase(new testOfCSRSSDB());
+			$test->addTestCase(new testOfCSPHPDB());
+			$test->addTestCase(new testOfCSWebDbUpgrade());
+			$test->addTestCase(new testOfCSSessionDB());
+			#$test->addTestCase(new testOfCSBlogger());
+			#$test->addTestCase(new testOfCSVersionAbstract());
+			#$test->addTestCase(new testOfCSAuthToken());
+			#$test->addTestCase(new testOfCSGenericPermissions());
+			#$test->addTestCase(new testOfCSGenericChat());
+			#$test->addTestCase(new testOfCSBattleTrack());
+
+			$test->run(new HtmlReporter());
+
+			$lockObj->delete_lockfile();
+		}
+		else {
+			exit("Another test is running, remove lockfile (". $lockObj->get_lockfile());
+		}
+	}
+	else {
+		exit("SITE NOT CONFIGURED TO PERFORM TESTING. No tests performed.");
+	}
 ?>
