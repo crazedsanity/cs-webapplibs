@@ -4,7 +4,7 @@
 abstract class testDbAbstract extends UnitTestCase {
 	
 	public $dbParams=array();
-	public $dbObjs = array();
+	public $dbObj = array();
 	
 	
 	//-------------------------------------------------------------------------
@@ -18,7 +18,7 @@ abstract class testDbAbstract extends UnitTestCase {
 	
 	//-------------------------------------------------------------------------
 	public function skip() {
-		$this->skipUnless($this->check_requirements(), "Skipping database tests, not configured");
+		$this->skipUnless($this->check_requirements(), "Skipping tests for '". $this->getLabel() ."', database not configured");
 	}
 	//-------------------------------------------------------------------------
 	
@@ -36,38 +36,23 @@ abstract class testDbAbstract extends UnitTestCase {
 			'pass'		=> 'DB_PASSWORD'
 		);
 		
-		//TODO: add mysql to this list (someday)
-		$dbTypes = array(
-			'pgsql'	=> "PG_");
-		
-		foreach($dbTypes as $type=>$prefix) {
-			foreach($requirements as $index => $name) {
-				$myIndex = $globalPrefix . $prefix . $name;
-				if(defined($myIndex)) {
-					$this->dbParams[$type][$index] = constant($myIndex);
-				}
-				else {
-					$this->gfObj->debug_print(__METHOD__ .": missing required index (". $myIndex .")",1);
-				}
-			}
-		}
-		
-		
-		
-		$validDbs = 0;
-		foreach($this->dbParams as $dbType=>$data) {
-			if(count($data) >= count($requirements)) {
-				$validDbs++;
+		foreach($requirements as $index => $name) {
+			$myIndex = $globalPrefix . $name;
+			if(defined($myIndex)) {
+				$this->dbParams[$index] = constant($myIndex);
 			}
 			else {
-				$this->gfObj->debug_print(__METHOD__ .": dropping ". $dbType .": not enough params (". count($data) .")");
-				unset($this->dbParams[$dbType]);
+				#$this->gfObj->debug_print(__METHOD__ .": missing required index (". $myIndex .")",1);
 			}
 		}
 		
-		if($validDbs >= 1) {
+		
+		if(count($this->dbParams) == count($requirements)) {
 			$retval = true;
 		}
+		
+		#$this->gfObj->debug_print($this->dbParams,1);
+		#$this->gfObj->debug_print("RESULT: (". (count($this->dbParams) == count($requirements)) .")", 1);
 		
 		return($retval);
 	}//end check_requirements()
@@ -93,9 +78,7 @@ abstract class testDbAbstract extends UnitTestCase {
 	
 	//-------------------------------------------------------------------------
 	public function internal_connect_db() {
-		foreach($this->dbParams as $type=>$config) {
-			$this->dbObjs[$type] = new cs_phpDB($config['dsn'], $config['user'], $config['pass']);
-		}
+		$this->dbObj = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
 		$this->gfObj = new cs_globalFunctions();
 	}//end internal_connect_db()
 	//-------------------------------------------------------------------------
@@ -103,18 +86,8 @@ abstract class testDbAbstract extends UnitTestCase {
 	
 	
 	//-----------------------------------------------------------------------------
-	public function create_db($schemaFile=null, $dbType='pgsql') {
-		$myDbName = strtolower(__CLASS__ .'_'. preg_replace('/\./', '', microtime(true)));
-		$this->templateDb = new cs_phpDB($this->config['dsn']. 'template1', $this->config['username'], $this->config['password']);
-		
-		$this->templateDb->exec("CREATE DATABASE ". $myDbName);
-		$this->templateDb = null;
-		
-		//now run the SQL file.
-		$this->db = new cs_phpdb($this->config['dsn']. $myDbName, $this->config['username'], $this->config['password']);
-		if(is_null($schemaFile)) {
-			$schemaFile = dirname(__FILE__) .'/../tests/files/create_test_db.sql';
-		}
+	public function reset_db($schemaFile=null) {
+		$retval = false;
 		
 		if(file_exists($schemaFile)) {
 			$this->db->run_sql_file($schemaFile);
@@ -122,16 +95,24 @@ abstract class testDbAbstract extends UnitTestCase {
 		else {
 			throw new exception(__METHOD__ .": could not read schema file (". $schemaFile .")");
 		}
+		
+		try {
+			$this->dbObj->beginTrans();
+			
+			$this->dbObj->run_query("DROP SCHEMA public CASCADE");
+			$this->dbObj->run_query("CREATE SCHEMA public WITH AUTHORIZATION ". $this->dbParams['user']);
+			$this->dbObj->run_query(file_get_contents($schemaFile));
+			
+			$this->dbObj->commitTrans();
+			
+			$retval = true;
+		}
+		catch(Exception $e) {
+			$this->dbObj->rollbackTrans();
+		}
+		return ($retval);
+		
 	}//end create_db()
-	//-----------------------------------------------------------------------------
-	
-	
-	
-	//-----------------------------------------------------------------------------
-	public function destroy_db() {
-		$this->db->close();
-		$this->templateDb->exec("DROP DATABASE ". $this->config['dbname']);
-	}//end destroy_db()
 	//-----------------------------------------------------------------------------
 	
 	

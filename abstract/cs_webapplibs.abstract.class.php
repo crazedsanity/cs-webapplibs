@@ -19,8 +19,6 @@ abstract class cs_webapplibsAbstract extends cs_versionAbstract {
 		$this->set_version_file_location(dirname(__FILE__) . '/../VERSION');
 		
 		if($makeGfObj === true) {
-			//make a cs_globalFunctions{} object.
-			//TODO::: find a way to avoid h
 			$this->gfObj = new cs_globalFunctions();
 		}
     }//end __construct()

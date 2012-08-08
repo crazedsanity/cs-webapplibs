@@ -137,14 +137,14 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		
 		
 		if($this->assertEqual($numToPass, $passed, "Some required tests failed, see previous errors for some hints")) {
-			#$this->dbObjs['pgsql']->beginTrans();
-			$upgObj->db = $this->dbObjs['pgsql'];
+			#$this->dbObj->beginTrans();
+			$upgObj->db = $this->dbObj;
 			
 			// attempt to load the required database table.
 			$this->assertTrue($upgObj->load_table() === true, "Failed loading version table");
 			
 			$versionFileLocation = dirname(__FILE__). '/files/VERSION-1';
-			$upgObj->doSetup($versionFileLocation, $upgradeConfigFile, $this->dbObjs['pgsql']);
+			$upgObj->doSetup($versionFileLocation, $upgradeConfigFile, $this->dbObj);
 			
 			$this->assertEqual(get_class($upgObj->db), 'cs_phpDB');
 			
@@ -152,7 +152,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 			$dbVersion = $upgObj->get_database_version();
 			$this->assertEqual("8.0.4003-RC2", $dbVersion['version_string']);
 			$this->assertNotEqual(false, $dbVersion);
-			//$this->dbObjs['pgsql']->rollBackTrans();
+			//$this->dbObj->rollBackTrans();
 			
 			
 			try {

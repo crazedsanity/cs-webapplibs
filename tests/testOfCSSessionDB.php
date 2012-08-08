@@ -9,7 +9,7 @@ class testOfCSSessionDB extends testDbAbstract {
 	
 	public function setUp() {
 		parent::setUp();
-//		$this->dbObjs['pgsql']->beginTrans();
+//		$this->dbObj->beginTrans();
 		
 	}
 	
@@ -24,9 +24,9 @@ class testOfCSSessionDB extends testDbAbstract {
 		#$this->assertTrue(defined('SESSION_DB_DSN'), 'Missing DSN for SessionDB');
 		#$this->assertTrue(defined('SESSION_DB_USER'), 'Missing user for SessionDB');
 		#$this->assertTrue(defined('SESSION_DB_PASSWORD'), 'Missing password for SessionDB');
-//		$this->assertTrue(is_object($this->dbObjs['pgsql']));
+//		$this->assertTrue(is_object($this->dbObj));
 //		
-//		$sessDB = new sessionTester($this->dbObjs['pgsql']);
+//		$sessDB = new sessionTester($this->dbObj);
 //		
 //		$mySid = '__TEST_SESSDB__';
 //		$sessDB->doInsert($mySid, array());
