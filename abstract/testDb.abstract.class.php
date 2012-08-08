@@ -20,7 +20,7 @@ abstract class testDbAbstract extends UnitTestCase {
 	
 	//-------------------------------------------------------------------------
 	public function skip() {
-		#$this->skipUnless(!$this->check_lockfile(), "Lockfile present (". $this->lock->get_lockfile() .")");
+		$this->skipUnless($this->check_lockfile(), "Lockfile missing (". $this->lock->get_lockfile() ."): create one BEFORE database-related tests occur.");
 		$this->skipUnless($this->check_requirements(), "Skipping tests for '". $this->getLabel() ."', database not configured");
 	}
 	//-------------------------------------------------------------------------
