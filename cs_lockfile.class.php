@@ -146,12 +146,18 @@ class cs_lockfile {
 	
 	//=========================================================================
 	public static function create_lockfile($contents=null) {
-		$fsObj = new cs_fileSystem(self::get_rwdir());
 		
-		$retval = $fsObj->create_file(self::get_lockfile());
-		
-		if(!is_null($contents)) {
-			$fsObj->write($contents);
+		if(!self::is_lockfile_present()) {
+			$fsObj = new cs_fileSystem(self::get_rwdir());
+
+			$retval = $fsObj->create_file(self::get_lockfile());
+
+			if(!is_null($contents)) {
+				$fsObj->write($contents);
+			}
+		}
+		else {
+			throw new exception(__METHOD__ .": lockfile (". self::$lockfile .") already present");
 		}
 		
 		return($retval);
@@ -168,6 +174,21 @@ class cs_lockfile {
 		
 		return($retval);
 	}
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public static function read_lockfile() {
+		$retval = null;
+		if(self::is_lockfile_present()) {
+			$retval = file_get_contents(self::$pathToLockfile);
+		}
+		else {
+			throw new exception(__METHOD__ .": no lockfile exists");
+		}
+		return($retval);
+	}//end read_lockfile()
 	//=========================================================================
 }
 

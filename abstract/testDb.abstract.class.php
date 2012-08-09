@@ -10,8 +10,6 @@ abstract class testDbAbstract extends UnitTestCase {
 	//-------------------------------------------------------------------------
 	public function __construct() {
 		$this->gfObj = new cs_globalFunctions;
-		
-		// TODO: use a specific lockfile, created BEFORE tests happen and deleted after; should ensure that no other tests can run
 		$this->lock = new cs_lockfile();
 	}//end __construct()
 	//-------------------------------------------------------------------------

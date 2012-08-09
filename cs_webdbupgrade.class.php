@@ -42,9 +42,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	/** Stored database version. */
 	protected $databaseVersion = NULL;
 	
-	/** Name (absolute location) of *.lock file that indicates an upgrade is running. */
-	protected $lockfile;
-	
 	/** Determines if an internal upgrade is happening (avoids some infinite loops) */
 	protected $internalUpgradeInProgress = false;
 	
@@ -65,6 +62,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	protected $initialVersion = "";
 	protected $matchingData = array();
 	
+	protected $lockObj = null;
 	const lockfile = 'upgrade.lock';
 	
 	
@@ -137,13 +135,13 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		$this->set_version_file_location($versionFileLocation);
 		
-		$this->rwDir = self::get_rwdir();
-		$this->lockfile = self::get_lockfile();
+		$this->lockObj = new cs_lockfile();
+		$this->lockObj->set_lockfile(self::lockfile);
 		
 		$this->fsObj =  new cs_fileSystem(constant('SITE_ROOT'));
 		if($this->check_lockfile()) {
 			//there is an existing lockfile...
-			throw new exception(__METHOD__ .": upgrade in progress: ". $this->fsObj->read($this->lockfile));
+			throw new exception(__METHOD__ .": upgrade in progress: ". $this->lockObj->read_lockfile());
 		}
 		
 		$this->check_internal_upgrades();
@@ -159,29 +157,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		
 		$this->check_versions(false);
 	}//end __construct()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	static function get_rwdir() {
-		$rwDir = dirname(__FILE__) .'/../../rw';
-		if(defined(__CLASS__ .'-RWDIR')) {
-			$rwDir = constant(__CLASS__ .'-RWDIR');
-		}
-		return($rwDir);
-	}
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	static function get_lockfile() {
-		$rwDir = self::get_rwdir();
-		$lockFile = $rwDir .'/'. self::lockfile;
-		
-		return($lockFile);
-	}//end get_lockfile()
 	//=========================================================================
 	
 	
@@ -378,7 +353,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	protected function perform_upgrade() {
-		//make sure there's not already a lockfile.
 		$transactionStartedExternally = $this->db->get_transaction_status();
 		if($this->upgrade_in_progress()) {
 			//ew.  Can't upgrade.
@@ -390,9 +364,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			
 			$this->do_log("Starting upgrade process...", 'begin');
 			
-			//TODO: not only should the "create_file()" method be run, but also do a sanity check by calling lock_file_exists().
 			if($lockConfig === 0) {
-				//can't create the lockfile.  Die.
 				$this->error_handler(__METHOD__ .": failed to set 'upgrade in progress'");
 			}
 			else {
@@ -402,9 +374,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 				$this->read_upgrade_config_file();
 				$this->get_database_version();
 				
-				//check for version conflicts.
 				$versionConflictInfo = $this->check_for_version_conflict();
-				
 				
 				if($versionConflictInfo !== false) {
 					$this->do_log("Upgrading ". $versionConflictInfo ." versions, from " .
@@ -444,7 +414,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 							$this->error_handler(__METHOD__ .": finished upgrade, but version wasn't updated (expecting '". $this->versionFileVersion ."', got '". $this->databaseVersion ."')!!!");
 						}
 					}
-					$this->remove_lockfile();
+					$this->lockObj->delete_lockfile();
 					
 					if(!$transactionStartedExternally) {
 						$this->db->commitTrans();
@@ -470,14 +440,14 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		if($makeItSo === TRUE) {
 			if(strlen($this->databaseVersion)) {
 				$details = $this->projectName .': Upgrade from '. $this->databaseVersion .' started at '. date('Y-m-d H:i:s');
-				$this->create_lockfile($details);
+				$this->lockObj->create_lockfile($details);
 				$retval = TRUE;
 			}
 			else {
 				$this->error_handler(__METHOD__ .": missing internal databaseVersion (". $this->databaseVersion .")");
 			}
 		}
-		$retval = $this->check_lockfile();
+		$retval = $this->lockObj->is_lockfile_present();
 		
 		return($retval);
 	}//end upgrade_in_progress()
@@ -591,8 +561,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	//=========================================================================
 	protected function get_database_version() {
 		$this->gfObj->debugPrintOpt=1;
-		//create a database object & attempt to read the database version.
-		
 		$sql = "SELECT * FROM ". $this->dbTable ." WHERE ".
 				"project_name=:projectName";
 		
@@ -994,74 +962,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		
 		return($loadTableResult);
 	}//end load_table()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	public function check_lockfile() {
-		$status = false;
-		if(file_exists($this->lockfile)) {
-			$status = true;
-		}
-		
-		return($status);
-	}//end check_lockfile()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	/**
-	 * Create a *.lock file that indicates the system is in the process of 
-	 * performing an upgrade (safer than always updating the site's configuration 
-	 * file).
-	 */
-	public function create_lockfile($contents) {
-		if(!$this->check_lockfile()) {
-			try {
-				if($this->fsObj->create_file($this->lockfile)) {
-					if(!preg_match('/\n$/', $contents)) {
-						$contents .= "\n";
-					}
-					$writeRes = $this->fsObj->write($contents);
-					if(is_numeric($writeRes) && $writeRes > 0) {
-						$this->fsObj->closeFile();
-					}
-					else {
-						$this->error_handler(__METHOD__ .": failed to write contents (". $contents .") to lockfile");
-					}
-				}
-				else {
-					$this->error_handler(__METHOD__ .": failed to create lockfile (". $this->lockfile .")");
-				}
-			}
-			catch(exception $e) {
-				throw new exception(__METHOD__ .": failed to create lockfile (". $this->lockfile ." [root=". $this->fsObj->root ."] with contents (". $contents .")::: ". $e->getMessage());
-			}
-		}
-		else {
-			$this->error_handler(__METHOD__ .": failed to create lockfile, one already exists (". $this->lockfile .")");
-		}
-	}//end create_lockfile()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	/**
-	 * Destroy the *.lock file that indicates an upgrade is underway.
-	 */
-	protected function remove_lockfile() {
-		if($this->check_lockfile()) {
-			if(!$this->fsObj->rm($this->lockfile)) {
-				$this->error_handler(__METHOD__ .": failed to remove lockfile (". $this->lockfile .")");
-			}
-		}
-		else {
-			$this->error_handler(__METHOD__ .": no lockfile (". $this->lockfile .")");
-		}
-	}//end remove_lockfile()
 	//=========================================================================
 	
 	
