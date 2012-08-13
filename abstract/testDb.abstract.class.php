@@ -10,7 +10,7 @@ abstract class testDbAbstract extends UnitTestCase {
 	//-------------------------------------------------------------------------
 	public function __construct() {
 		$this->gfObj = new cs_globalFunctions;
-		$this->lock = new cs_lockfile();
+		$this->lock = new cs_lockfile(constant('UNITTEST__LOCKFILE'));
 	}//end __construct()
 	//-------------------------------------------------------------------------
 	
@@ -71,7 +71,7 @@ abstract class testDbAbstract extends UnitTestCase {
 			}
 		}
 		else {
-			$this->gfObj->debug_print(__METHOD__ .": lockfile missing (". cs_webdbupgrade::get_lockfile() .") while attempting to run test '". $this->getLabel() ."'");
+			$this->gfObj->debug_print(__METHOD__ .": lockfile missing (". $this->lock->get_lockfile() .") while attempting to run test '". $this->getLabel() ."'");
 		}
 		
 		

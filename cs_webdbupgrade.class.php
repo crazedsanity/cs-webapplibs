@@ -63,7 +63,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	protected $matchingData = array();
 	
 	protected $lockObj = null;
-	const lockfile = 'upgrade.lock';
+	
+	protected static $lockfile;
 	
 	
 	/** List of acceptable suffixes; example "1.0.0-BETA3" -- NOTE: these MUST be in 
@@ -136,10 +137,11 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		$this->set_version_file_location($versionFileLocation);
 		
 		$this->lockObj = new cs_lockfile();
-		$this->lockObj->set_lockfile(self::lockfile);
+		$this->lockObj->set_lockfile("upgrade.lock");
+		self::$lockfile = $this->lockObj->get_lockfile();
 		
 		$this->fsObj =  new cs_fileSystem(constant('SITE_ROOT'));
-		if($this->check_lockfile()) {
+		if($this->lockObj->is_lockfile_present()) {
 			//there is an existing lockfile...
 			throw new exception(__METHOD__ .": upgrade in progress: ". $this->lockObj->read_lockfile());
 		}

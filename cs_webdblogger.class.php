@@ -98,7 +98,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		//see if there's an upgrade to perform...
 		if($checkForUpgrades === true) {
 			$this->suspendLogging = true;
-			$upgObj = new cs_webdbupgrade(dirname(__FILE__) . '/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml', $db->connectParams);
+			$upgObj = new cs_webdbupgrade(dirname(__FILE__) . '/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml', $db);
 			$upgObj->check_versions(true);
 			$this->suspendLogging = false;
 			$this->handle_suspended_logs();

@@ -12,7 +12,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	public $sth;
 	
 	protected $dsn = "";
-	protected $connParams = array();
+	protected $connectParams = array();
 	protected $username = null;
 	protected $password = null;
 	protected $dbType = null;
@@ -51,7 +51,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 			$tmpDsn = explode(';', $tmpDsn);
 			foreach($tmpDsn as $bit) {
 				$subDsnBits = explode('=', $bit);
-				$this->connParams[$subDsnBits[0]] = $subDsnBits[1];
+				$this->connectParams[$subDsnBits[0]] = $subDsnBits[1];
 			}
 			$bits = array();
 			if(preg_match('/^([aA-zZ]{2,}):/', $dsn, $bits)) {
@@ -137,13 +137,13 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	//=========================================================================
 	public function get_hostname() {
 		$retval = null;
-		if(isset($this->connParams['host'])) {
-			$retval = $this->connParams['host'];
+		if(isset($this->connectParams['host'])) {
+			$retval = $this->connectParams['host'];
 		}
 		else {
 			throw new exception(__METHOD__ .": HOST parameter missing");
 		}
-		return($this->connParams['host']);
+		return($this->connectParams['host']);
 	}//end get_hostname()
 	//=========================================================================
 	
