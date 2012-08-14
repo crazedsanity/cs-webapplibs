@@ -41,3 +41,9 @@ the browser page is refreshed too quickly).
 Changes (or new code) should *always* be tested; all tests should pass before 
 they get accepted into the master branch to maximize stability (generally, I'll 
 handle that).
+
+To perform database tests, create a database with the proper owner.  For the 
+example, I'll assume the database name is "unittester" and the role name is the 
+same ("unittester"):
+	CREATE DATABASE unittester with owner unittester;
+	drop schema public cascade; create schema public authorization unittester;
