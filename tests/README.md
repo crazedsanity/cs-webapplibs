@@ -45,5 +45,7 @@ handle that).
 To perform database tests, create a database with the proper owner.  For the 
 example, I'll assume the database name is "unittester" and the role name is the 
 same ("unittester"):
+<pre>
 	CREATE DATABASE unittester with owner unittester;
 	drop schema public cascade; create schema public authorization unittester;
+</pre>
