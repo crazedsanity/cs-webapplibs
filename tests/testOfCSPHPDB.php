@@ -31,7 +31,15 @@ class TestOfCSPHPDB extends testDbAbstract {
 			if($this->assertTrue($beginTransRes, "Start of transaction failed (". $beginTransRes ."), status=(". $transactionStatus .")")) {
 
 				$this->dbObj->exec('CREATE TABLE test (id serial not null, data text not null);');
-
+				
+				
+				// Make sure we get 0 rows before any data has been inserted.
+				$numRows = $this->dbObj->run_query("SELECT * FROM test");
+				$data = $this->dbObj->farray_fieldnames();
+				$this->assertEqual($numRows, count($data), "Invalid number of rows returned: expected (". count($data) ."), got (". $numRows .")");
+				$this->assertEqual($numRows, 0, "Returned unexpected number of rows on fresh table (". $numRows .")");
+				
+				
 				$data = array(
 					'test1', 'test2'
 				);

@@ -31,11 +31,6 @@ class upgrade_to_0_4_1 {
 		$this->gfObj->debug_print(__METHOD__ .": running SQL file...");
 		$this->db->run_sql_file(dirname(__FILE__) .'/schemaChangesFor_0.4.1.sql');
 		
-		if($doSecondarySql) {
-			$this->gfObj->debug_print(__METHOD__ .": running SQL file...");
-			$this->db->run_sql_file(dirname(__FILE__) .'/schemaChangesFor_0.4.1__existingAuthTable.sql');
-		}
-		
 		$this->db->commitTrans(__METHOD__);
 		
 		return(true);

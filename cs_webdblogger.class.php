@@ -21,23 +21,23 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	public $db;
 	
 	/** Cache of all records in the class table */
-	private $logClassCache = array();
+	protected $logClassCache = array();
 	
 	/** Cache of all records in the attribute table */
-	private $attributeCache=array();
+	protected $attributeCache=array();
 	
 	/** The category_id value to use, set on class creation. */
-	private $logCategoryId = null;
+	protected $logCategoryId = null;
 	
 	/** Default uid (users.id) to log under when no uid is available */
-	private $defaultUid = 0;
+	protected $defaultUid = 0;
 	
 	/** Category to use when logging a database error */
 	//TODO: make SURE this category is correct...
-	private $databaseCategory = 1;
+	protected $databaseCategory = 1;
 	
 	/** Check to see if setup has been performed (avoids running it multiple times) **/
-	private $setupComplete=false;
+	protected $setupComplete=false;
 	
 	/** Last SQL file handled */
 	protected $lastSQLFile=null;
@@ -49,7 +49,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	protected $fsObj;
 	
 	protected $pendingLogs;
-	private $suspendLogging=false;
+	protected $suspendLogging=false;
 	
 	/** List of tables keyed off an internal reference name. */
 	const categoryTable = 'cswal_category_table';
@@ -86,9 +86,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		
 		$this->set_version_file_location(dirname(__FILE__) . '/VERSION');
 		
-		//Make sure the version of cs_phpDB is HIGHER THAN (not equal to) 1.0.0-ALPHA8, 
-		//	which added some methods that are required.
-		$mustBeHigherThan = '1.2-ALPHA8';
+		$mustBeHigherThan = '1.5.0';
 		if(!$this->is_higher_version($mustBeHigherThan, $this->db->get_version())) {
 			throw new exception(__METHOD__ .": requires cs_phpDB of higher than v". $mustBeHigherThan,1);
 		}
@@ -163,7 +161,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	/**
 	 * Build internal cache to avoid extra queries.
 	 */
-	private function build_cache() {
+	protected function build_cache() {
 		//build query, run it, check for errors.
 		$sql = "SELECT class_id, lower(class_name) as name FROM ". self::classTable;
 		
@@ -214,7 +212,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	/**
 	 * Retrieve log_class_id value from the given name, or insert a new one.
 	 */
-	private function get_class_id($name) {
+	protected function get_class_id($name) {
 		$name = strtolower($name);
 		
 		//get the id.
@@ -239,7 +237,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	 * Retrieve log_event_id based on the given class name & the internal 
 	 * logCategoryId value.
 	 */
-	function get_event_id($logClassName) {
+	public function get_event_id($logClassName) {
 		$params = array(
 			'classId'		=> $this->get_class_id($logClassName),
 			'categoryId'	=> $this->logCategoryId
@@ -248,23 +246,30 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			"class_id=:classId AND category_id=:categoryId";
 		
 		try {
-			$this->db->run_query($sql, $params);
-			$data = $this->db->get_single_record();
+			$numRows = $this->db->run_query($sql, $params);
+			$data = $this->db->farray_fieldnames();
 			
 			
-			if($data === false) {
+			if($numRows == 0) {
 				//no records & no error: create one.
-				$retval = $this->auto_insert_record($sqlArr['class_id']);
+				$retval = $this->auto_insert_record($params['class_id']);
 			}
-			elseif(is_array($data) && isset($data['event_id'])) {
+			elseif($numRows == 1 && is_array($data) && isset($data['event_id'])) {
 				$retval = $data['event_id'];
 			}
 			else {
-				throw new exception(__METHOD__ .": invalid data returned::: ". $this->gfObj->debug_var_dump($data,0));
+//$this->gfObj->debug_print($sql, 1);
+//$this->gfObj->debug_print($params,1);
+//$this->gfObj->debug_print($numRows,1);
+//$this->gfObj->debug_print($data,1);
+//$this->gfObj->debug_print($params,1);
+cs_debug_backtrace(1);
+				throw new exception("invalid data returned::: ". $this->gfObj->debug_var_dump($data,0));
 			}
 		}
 		catch(exception $e) {
-			throw new exception(__METHOD__ .": failed to retrieve event_id::: ". $e->getMessage());
+cs_debug_backtrace(1);
+			throw new exception(__METHOD__ .": failed to retrieve event_id, numrows=(". $numRows ."), DETAILS::: ::: ". $e->getMessage());
 		}
 		
 		return($retval);
@@ -382,7 +387,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	/**
 	 * Attempts to auto-recover if a class was requested that doesn't exist.
 	 */
-	private function auto_insert_record($logClassId) {
+	protected function auto_insert_record($logClassId) {
 		//generate a default name
 		
 		$className = $this->get_class_name($logClassId);
@@ -436,10 +441,10 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	/**
 	 * Retrieve category_id from the given name.
 	 */
-	private function get_category_id($catName) {
+	protected function get_category_id($catName) {
 		if(strlen($catName) && is_string($catName)) {
-			$catName = trim($catName);
-			$sql = "SELECT category_id FROM ". self::categoryTable ." WHERE lower(category_name) = :catName";
+			$catName = trim(strtolower($catName));
+			$sql = "SELECT * FROM ". self::categoryTable ." WHERE lower(category_name) = :catName";
 			
 			try {
 				
@@ -456,6 +461,8 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 					throw new exception(__METHOD__ .": found too many records (". $numrows .")");
 				}
 				else {
+					#cs_debug_backtrace(1);
+					$this->gfObj->debug_print(__METHOD__ .": numrows=(". $numrows ."), DATA::: ". $this->gfObj->debug_print($data,0),1);
 					throw new exception(__METHOD__ .": unknown error (bad data in array?)");
 				}
 			}
@@ -495,7 +502,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	/**
 	 * Create a category_id based on the given name.
 	 */
-	private function create_log_category($catName) {
+	protected function create_log_category($catName) {
 		$sql = "INSERT INTO ". self::categoryTable ." (category_name) ".
 				" VALUES (:categoryName)";
 		try {
@@ -525,18 +532,21 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	/**
 	 * Create a log_class_id based on the given name.
 	 */
-	private function create_class($className) {
+	protected function create_class($className) {
 		$sql = "INSERT INTO ". self::classTable ." (class_name) VALUES ".
 				"(:className)";
 		
 		
 		try {
-			$newId = $this->db->run_query($sql, array('className'=>$className));
+			$this->db->run_query($sql, array('className'=>$className));
+			$newId = $this->db->lastInsertId(self::classTableSeq);
 			
 			if(is_numeric($newId) && $newId > 0) {
 				$retval = $newId;
+				$this->logClassCache[strtolower($className)] = $retval;
 			}
 			else {
+				cs_debug_backtrace(1);
 				throw new exception(__METHOD__ .": failed to insert class or invalid " .
 						"id::: ". $this->gfObj->debug_var_dump($newId,0));
 			}
@@ -556,7 +566,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	/**
 	 * Retrieve class name from the given id.
 	 */
-	private function get_class_name($classId) {
+	protected function get_class_name($classId) {
 		if(is_numeric($classId)) {
 			$sql = "SELECT class_name FROM ". self::classTable ." WHERE class_id=:classId";
 			
@@ -591,7 +601,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	/**
 	 * Retrieve category name from the given ID.
 	 */
-	private function get_category_name($categoryId) {
+	protected function get_category_name($categoryId) {
 		if(is_numeric($categoryId)) {
 			$sql = "SELECT category_name FROM ". self::categoryTable ." WHERE category_id=:categoryId";
 			
@@ -692,7 +702,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	private function create_attribute($attribName, $buildCache=true) {
+	protected function create_attribute($attribName, $buildCache=true) {
 		
 		$myId = null;
 		if(isset($this->attributeCache[strtolower($attribName)])) {
@@ -722,7 +732,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	private function create_log_attributes($logId, array $attribs) {
+	protected function create_log_attributes($logId, array $attribs) {
 		$myIds = array();
 		foreach($attribs as $name=>$val) {
 			$insertData = array(

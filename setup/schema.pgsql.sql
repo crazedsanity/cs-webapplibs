@@ -152,6 +152,7 @@ CREATE TABLE cswal_session_table (
 	uid integer REFERENCES cs_authentication_table(uid),
 	date_created timestamp NOT NULL DEFAULT NOW(),
 	last_updated timestamp NOT NULL DEFAULT NOW(),
+	num_checkins integer NOT NULL DEFAULT 0,
 	session_data text
 );
 

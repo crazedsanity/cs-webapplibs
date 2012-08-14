@@ -218,7 +218,8 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		try {
 			$this->sth = $this->dbh->prepare($sql, $driverOptions);
 			// TODO: throw an exception on error (and possibly if there were no rows returned)
-			$this->numRows = $this->sth->execute($params); 
+			$this->sth->execute($params); 
+			$this->numRows = $this->sth->rowCount();
 		}
 		catch(PDOException $px) {
 cs_debug_backtrace(1);
@@ -233,15 +234,19 @@ cs_debug_backtrace(1);
 	
 	//=========================================================================
 	public function run_insert($sql, array $params=null, $seqName, array $driverOptions=array()) {
+		
+		#$this->sth = $this->dbh->prepare($sql, $driverOptions);
+		#$this->sth->execute($params);
 		$numRows = $this->run_query($sql, $params, $driverOptions);
-		$retval = null;
+		
 		if($numRows > 0) {
-			// TODO: throw exception on error
 			$retval = $this->dbh->lastInsertId($seqName);
 		}
 		else {
-			throw new exception(__METHOD__ .': no rows created');
+			throw new exception(__METHOD__ .": insert failed");
 		}
+		
+		#$retval = $this->dbh->lastInsertId($seqName);
 		return($retval);
 	}//end run_insert()
 	//=========================================================================
@@ -268,6 +273,7 @@ cs_debug_backtrace(1);
 		$retval = null;
 		if(is_object($this->sth)) {
 			$oData = $this->sth->fetchAll(PDO::FETCH_ASSOC);
+			
 			$retval = array();
 			
 			if($this->numRows > 0) {
@@ -318,7 +324,7 @@ cs_debug_backtrace(1);
 		$retval = array();
 		if(is_object($this->sth)) {
 			$retval = $this->sth->fetchAll(PDO::FETCH_ASSOC);
-			if(is_array($retval) && count($retval)) {
+			if(is_array($retval) && count($retval) && isset($retval[0])) {
 				$retval = $retval[0];
 			}
 		}
@@ -340,7 +346,7 @@ cs_debug_backtrace(1);
 			if(isset($rowData[$name]) && isset($rowData[$value])) {
 				if(!isset($retval[$name])) {
 					$tKey = $rowData[$name];
-					$tVal = $rowData[value];
+					$tVal = $rowData[$value];
 					$retval[$tKey] = $tVal;
 				}
 				else {
