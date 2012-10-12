@@ -4,7 +4,7 @@
 abstract class testDbAbstract extends UnitTestCase {
 	
 	public $dbParams=array();
-	public $dbObj = array();
+	public $dbObj = null;
 	protected $lock = null;
 	
 	//-------------------------------------------------------------------------

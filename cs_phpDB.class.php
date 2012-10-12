@@ -33,10 +33,24 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	 * @return unknown_type
 	 */
 	public function __construct($dsn, $username, $password, array $driverOptions=null, $writeCommandsToFile=null) {
+		parent::__construct();
+		$this->gfObj = new cs_globalFunctions();
 		try {
-			parent::__construct();
-			$this->gfObj = new cs_globalFunctions();
+			$this->reconnect($dsn, $username, $password, $driverOptions, $writeCommandsToFile);
+		}
+		catch(Exception $ex) {
+			throw $ex;
+		}
+	}
+	
+	public function reconnect($dsn, $username, $password, array $driverOptions=null, $writeCommandsToFile=null) {
+		$this->dbh = null;
+		$this->sth = null;
+		try {
 			$this->dbh = new PDO($dsn, $username, $password, $driverOptions);
+			
+			// Set options so PDO's behaviour is consistent (e.g. always throw exceptions)
+			$this->dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 			
 			// Use *real* prepares (for MySQL)
 			$this->dbh->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
@@ -216,14 +230,19 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	//=========================================================================
 	public function run_query($sql, array $params=null, array $driverOptions=array()) {
 		try {
+			$this->sth = null;
 			$this->sth = $this->dbh->prepare($sql, $driverOptions);
+			if($this->sth === false) {
+cs_debug_backtrace(1);
+$this->gfObj->debug_print($this->dbh,1);
+$this->gfObj->debug_print(__METHOD__ .": STH:::: ". $this->gfObj->debug_var_dump($this->sth,0),1);
+				throw new exception(__METHOD__ .": STH is false... ". $this->gfObj->debug_print($this->dbh->errorInfo(),0));
+			}
 			// TODO: throw an exception on error (and possibly if there were no rows returned)
 			$this->sth->execute($params); 
 			$this->numRows = $this->sth->rowCount();
 		}
 		catch(PDOException $px) {
-cs_debug_backtrace(1);
-#$this->gfObj->debug_print($this,1);
 			throw new exception(__METHOD__ .": ". $px->getMessage());
 		}
 		return($this->numRows);
@@ -239,7 +258,7 @@ cs_debug_backtrace(1);
 		#$this->sth->execute($params);
 		$numRows = $this->run_query($sql, $params, $driverOptions);
 		
-		if($numRows > 0) {
+		if($numRows > 0 && is_object($this->dbh)) {
 			$retval = $this->dbh->lastInsertId($seqName);
 		}
 		else {
@@ -371,6 +390,23 @@ cs_debug_backtrace(1);
 	}
 	//=========================================================================
 	
+	
+	
+	//=========================================================================
+	public function exec($sql, array $params=null, array $driverOptions=null) {
+		$retval = null;
+		$this->sth = null;
+		if(!is_null($params)) {
+			$retval = $this->run_query($sql, $params, $driverOptions);
+		}
+		else {
+			$retval = $this->dbh->exec($sql);
+		}
+		
+		return($retval);
+	}//end exec()
+	//=========================================================================
+	
 	// wrapper methods (for backwards-compatibility)
 	public function beginTrans() {return($this->dbh->beginTransaction());}
 	public function commitTrans() {return($this->dbh->commit());}
@@ -384,9 +420,9 @@ cs_debug_backtrace(1);
 	
 	
 	
-
-
-
+	
+	
+	
 } // end class phpDB
 
 ?>
