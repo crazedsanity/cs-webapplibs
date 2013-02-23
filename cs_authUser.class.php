@@ -25,7 +25,7 @@ class cs_authUser extends cs_session {
 			parent::__construct(self::COOKIE_NAME);
 
 
-			$this->dbObj = new cs_phpDB($db->get_dsn(), $db->get_username(), $db->get_password());
+			$this->dbObj = $db;
 
 			$this->gfObj = new cs_globalFunctions;
 			$this->logger = new cs_webdblogger($this->dbObj, "Auth", false);
@@ -73,7 +73,7 @@ class cs_authUser extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	public function check_sid() {
-		//check the database to see if the sid is valid.
+		//check the database to see if the sid is valid. (TODO: join to auth table and ensure they're still enabled)
 		$sql = "SELECT * FROM cswal_session_table WHERE session_id=:sid";
 		$numrows = $this->dbObj->run_query($sql, array('sid'=>$this->sid));
 		
@@ -115,30 +115,30 @@ class cs_authUser extends cs_session {
 		}
 		else {
 			$sql = "SELECT * FROM cs_authentication_table WHERE username=:username " .
-				"AND passwd=:passwd AND user_status_id=:user_status";
+				"AND passwd=:password AND user_status_id=1";
 			
+			// NOTE::: in linux, do this:::: echo -e "username-password\c" | md5sum
+			// (without the "\c" or the switch, the sum won't match)
+			$sumThis = $username .'-'. $password;
 			$params = array(
 				'username'		=> $username,
-				'password'		=> md5($username .'-'. $password),
-				'user_status'	=> 1
+				'password'		=> md5($sumThis)
 			);
 			$numrows = $this->dbObj->run_query($sql, $params);
 			$retval = $numrows;
 			
 			if($numrows == 1) {
-				$data = $this->dbObj->farray_fieldnames();
+				$data = $this->dbObj->get_single_record();
 				$this->userInfo = $data;
 				$this->update_auth_data($this->userInfo);
 				$insertData = array(
-					'session_id'	=> $this->sid,
-					'date_created'	=> "NOW()",
-					'uid'			=> $data['uid'],
-					'last_login'	=> "NOW()"
+					'sid'	=> $this->sid,
+					'uid'	=> $data['uid']
 				);
 				
-				$sql = 'INSERT INTO cswal_session_table (session_id, date_created, uid, last_login) '.
-					' VALUES (:sid, :date, :uid, :last_login)';
-				$retval = $this->dbObj->run_insert($sql, $insertData);
+				$sql = 'INSERT INTO cswal_session_table (session_id, date_created, uid, last_updated) '.
+					' VALUES (:sid, NOW(), :uid, NOW())';
+				$retval = $this->dbObj->run_query($sql, $insertData);
 				
 				$this->do_log("Successfully logged-in (". $retval .")");
 			}
@@ -174,8 +174,8 @@ class cs_authUser extends cs_session {
 	protected function get_user_data($uid) {
 		if(is_numeric($uid) && $uid > 0) {
 			$sql = "SELECT * FROM cs_authentication_table WHERE uid=:uid" 
-					." AND user_status_id=:user_status";
-			$numrows = $this->dbObj->run_query($sql, array('uid'=> $uid, 'user_status'=>1));
+					." AND user_status_id=1";
+			$numrows = $this->dbObj->run_query($sql, array('uid'=> $uid));
 			
 			if($numrows == 1) {
 				$retval = $this->dbObj->farray_fieldnames();
@@ -233,7 +233,7 @@ class cs_authUser extends cs_session {
 			$params = array(
 				'sid'			=> $this->sid
 			);
-			$retval = $this->run_query($sql, $params);
+			$retval = $this->dbObj->run_query($sql, $params);
 		}
 		$this->logout_inactive_sessions();
 		
