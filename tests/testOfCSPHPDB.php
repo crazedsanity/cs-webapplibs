@@ -77,9 +77,8 @@ class TestOfCSPHPDB extends testDbAbstract {
 					$numRows = $this->dbObj->run_query("SELECT * FROM test");
 					$data = $this->dbObj->farray_nvp('id', 'data');
 					
-					foreach($data as $k=>$v) {
-						$this->assertEqual($v, $testData[$k-1], "ID test failed for index (". $k ."), value=(". $v ."): expected (". $testData[$k-1] ."), got (". $k .")");
-					}
+					$this->assertEqual("test1", $data[1], "Expected ID 1 to be 'test1', but instead got '". $data[1] ."'");
+					$this->assertEqual("test2", $data[2], "Expected ID 2 to be 'test2', but instead got '". $data[2] ."'");
 					
 					// add a record with a specified ID (retrieving the sequence value will appear to be incorrect, because we're not using it).
 					$testData[4] = "test5";
@@ -91,26 +90,39 @@ class TestOfCSPHPDB extends testDbAbstract {
 					$this->assertTrue(is_array($data), "Did not retrieve array of information from database... (". $data .")");
 					$this->assertEqual(count($data), count($testData), "Number of records in database (". count($data) .") do not match what is expected (". count($testData) .")");
 					
-					// to illustrate the issue (with the "test5" data), let's do a few more inserts; the insert that would create id #5 should fail.
+					$testData[2] = "test3";
+					$createdId = $this->dbObj->run_insert($insertTestSql, array('val'=>$testData[2]), 'test_id_seq');
+					$this->assertEqual($createdId, 3, "Failed to insert ID #3...?");
+					$testData[3] = "test4";
+					$createdId = $this->dbObj->run_insert($insertTestSql, array('val'=>$testData[3]), 'test_id_seq');
+					$this->assertEqual($createdId, 4, "Failed to insert ID #4...?");
+					
+					
+					// Make sure farray_fieldnames works as expected.
+					$numRows = $this->dbObj->run_query("SELECT * FROM test");
+					$data = $this->dbObj->farray_fieldnames('id');
+					
+					$this->assertEqual(array('id'=>1, 'data'=>'test1'), $data[1]);
+					$this->assertEqual(array('id'=>2, 'data'=>'test2'), $data[2]);
+					$this->assertEqual(array('id'=>3, 'data'=>'test3'), $data[3]);
+					$this->assertEqual(array('id'=>4, 'data'=>'test4'), $data[4]);
+					$this->assertEqual(array('id'=>5, 'data'=>'test5'), $data[5]);
+					
+					$this->assertEqual(count($data), 5);
+					
+					// This illustrates what happens when we attempt to insert a duplicate.
 					{
-						$testData[2] = "test3";
-						$createdId = $this->dbObj->run_insert($insertTestSql, array('val'=>$testData[2]), 'test_id_seq');
-						$this->assertEqual($createdId, 3, "Failed to insert ID #3...?");
-						$testData[3] = "test4";
-						$createdId = $this->dbObj->run_insert($insertTestSql, array('val'=>$testData[3]), 'test_id_seq');
-						$this->assertEqual($createdId, 4, "Failed to insert ID #4...?");
-
-						//Okay, here's where there should be an error...
+						
+						//Okay, here's where there should be an error (re-inserting data that's already there)
 						try {
 							$createdId = $this->dbObj->run_insert($insertTestSql, array('val'=>$testData[4]), 'test_id_seq');
-							
 							$this->assertTrue(false, "DANGER WILL ROBINSON! This should have produced an error!");
 						}
 						catch(Exception $ex) {
 							$errorInfo = $this->dbObj->errorInfo();
+							#$this->gfObj->debug_print($ex);
 							
-							#$this->gfObj->debug_print($ex,1);
-							
+							// Make sure it said something about a duplicate key, throw an error if not.
 							$this->assertTrue(strstr($errorInfo[2], "duplicate key"), "Error was strange... (". $this->gfObj->debug_print($errorInfo,0));
 						}
 					}

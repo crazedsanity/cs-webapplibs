@@ -95,6 +95,7 @@ class cs_phpDB extends cs_webapplibsAbstract {
 			}
 		}
 		catch(PDOException $e) {
+cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": failed to connect to database: ".
 					$e->getMessage());
 		}
@@ -297,23 +298,24 @@ $this->gfObj->debug_print(__METHOD__ .": STH:::: ". $this->gfObj->debug_var_dump
 			
 			if($this->numRows > 0) {
 				$retval = $oData;
-				foreach($oData as $rowData) {
-					if(!is_null($index)) {
+				
+				if(!is_null($index)) {
+					$newData = array();
+					foreach($oData as $rowData) {
 						if(isset($rowData[$index])) {
-							if(!isset($retval[$index])) {
-								$retval[$rowData[$index]] = $rowData;
+							if(!isset($newData[$rowData[$index]])) {
+								$newData[$rowData[$index]] = $rowData;
 							}
 							else {
+								// TODO: maybe this should be a warning (or *can* be, based on a configuration directive).
 								throw new exception(__METHOD__ .': duplicate records exist for index=('. $index .'), first duplicate was ('. $rowData[$index] .')');
 							}
 						}
 						else {
-							throw new exception(__METHOD__ .': record does not contain column "'. $index .'"');
+							throw new exception(__METHOD__ .": record does not contain column '". $index ."'");
 						}
 					}
-					else {
-						$retval = $oData;
-					}
+					$retval = $newData;
 				}
 			}
 			else {

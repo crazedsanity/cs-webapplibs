@@ -460,6 +460,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	//=========================================================================
 	public function parse_version_string($versionString) {
 		if(is_null($versionString) || !strlen($versionString)) {
+			cs_debug_backtrace(1);
 			$this->error_handler(__METHOD__ .": invalid version string ($versionString)");
 		}
 		

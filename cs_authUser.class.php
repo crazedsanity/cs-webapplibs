@@ -18,14 +18,14 @@ class cs_authUser extends cs_session {
 	protected $isAuthenticated=NULL;
 	
 	//-------------------------------------------------------------------------
-	public function __construct(cs_DB $db) {
+	public function __construct(cs_phpDB $db) {
 
 		if(isset($db) && is_object($db)) {
 			//make sure the session has been created.
 			parent::__construct(self::COOKIE_NAME);
 
 
-			$this->dbObj = new cs_DB($db->get_dsn(), $db->get_username(), $db->get_password());
+			$this->dbObj = new cs_phpDB($db->get_dsn(), $db->get_username(), $db->get_password());
 
 			$this->gfObj = new cs_globalFunctions;
 			$this->logger = new cs_webdblogger($this->dbObj, "Auth", false);
@@ -261,8 +261,8 @@ class cs_authUser extends cs_session {
 		if(defined('SESSION_MAX_IDLE')) {
 			$maxIdle = constant('SESSION_MAX_IDLE');
 		}
-		$sql = "DELETE FROM cswal_session_table WHERE last_updated  < (NOW() - interval :maxIdle)";
-		$numrows = $this->dbObj->run_query($sql, array('maxIdle'=>$maxIdle));
+		$sql = "DELETE FROM cswal_session_table WHERE last_updated  < (NOW() - interval ':maxIdle')";
+		$numrows = $this->dbObj->run_query($sql, array($maxIdle));
 		
 		if($numrows < 0 || !is_numeric($numrows)) {
 			$details = __METHOD__ .": invalid numrows (". $numrows .")";
