@@ -1,5 +1,4 @@
-Web Application Libraries 
-========
+## Web Application Libraries
 
 (a.k.a. "CS-WebAppLibs" or "CSWAL")
 
@@ -17,6 +16,13 @@ system, is made to be transparent, so interacting with it can be difficult;
 others, such as the logging system, are meant to be used with little need to 
 understand their inner-workings. 
 
+__WARNING #4:__ Due to lack of help, the only officially-supported database is 
+PostgreSQL.  Most things should be fairly well database-agnostic, though some of 
+the fancier features (such as transactions within the upgrade system) may not 
+work as expected: MySQL can sometimes automatically commits changes without 
+warning, such as when transactions cross transactionable and transactionless 
+tables.
+
 *On to the documentation...*
 
 This is a set of libraries for working with PHP-based web applications.  It 
@@ -25,39 +31,31 @@ builds upon the foundation of CS-Content, which can be found at
 which is just an XML library, and can be found at 
 [ http://github.com/crazedsanity/cs-phpxml ].
 
-Basic Database Interaction
---------
-
-__WARNING #1:__ Due to lack of help, the only officially-supported database is 
-PostgreSQL.  Most things should be fairly well database-agnostic, though some of 
-the fancier features (such as transactions within the upgrade system) may not 
-work as expected: MySQL can sometimes automatically commit changes without 
-warning, such as when transactions cross transactionable and transactionless 
-tables.
+### Basic Database Interaction
 
 Interacting with the database is fairly straightforward: cs_phpDB is basically 
 just a wrapper for PDO (if you're not familiar, go read it 
 [http://php.net/manual/en/book.pdo.php]).  First, create an object to work with:
 
-<pre>
+```php
 	$dsn = "psql:host=localhost;dbname=test";
 	$username = "username";
 	$password = "myP@ssw0rd";
 	$db = new cs_phpDB($dsn, $username, $password);
-</pre>
+```
 
 Performing a basic query is simple.  This example runs the query and returns an 
 array of records, indexed on the value of the "user_id" column:
 
-<pre>
+```php
 	$numRows = $db->run_query("SELECT * FROM users WHERE user_status <> :uid", array('uid'=>0));
 	echo "got ". $numRows ." back!";
 	$myArray = $db->farray_fieldnames();
-</pre>
+```
 
 So now there's an array of records.
 
-<pre>
+```php
 	foreach($myArray as $key=>$subArray) {
 		print "KEY: ". $key;
 		foreach($subArray as $sKey => $val) {
@@ -70,7 +68,7 @@ So now there's an array of records.
 	 * KEY: 2 [username]=(bob@dole.com) [user_status]=(1)
 	 * KEY: 2 [username]=(jake@dole.com) [user_status]=(3)
 	 */
-</pre>
+```
 
 You should be off and running with that! For some great examples, look at the 
 code in "abstract/cs_singleTableHandler.abstract.class.php".  That class deals 
@@ -78,58 +76,56 @@ with pretty much everything regarding a single database table.  There are some
 tests that hopefully provide some insight.  Dig into the other class files, as 
 most of them deal with database manipulation of some sort. 
 
-CS Web DB Logger
---------
+### CS Web DB Logger
 
 Once the appropriate schema has been built, code can be updated easily to start 
 logging:
 
-<pre>
+```php
 	//Create the class...
 	$this->log = new cs_webdblogger($dbObj, 'Generic Activity');
 	
 	//Now call the logger.
 	$this->log->log_by_class('User viewed page', 'info', $this->userId);
-</pre>
+```
 
 
 
 UNDERSTANDING THE DATABASE SCHEMA:::
 I understand things best from real data, so here goes::::
 
-<pre>
-user@localhost:~/cs-webapplibs$ cat docs/log_test.sql 
-select 
-	rca.category_name as category, 
-	rcl.class_name as class, 
-	le.description 
-from 
-	cswal_event_table AS le 
-	INNER JOIN cswal_class_table AS rcl USING (class_id) 
-	INNER JOIN cswal_category_table AS rca USING (category_id) 
-limit 5;
-user@localhost:~/cs-webapplibs$ psql -U postgres cs__test
-psql (9.1.3)
-Type "help" for help.
+```
+	user@localhost:~/cs-webapplibs$ cat docs/log_test.sql 
+	select 
+		rca.category_name as category, 
+		rcl.class_name as class, 
+		le.description 
+	from 
+		cswal_event_table AS le 
+		INNER JOIN cswal_class_table AS rcl USING (class_id) 
+		INNER JOIN cswal_category_table AS rca USING (category_id) 
+	limit 5;
+	user@localhost:~/cs-webapplibs$ psql -U postgres cs__test
+	psql (9.1.3)
+	Type "help" for help.
 
-live_cs_project=# \i docs/log_test.sql
- category | class  |       description
-----------+--------+--------------------------
- Project  | Create | Project: created record
- Project  | Delete | Project: deleted record
- Project  | Update | Project: updated record
- Project  | Error  | Project: ERROR
- Helpdesk | Create | Helpdesk: Created record
-(5 rows)
-</pre>
+	live_cs_project=# \i docs/log_test.sql
+	 category | class  |       description
+	----------+--------+--------------------------
+	 Project  | Create | Project: created record
+	 Project  | Delete | Project: deleted record
+	 Project  | Update | Project: updated record
+	 Project  | Error  | Project: ERROR
+	 Helpdesk | Create | Helpdesk: Created record
+	(5 rows)
+'''
 
 The category indicates what system it is attached to, and class is a more 
 generic way of indicating what type of action it is. 
 
 
 
-CS Web DB Upgrade
---------
+### CS Web DB Upgrade
 
 This system is built to make upgrading a database-driven app seamless.  No need
 to coordinate SQL or schema changes with the code updates: previously, one would 
@@ -191,9 +187,7 @@ WORK FLOW:
  --> (continues as before)
 </pre>
 
-
-NOTE REGARDING OTHER CLASSES
---------
+### NOTE REGARDING OTHER CLASSES
 
 There are other classes implemented.  As they're tested (and I have time), more 
 documentation will be added here.  For more (or less) up-to-date information, 
