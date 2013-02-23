@@ -118,7 +118,7 @@ I understand things best from real data, so here goes::::
 	 Project  | Error  | Project: ERROR
 	 Helpdesk | Create | Helpdesk: Created record
 	(5 rows)
-'''
+```
 
 The category indicates what system it is attached to, and class is a more 
 generic way of indicating what type of action it is. 
