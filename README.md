@@ -1,5 +1,7 @@
 ## Web Application Libraries
 
+*For info about upgrades, check the "upgrades" folder*
+
 (a.k.a. "CS-WebAppLibs" or "CSWAL")
 
 __WARNING #1:__ Version 0.5.x and above utilize PDO and prepared statements. 
