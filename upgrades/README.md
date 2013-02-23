@@ -18,12 +18,18 @@ $params = array(
 
 ### Performing Inserts
 
-You can use "run_query()" to perform the insert, which should work just fine.  To make your code quicker, try this:
+Using "run_query()" to perform inserts should work just fine.  To make the code quicker (if the sequence name is known), try this:
 
 ```php
 $insertedId = $phpDbObj->run_insert($sql, $params, $sequenceName);
 ```
 
+### Retrieving Records: farray_fieldnames()
+
+ * use get_single_record() in place of farray_fieldnames() when only one record should be returned
+ * calls that pass more than one argument are almost certainly broken
+
 ### Quirks
 
- * "farray_fieldnames()" will now *always* return the same format, even if there's only one record: try get_single_record() instead	
+ * run_insert() requires a sequence name as the 3rd argument: passing a blank string or an invalid sequence name will generate an error
+ * farray_nvp() returns an array of name -> value pairs... it's very useful.
