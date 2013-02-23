@@ -334,8 +334,15 @@ $this->gfObj->debug_print(__METHOD__ .": STH:::: ". $this->gfObj->debug_var_dump
 	
 	//=========================================================================
 	public function farray() {
+		if(is_object($this->sth)) {
+			$retval = $this->sth->fetchAll();
+		}
+		else {
+			throw new Exception(__METHOD__ .": statement handle was not created");
+		}
 		
-	}
+		return($retval);
+	}//end farray()
 	//=========================================================================
 	
 	
@@ -389,7 +396,7 @@ $this->gfObj->debug_print(__METHOD__ .": STH:::: ". $this->gfObj->debug_var_dump
 		$retval = $this->dbh->exec(file_get_contents($sqlFile));
 		
 		return($retval);
-	}
+	}//end run_sql_file()
 	//=========================================================================
 	
 	

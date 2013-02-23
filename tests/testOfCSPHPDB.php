@@ -21,7 +21,6 @@ class TestOfCSPHPDB extends testDbAbstract {
 		$type = 'pgsql';
 		$this->assertEqual($type, $this->dbObj->get_dbType(), "Database type mismatch, expecting (". $type ."), got (". $this->dbObj->get_dbType() .")");
 		
-		$this->reset_db();
 		
 		//
 		if($this->assertTrue($this->reset_db(dirname(__FILE__) .'/../setup/schema.pgsql.sql'), "Failed to reset database")) {
@@ -29,6 +28,7 @@ class TestOfCSPHPDB extends testDbAbstract {
 
 				$beginTransRes = $this->dbObj->beginTrans();
 				$transactionStatus = $this->dbObj->get_transaction_status();
+				$this->assertTrue($transactionStatus);
 				$beginTransRes = true;
 				if($this->assertTrue($beginTransRes, "Start of transaction failed (". $beginTransRes ."), status=(". $transactionStatus .")")) {
 					
@@ -110,6 +110,10 @@ class TestOfCSPHPDB extends testDbAbstract {
 					
 					$this->assertEqual(count($data), 5);
 					
+					
+					$this->assertTrue($this->dbObj->commitTrans());
+					
+					$this->assertTrue($this->dbObj->beginTrans());
 					// This illustrates what happens when we attempt to insert a duplicate.
 					{
 						
@@ -130,23 +134,60 @@ class TestOfCSPHPDB extends testDbAbstract {
 				else {
 					// transaction failed
 				}
+				$this->assertTrue($this->dbObj->commitTrans());
+				
+				// make sure we're not in a transaction.
+				$this->assertFalse($this->dbObj->get_transaction_status());
+				
+				
+				// Simpler test for farray()
+				$numRows = $this->dbObj->run_query("SELECT * FROM test WHERE id > :id ORDER BY id", array('id'=>0));
+				$data = $this->dbObj->farray();
+				$this->assertTrue($numRows = count($data));
+				$this->assertTrue($numRows > 0);
+				$this->assertTrue($numRows = 5);
+				
+				$this->assertEqual($data[0][0], 1);
+				$this->assertEqual($data[0][1], 'test1');
+				$this->assertEqual($data[0]['id'], 1);
+				$this->assertEqual($data[0]['data'], 'test1');
+				
+				$testElement4 = array(
+					0		=> 5,
+					'id'	=> 5,
+					1		=> 'test5',
+					'data'	=> 'test5'
+				);
+				$this->assertEqual($data[4], $testElement4);
+				
+				
+				// use farray_nvp(), but swap id with value (should work, since values are unique)
+				$numRows = $this->dbObj->run_query(
+						"SELECT * FROM test WHERE id > :id ORDER BY :orderBy", 
+						array('id'=>0, 'orderBy' => 'id')
+					);
+				$data = $this->dbObj->farray_nvp('data', 'id');
+				
+				$this->assertEqual($numRows, count($data));
+				$this->assertEqual($numRows, 5);
+				$this->assertEqual($data['test5'], 5);
+				$this->assertEqual($data['test3'], 3);
 			}
 		}
-		$this->assertTrue($this->dbObj->commitTrans());
 //		
-//		// test to see that old-school SQL works...
-//		$numRows = $this->dbObj->run_query('SELECT (CURRENT_TIMESTAMP = CURRENT_TIMESTAMP) as date_test, CURRENT_TIMESTAMP as date;');
-//		$this->assertEqual($numRows, 1, "Expected one row, actually returned (". $numRows .")");
-//		
-//		
-//		$data = $this->dbObj->farray_fieldnames();
-//		$this->assertTrue(isset($data[0]), "Data does not contain zero-based index...");
-//		$this->assertEqual(count($data), 1, "Returned too many records, or mal-formed array");
-//		$this->assertTrue($data[0]['date_test'], "Current date doesn't match in database or mal-formed array");
-//		$this->assertEqual(count($data[0]), 2, "Too many values beneath index 0");
-//		
-//		$dateString = strftime('%Y-%m-%d');
-//		$this->assertTrue(preg_match('/^'. $dateString .'/', $data[0]['date']), "Date in database is invalid or malformed: (". $data[0]['date'] ." does not start with '". $dateString ."')");
+		// test to see that old-school SQL works...
+		$numRows = $this->dbObj->run_query('SELECT (CURRENT_TIMESTAMP = CURRENT_TIMESTAMP) as date_test, CURRENT_TIMESTAMP as date;');
+		$this->assertEqual($numRows, 1, "Expected one row, actually returned (". $numRows .")");
+		
+		
+		$data = $this->dbObj->farray_fieldnames();
+		$this->assertTrue(isset($data[0]), "Data does not contain zero-based index...");
+		$this->assertEqual(count($data), 1, "Returned too many records, or mal-formed array");
+		$this->assertTrue($data[0]['date_test'], "Current date doesn't match in database or mal-formed array");
+		$this->assertEqual(count($data[0]), 2, "Too many values beneath index 0");
+		
+		$dateString = strftime('%Y-%m-%d');
+		$this->assertTrue(preg_match('/^'. $dateString .'/', $data[0]['date']), "Date in database is invalid or malformed: (". $data[0]['date'] ." does not start with '". $dateString ."')");
 		
 		
 	}//end test_basics()
