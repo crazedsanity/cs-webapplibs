@@ -153,7 +153,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			$this->logsObj = new cs_webdblogger($loggerDb, "Upgrade ". $this->projectName, false);
 		}
 		catch(exception $e) {
-			cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": failed to create logger::: ". $e->getMessage());
 		}
 		
@@ -1012,22 +1011,23 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		//if there's an INITIAL_VERSION in the upgrade config file, use that.
 		$this->read_upgrade_config_file();
 		$insertData = array();
-		if(isset($this->initialVersion)) {
+		if(isset($this->initialVersion) && strlen($this->initialVersion)) {
 			$parseThis = $this->initialVersion;
 		}
 		else {
 			$parseThis = $this->versionFileVersion;
 		}
-		$versionInfo = $this->parse_version_string($parseThis);
-		$insertData = array(
-			'projectName'		=> $this->projectName,
-			'versionString'		=> $versionInfo['version_string']
-		);
-		
-		$sql = 'INSERT INTO '. $this->dbTable . ' (project_name, version_string) '
-				. 'VALUES (:projectName, :versionString)';
 		
 		try {
+			$versionInfo = $this->parse_version_string($parseThis);
+			$insertData = array(
+				'projectName'		=> $this->projectName,
+				'versionString'		=> $versionInfo['version_string']
+			);
+
+			$sql = 'INSERT INTO '. $this->dbTable . ' (project_name, version_string) '
+					. 'VALUES (:projectName, :versionString)';
+					
 			if($this->db->run_insert($sql, $insertData, $this->sequenceName)) {
 				$loadRes = true;
 				$this->do_log("Created data for '". $this->projectName ."' with version '". $insertData['versionString'] ."'", 'initialize');

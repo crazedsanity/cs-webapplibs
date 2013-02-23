@@ -234,9 +234,6 @@ cs_debug_backtrace(1);
 			$this->sth = null;
 			$this->sth = $this->dbh->prepare($sql, $driverOptions);
 			if($this->sth === false) {
-cs_debug_backtrace(1);
-$this->gfObj->debug_print($this->dbh,1);
-$this->gfObj->debug_print(__METHOD__ .": STH:::: ". $this->gfObj->debug_var_dump($this->sth,0),1);
 				throw new exception(__METHOD__ .": STH is false... ". $this->gfObj->debug_print($this->dbh->errorInfo(),0));
 			}
 			// TODO: throw an exception on error (and possibly if there were no rows returned)

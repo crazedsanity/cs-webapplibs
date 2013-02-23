@@ -167,7 +167,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		
 		try {
 			$this->db->run_query($sql);
-			$data = $this->db->farray_fieldnames();
+			$data = $this->db->farray_nvp('name', 'class_id');
 			
 			if(is_array($data)) {
 				$this->logClassCache = $data;
@@ -247,12 +247,11 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		
 		try {
 			$numRows = $this->db->run_query($sql, $params);
-			$data = $this->db->farray_fieldnames();
-			
+			$data = $this->db->get_single_record();
 			
 			if($numRows == 0) {
 				//no records & no error: create one.
-				$retval = $this->auto_insert_record($params['class_id']);
+				$retval = $this->auto_insert_record($params['classId']);
 			}
 			elseif($numRows == 1 && is_array($data) && isset($data['event_id'])) {
 				$retval = $data['event_id'];
@@ -262,7 +261,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			}
 		}
 		catch(exception $e) {
-			throw new exception(__METHOD__ .": failed to retrieve event_id, DETAILS::: ::: ". $e->getMessage());
+			throw new exception(__METHOD__ .": failed to retrieve event_id, DETAILS::: ". $e->getMessage());
 		}
 		
 		return($retval);
@@ -406,8 +405,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 					'VALUES (:classId, :categoryId, :description)';
 			
 			try {
-				$this->db->run_query($sql, $$sqlArr);
-				$newId = $this->db->lastInsertId(self::eventTableSeq);
+				$newId = $this->db->run_insert($sql, $sqlArr, self::eventTableSeq);
 				
 				if(is_numeric($newId) && $newId > 0) {
 					$retval = $newId;
@@ -443,11 +441,10 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 				
 				$numrows = $this->db->run_query($sql, array('catName'=>$catName));
 				$data = $this->db->get_single_record();
-				
 				if($numrows == 1 && is_array($data) && isset($data['category_id']) && is_numeric($data['category_id'])) {
 					$retval = $data['category_id'];
 				}
-				elseif($data === false) {
+				elseif($numrows == 0 || $data == array() || $data === false) {
 					$retval = $this->create_log_category($catName);
 				}
 				elseif($numrows > 1) {
@@ -458,25 +455,32 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 				}
 			}
 			catch(exception $e) {
-				if($this->setupComplete === true) {
+				#if($this->setupComplete === true) {
 					throw new exception(__METHOD__ .": encountered error::: ". $e->getMessage());
+				/*/
 				}
 				else {
-					// TODO: re-implement database-specific check (requires implementing cs_phpDB::get_dbtype())
-					$mySchemaFile = dirname(__FILE__) .'/setup/schema.pgsql.sql';
-					if(file_exists($mySchemaFile)) {
-						$this->setupComplete = true;
-						$this->run_sql_file($mySchemaFile);
-						
-						//Create the default category.
-						$this->create_log_category('Database');
-						
-						$retval = $this->create_log_category($catName);
+					try {
+						// TODO: re-implement database-specific check (requires implementing cs_phpDB::get_dbtype())
+						$mySchemaFile = dirname(__FILE__) .'/setup/schema.pgsql.sql';
+						if(file_exists($mySchemaFile)) {
+							$this->setupComplete = true;
+							$this->run_sql_file($mySchemaFile);
+
+							//Create the default category.
+	cs_debug_backtrace(1);
+							$this->create_log_category('Database');
+
+							$retval = $this->create_log_category($catName);
+						}
+						else {
+							throw new exception(__METHOD__ .": missing schema file (". $mySchemaFile ."), can't run setup");
+						}
 					}
-					else {
-						throw new exception(__METHOD__ .": missing schema file (". $mySchemaFile ."), can't run setup");
+					catch(Exception $ex) {
+						throw new exception(__METHOD__ .": unable to attempt setup::: ". $ex->getMessage());
 					}
-				}
+				}#*/
 			}
 		}
 		else {
@@ -497,8 +501,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		$sql = "INSERT INTO ". self::categoryTable ." (category_name) ".
 				" VALUES (:categoryName)";
 		try {
-			$this->db->run_query($sql, array('categoryName' => $catName));
-			$newId = $this->db->lastInsertId(self::categoryTableSeq);
+			$newId = $this->db->run_insert($sql, array('categoryName' => $catName), self::categoryTableSeq);
 			
 			if(is_numeric($newId) && $newId > 0) {
 				$retval = $newId;
@@ -527,7 +530,6 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		$sql = "INSERT INTO ". self::classTable ." (class_name) VALUES ".
 				"(:className)";
 		
-		
 		try {
 			$this->db->run_query($sql, array('className'=>$className));
 			$newId = $this->db->lastInsertId(self::classTableSeq);
@@ -537,7 +539,6 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 				$this->logClassCache[strtolower($className)] = $retval;
 			}
 			else {
-				cs_debug_backtrace(1);
 				throw new exception(__METHOD__ .": failed to insert class or invalid " .
 						"id::: ". $this->gfObj->debug_var_dump($newId,0));
 			}
@@ -562,10 +563,10 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			$sql = "SELECT class_name FROM ". self::classTable ." WHERE class_id=:classId";
 			
 			try {
-				$this->db->run_query($sql, array('classId'=>$classId));
+				$numRows = $this->db->run_query($sql, array('classId'=>$classId));
 				$data = $this->db->get_single_record();
 				
-				if(is_array($data) && isset($data['class_name']) && $this->db->numRows() == 1) {
+				if(is_array($data) && isset($data['class_name']) && $numRows == 1) {
 					$className = $data['class_name'];
 				}
 				else {
@@ -704,12 +705,13 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 					"VALUES (:attribName)";
 			
 			try {
-				$this->db->run_query($sql, array('attribName'=>$attribName));
-				$myId = $this->db->lastInsertId(self::attribTableSeq);
+				$myId = $this->db->run_insert($sql, array('attribName'=>$attribName), self::attribTableSeq);
 			}
 			catch(exception $e) {
 				throw new exception(__METHOD__ .": fatal error while creating attribute (". $attribName .")::: ". $e->getMessage());
 			}
+			$this->build_cache();
+			$buildCache = false;
 		}
 		
 		if($buildCache) {
@@ -735,8 +737,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 					"attribute_id, value_text) VALUES (:logId, :attributeId, :valueText)";
 			
 			try {
-				$this->db->run_query($sql, $insertData);
-				$myIds[$name][] = $this->db->lastInsertId(self::logAttribTableSeq);
+				$myIds[$name][] = $this->db->run_insert($sql, $insertData, self::logAttribTableSeq);
 			}
 			catch(exception $e) {
 				throw new exception(__METHOD__ .": fatal error while creating log attribute " .

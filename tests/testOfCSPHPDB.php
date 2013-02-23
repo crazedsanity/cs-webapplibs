@@ -172,6 +172,12 @@ class TestOfCSPHPDB extends testDbAbstract {
 				$this->assertEqual($numRows, 5);
 				$this->assertEqual($data['test5'], 5);
 				$this->assertEqual($data['test3'], 3);
+				
+				
+				$numRows = $this->dbObj->run_query("SELECT * FROM test WHERE id=:id", array('id'=> 2));
+				$data = $this->dbObj->get_single_record();
+				
+				$this->assertEqual(array('id'=>2, 'data'=>'test2'), $data);
 			}
 		}
 //		
