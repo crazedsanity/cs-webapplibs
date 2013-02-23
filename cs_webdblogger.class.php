@@ -258,18 +258,11 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 				$retval = $data['event_id'];
 			}
 			else {
-//$this->gfObj->debug_print($sql, 1);
-//$this->gfObj->debug_print($params,1);
-//$this->gfObj->debug_print($numRows,1);
-//$this->gfObj->debug_print($data,1);
-//$this->gfObj->debug_print($params,1);
-cs_debug_backtrace(1);
 				throw new exception("invalid data returned::: ". $this->gfObj->debug_var_dump($data,0));
 			}
 		}
 		catch(exception $e) {
-cs_debug_backtrace(1);
-			throw new exception(__METHOD__ .": failed to retrieve event_id, numrows=(". $numRows ."), DETAILS::: ::: ". $e->getMessage());
+			throw new exception(__METHOD__ .": failed to retrieve event_id, DETAILS::: ::: ". $e->getMessage());
 		}
 		
 		return($retval);
@@ -461,8 +454,6 @@ cs_debug_backtrace(1);
 					throw new exception(__METHOD__ .": found too many records (". $numrows .")");
 				}
 				else {
-					#cs_debug_backtrace(1);
-					$this->gfObj->debug_print(__METHOD__ .": numrows=(". $numrows ."), DATA::: ". $this->gfObj->debug_print($data,0),1);
 					throw new exception(__METHOD__ .": unknown error (bad data in array?)");
 				}
 			}

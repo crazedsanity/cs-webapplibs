@@ -16,7 +16,6 @@ class TestOfCSPHPDB extends testDbAbstract {
 	
 	//-------------------------------------------------------------------------
 	public function test_basics() {
-		
 		$this->assertTrue(is_object($this->dbObj), "No database objects to test");
 		
 		$type = 'pgsql';

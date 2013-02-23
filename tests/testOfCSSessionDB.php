@@ -26,10 +26,10 @@ class testOfCSSessionDB extends testDbAbstract {
 		#$this->assertTrue(defined('SESSION_DB_PASSWORD'), 'Missing password for SessionDB');
 //		$this->assertTrue(is_object($this->dbObj));
 //		
-//		$sessDB = new sessionTester($this->dbObj);
+		$sessDB = new sessionTester($this->dbObj);
 //		
-//		$mySid = '__TEST_SESSDB__';
-//		$sessDB->doInsert($mySid, array());
+		$mySid = '__TEST_SESSDB__';
+		$sessDB->doInsert($mySid, array());
 	}
 }
 
@@ -48,8 +48,8 @@ class sessionTester extends cs_sessionDB {
 		$this->db = $db;
 	}
 	
-	public function connectDb() {
-		return(parent::connectDb());
+	public function connectDb($dsn=null,$user=null,$password=null) {
+		return(parent::connectDb($dsn,$user,$password));
 	}
 	
 	

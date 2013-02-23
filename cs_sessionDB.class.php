@@ -177,9 +177,12 @@ class cs_sessionDB extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	protected function doInsert($sid, $data) {
+		if(is_array($data)) {
+			$data = serialize($data);
+		}
 		$sql = 'INSERT INTO '. self::tableName .' (session_id, session_data) VALUES (:sid, :data)';
 		
-		$this->db->run_insert($sql, array('sid'=>$sid, 'data'=>$data));
+		$this->db->run_query($sql, array('sid'=>$sid, 'data'=>$data));
 		
 		return($sid);
 	}//end doInsert()

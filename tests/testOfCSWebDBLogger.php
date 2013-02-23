@@ -72,8 +72,6 @@ class testOfCSWebDbLogger extends testDbAbstract {
 		$numRows = $log->db->run_query($sql, $params);
 		$data = $log->db->farray_fieldnames();
 		
-		$this->gfObj->debug_print($data,1);
-		
 		$this->assertEqual($numRows, count($data), "Invalid number of rows returned: expected(". count($data) ."), got (". $numRows .")");
 		
 

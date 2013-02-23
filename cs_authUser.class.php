@@ -18,14 +18,14 @@ class cs_authUser extends cs_session {
 	protected $isAuthenticated=NULL;
 	
 	//-------------------------------------------------------------------------
-	public function __construct(cs_phpDB $db) {
+	public function __construct(cs_DB $db) {
 
 		if(isset($db) && is_object($db)) {
 			//make sure the session has been created.
 			parent::__construct(self::COOKIE_NAME);
 
 
-			$this->dbObj = new cs_phpDB($db->get_dsn(), $db->get_username(), $db->get_password());
+			$this->dbObj = new cs_DB($db->get_dsn(), $db->get_username(), $db->get_password());
 
 			$this->gfObj = new cs_globalFunctions;
 			$this->logger = new cs_webdblogger($this->dbObj, "Auth", false);
