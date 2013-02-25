@@ -227,23 +227,6 @@ class cs_sessionDB extends cs_session {
 	
 	
 	//-------------------------------------------------------------------------
-	public function updateIp($ip) {
-		$sql = 'UPDATE '. self::tableName .' SET ip=:ip WHERE sid=:sid';
-		
-		$params = array(
-			'ip'	=> $ip,
-			'sid'	=> $sid
-		);
-		
-		$retval = $this->db->run_query($sql, $params);
-		
-		return($retval);
-	}//end updateIp()
-	//-------------------------------------------------------------------------
-	
-	
-	
-	//-------------------------------------------------------------------------
 	public function sessdb_write($sid, $data) {
 		if(is_string($sid) && strlen($sid) >= 20) {
 			$type = "insert";
@@ -384,4 +367,3 @@ class cs_sessionDB extends cs_session {
 
 
 }//end cs_session{}
-?>
