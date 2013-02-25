@@ -8,11 +8,6 @@
  * using their unix names ("cs-phpxml" and "cs-arrayToPath").  The cs-phpxml project 
  * requires cs-arrayToPath for parsing XML paths.
  * 
- * SVN INFORMATION:::
- * SVN Signature:::::::: $Id$
- * Last Committted Date: $Date$
- * Last Committed Path:: $HeadURL$
- * 
  */
 
 

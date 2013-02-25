@@ -1,13 +1,6 @@
 <?php
 /*
  * Created on June 24, 2010
- *
- *  SVN INFORMATION:::
- * -------------------
- * Last Author::::::::: $Author$ 
- * Current Revision:::: $Revision$ 
- * Repository Location: $HeadURL$ 
- * Last Updated:::::::: $Date$
  */
 
 abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
