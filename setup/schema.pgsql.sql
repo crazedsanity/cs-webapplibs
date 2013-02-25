@@ -1,12 +1,3 @@
---
--- SVN INFORMATION:::
--- ---------------
---	SVN Signature::::::: $Id$
---	Last Author::::::::: $Author$
---	Current Revision:::: $Revision$
---	Repository Location: $HeadURL$
---	Last Updated:::::::: $Date$
---
 
 --
 -- The user status table is a list of statuses indicating what state a user's
@@ -131,7 +122,7 @@ CREATE TABLE cswal_version_table (
 
 CREATE TABLE cswal_auth_token_table (
 	auth_token_id serial NOT NULL PRIMARY KEY,
-	uid integer NOT NULL REFERENCES cs_authentication_table(uid),
+	uid integer NOT NULL,-- REFERENCES cs_authentication_table(uid),
 	checksum text NOT NULL,
 	token text NOT NULL,
 	max_uses integer DEFAULT NULL,

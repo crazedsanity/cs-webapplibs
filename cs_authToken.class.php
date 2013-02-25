@@ -10,9 +10,6 @@ class cs_authToken extends cs_webapplibsAbstract {
 	/** Database object. */
 	private $db;
 	
-	/** Object that helps deal with strings. */
-	protected $gfObj;
-	
 	/** Name of the table */
 	private $table = 'cswal_auth_token_table';
 	
@@ -28,9 +25,10 @@ class cs_authToken extends cs_webapplibsAbstract {
 		
 		if(is_object($db)) {
 			parent::__construct(true);
+			$this->db = $db;
 			
-			$upg = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml');
-			$upg->check_versions(true);
+			#$upg = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml');
+			#$upg->check_versions(true);
 		}
 		else {
 			cs_debug_backtrace(1);
@@ -91,9 +89,11 @@ class cs_authToken extends cs_webapplibsAbstract {
 			$insertData['max_uses'] = $maxUses;
 		}
 		try {
+			$fields = "";
+			$values = "";
 			foreach($insertData as $k=>$v) {
-				$fields = $gfObj->create_list($fields, $k);
-				$values = $gfObj->create_list($values, ':'. $v);
+				$fields = $this->gfObj->create_list($fields, $k);
+				$values = $this->gfObj->create_list($values, ':'. $k);
 			}
 			$sql = "INSERT INTO cswal_auth_token_table (". $fields .") VALUES (". $values .")";
 
@@ -110,6 +110,9 @@ class cs_authToken extends cs_webapplibsAbstract {
 			);
 		}
 		catch(exception $e) {
+			$this->gfObj->debug_print(__METHOD__ .": SQL::: ". $sql,1);
+			$this->gfObj->debug_print($insertData,1);
+			cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": failed to create token::: ". $e->getMessage());
 		}
 		
@@ -131,7 +134,9 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 */
 	protected function update_token_uses($tokenId) {
 		try {
-			$updateRes = $this->_generic_update($tokenId, array('total_uses'=>"total_uses + 1"));
+			#$updateRes = $this->_generic_update($tokenId, array('total_uses'=>"total_uses + 1"));
+			$sql = 'UPDATE '. $this->table .' SET total_uses=total_uses + 1 WHERE auth_token_id=:id';
+			$updateRes = $this->db->run_update($sql, array('id'=>$tokenId));
 		}
 		catch(exception $e) {
 			throw new exception(__METHOD__ .": failed to update usage count::: ". $e->getMessage());
@@ -263,7 +268,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 				$numrows = $this->db->run_query($sql, array('tokenId'=>$tokenId));
 
 				if($numrows == 1) {
-					$data = $this->db->get_single_record();
+					$tokenData = $this->db->get_single_record();
 				}
 				elseif($numrows < 1) {
 					$tokenData = false;
@@ -296,12 +301,15 @@ class cs_authToken extends cs_webapplibsAbstract {
 		
 		$destroyedTokens = 0;
 		try {
-			$data = $this->db->run_query($sql, 'auth_token_id');
+			$numrows = $this->db->run_query($sql, array());
 			
-			if(is_array($data)) {
-				foreach($data as $tokenId => $tokenData) {
-					//TODO: add logging here?
-					$destroyedTokens += $this->destroy_token($tokenId);
+			if($numrows > 0) {
+				$data = $this->db->farray_fieldnames('auth_token_id');
+				if(is_array($data)) {
+					foreach($data as $tokenId => $tokenData) {
+						//TODO: add logging here?
+						$destroyedTokens += $this->destroy_token($tokenId);
+					}
 				}
 			}
 		}
@@ -318,8 +326,9 @@ class cs_authToken extends cs_webapplibsAbstract {
 	//=========================================================================
 	private function _generic_update($tokenId, $updateParams) {
 		try {
+			$updateString = "";
 			foreach($updateParams as $k=>$v) {
-				$updateString = $this->gfObj->create_list($updateString, $k .'=:'. $v);
+				$updateString = $this->gfObj->create_list($updateString, $k .'=:'. $k);
 			}
 			$updateParams['tokenId'] = $tokenId;
 			$sql = "UPDATE ". $this->table ." SET ". $updateString .", last_updated=NOW() " .

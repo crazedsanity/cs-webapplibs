@@ -87,7 +87,7 @@ class TestOfCSPHPDB extends testDbAbstract {
 					
 					$numRows = $this->dbObj->run_query("SELECT * FROM test");
 					$data = $this->dbObj->farray_nvp('id', 'data');
-					$this->assertTrue(is_array($data), "Did not retrieve array of information from database... (". $data .")");
+					$this->assertTrue(is_array($data), "Did not retrieve array of information from database... (". $this->gfObj->debug_var_dump($data,0) .")");
 					$this->assertEqual(count($data), count($testData), "Number of records in database (". count($data) .") do not match what is expected (". count($testData) .")");
 					
 					$testData[2] = "test3";
