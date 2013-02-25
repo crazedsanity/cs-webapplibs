@@ -1,13 +1,6 @@
 <?php
 /*
  * Created on Aug 19, 2009
- *
- *  SVN INFORMATION:::
- * -------------------
- * Last Author::::::::: $Author$ 
- * Current Revision:::: $Revision$ 
- * Repository Location: $HeadURL$ 
- * Last Updated:::::::: $Date$
  */
 
 
@@ -98,15 +91,19 @@ class cs_authToken extends cs_webapplibsAbstract {
 			$insertData['max_uses'] = $maxUses;
 		}
 		try {
-			$sql = "INSERT INTO cswal_auth_token_table ". 
-					$this->gfObj->string_from_array($insertData, 'insert', null, 'sql');
-			$tokenId = $this->db->run_insert($sql, $this->seq);
+			foreach($insertData as $k=>$v) {
+				$fields = $gfObj->create_list($fields, $k);
+				$values = $gfObj->create_list($values, ':'. $v);
+			}
+			$sql = "INSERT INTO cswal_auth_token_table (". $fields .") VALUES (". $values .")";
+
+			$tokenId = $this->db->run_insert($sql, $insertData, $this->seq);
 			
-			//now that we have the ID, let's create the real has string.
+			//now that we have the ID, let's create the real hash string.
 			$stringToHash .= microtime(true) ."__". rand(1000, 9999999);
 			$finalHash = $this->create_hash_string($tokenId, $uid, $checksum, $stringToHash);
 			
-			$this->_generic_update($tokenId, "token='". $finalHash ."'");
+			$this->_generic_update($tokenId, array('token'=>$finalHash));
 			$tokenInfo = array(
 				'id'	=> $tokenId,
 				'hash'	=> $finalHash
@@ -134,7 +131,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 */
 	protected function update_token_uses($tokenId) {
 		try {
-			$updateRes = $this->_generic_update($tokenId, "total_uses= total_uses+1");
+			$updateRes = $this->_generic_update($tokenId, array('total_uses'=>"total_uses + 1"));
 		}
 		catch(exception $e) {
 			throw new exception(__METHOD__ .": failed to update usage count::: ". $e->getMessage());
@@ -156,11 +153,11 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 */
 	protected function destroy_token($tokenId) {
 		try {
-			$sql = "DELETE FROM ". $this->table ." WHERE auth_token_id=". $tokenId;
-			$deleteRes = $this->db->run_update($sql);
+			$sql = "DELETE FROM ". $this->table ." WHERE auth_token_id=:tokenId";
+			$deleteRes = $this->db->run_update($sql, array('tokenId'=>$tokenId));
 		}
 		catch(exception $e) {
-			throw new exception(__METHOD__ .": failed to ");
+			throw new exception(__METHOD__ .": failed to destroy token::: ". $e->getMessage());
 		}
 		
 		return($deleteRes);
@@ -209,13 +206,13 @@ class cs_authToken extends cs_webapplibsAbstract {
 							$authTokenRes = null;
 							if($data['max_uses'] == $data['total_uses']) {
 								//reached max uses already... (maybe this should throw an exception?)
-								$methodCall = 'destroy_token';
+								$this->destroy_token($tokenId);
 							}
 							elseif($data['total_uses'] < $data['max_uses']) {
 								$authTokenRes = $data['uid'];
 								if(($data['total_uses'] +1) == $data['max_uses']) {
 									//this is the last use: just destroy it.
-									$methodCall = 'destroy_token';
+									$this->destroy_token($tokenId);
 								}
 							}
 							else {
@@ -224,8 +221,8 @@ class cs_authToken extends cs_webapplibsAbstract {
 						}
 						else {
 							$authTokenRes = $data['uid'];
+							$this->update_token_uses($tokenId);
 						}
-						$this->$methodCall($tokenId);
 					}
 				}
 				elseif($data === false) {
@@ -257,26 +254,25 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 */
 	protected function get_token_data($tokenId, $onlyNonExpired=true) {
 		try {
-			$sql = "SELECT * FROM ". $this->table ." WHERE auth_token_id=". $tokenId;
+			$sql = "SELECT * FROM ". $this->table ." WHERE auth_token_id=:tokenId";
 			if($onlyNonExpired === true) {
 				$sql .= " AND expiration::date >= CURRENT_DATE";
 			}
 			
-			$data = $this->db->run_query($sql, 'auth_token_id');
-			
-			if(is_array($data) && count($data) == 1) {
-				if(isset($data[$tokenId])) {
-					$tokenData = $data[$tokenId];
+			try {
+				$numrows = $this->db->run_query($sql, array('tokenId'=>$tokenId));
+
+				if($numrows == 1) {
+					$data = $this->db->get_single_record();
+				}
+				elseif($numrows < 1) {
+					$tokenData = false;
 				}
 				else {
-					throw new exception("missing sub-array for tokenId (". $tokenId .")");
+					throw new exception("too many records returned (". count($data) .")");
 				}
-			}
-			elseif($data === false) {
-				$tokenData = false;
-			}
-			else {
-				throw new exception("too many records returned (". count($data) .")");
+			} catch(Exception $e) {
+				throw new exception(__METHOD__ .": Failed to retrieve token data::: ". $e->getMessage());
 			}
 		}
 		catch(exception $e) {
@@ -320,11 +316,15 @@ class cs_authToken extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	private function _generic_update($tokenId, $updateString) {
+	private function _generic_update($tokenId, $updateParams) {
 		try {
+			foreach($updateParams as $k=>$v) {
+				$updateString = $this->gfObj->create_list($updateString, $k .'=:'. $v);
+			}
+			$updateParams['tokenId'] = $tokenId;
 			$sql = "UPDATE ". $this->table ." SET ". $updateString .", last_updated=NOW() " .
-					"WHERE auth_token_id=". $tokenId;
-			$updateRes = $this->db->run_update($sql);
+					"WHERE auth_token_id=:tokenId";
+			$updateRes = $this->db->run_update($sql, $updateParams);
 		}
 		catch(exception $e) {
 			throw new exception("failed to update token::: ". $e->getMessage());
