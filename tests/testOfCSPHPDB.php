@@ -196,6 +196,13 @@ class TestOfCSPHPDB extends testDbAbstract {
 		$this->assertTrue(preg_match('/^'. $dateString .'/', $data[0]['date']), "Date in database is invalid or malformed: (". $data[0]['date'] ." does not start with '". $dateString ."')");
 		
 		
+		// Test some... fancy SQL
+		$numRows = $this->dbObj->run_query('SELECT * FROM test WHERE (data=:x OR :x IS NULL)', array('x'=>'test5'));
+		$this->assertTrue(1, $numRows);
+		$data = $this->dbObj->farray_fieldnames();
+		$this->assertEqual(1, count($data));
+		
+		
 	}//end test_basics()
 	//-------------------------------------------------------------------------
 	
