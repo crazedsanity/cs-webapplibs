@@ -38,6 +38,9 @@ Look at the library-specific documentation:
  * [CS Web DB Logger](docs/README_webdblogger.md)
  * [CS Web DB Upgrade](docs/README_webdbupgrade.md)
  * [Lock File](docs/README_lockfile.md)
+ * [Auth Token](docs/README_authToken.md)
+ * [Session DB](docs/README_sessionDB.md)
+ * [Site Configuration](docs/README_siteConfig.md)
 
 ### NOTE REGARDING OTHER CLASSES
 
