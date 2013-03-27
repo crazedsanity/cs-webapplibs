@@ -1,15 +1,6 @@
 <?php
 
 
-/* SVN INFORMATION::::
- * --------------------------
- * $HeadURL: https://svn.crazedsanity.com/svn/main/sites/crazedsanity.com/trunk/lib/registerUser.class.php $
- * $Id: registerUser.class.php 1909 2011-07-20 00:50:57Z danf $
- * $LastChangedDate: 2011-07-19 19:50:57 -0500 (Tue, 19 Jul 2011) $
- * $LastChangedRevision: 1909 $
- * $LastChangedBy: danf $
- */
-
 class cs_registerUser {
 	
 	/** Database connection object */

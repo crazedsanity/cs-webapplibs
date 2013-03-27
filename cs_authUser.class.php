@@ -18,32 +18,32 @@ class cs_authUser extends cs_session {
 	protected $isAuthenticated=NULL;
 	
 	//-------------------------------------------------------------------------
-	public function __construct() {
+	public function __construct(cs_phpDB $db) {
 
-		//make sure the session has been created.
-		parent::__construct(self::COOKIE_NAME);
-		
-		$parameters = array(
-			'host'		=> $GLOBALS['DB_PG_HOST'],
-			'dbname'	=> $GLOBALS['DB_PG_DBNAME'],
-			'port'		=> $GLOBALS['DB_PG_PORT'],
-			'user'		=> $GLOBALS['DB_PG_DBUSER'],
-			'password'	=> $GLOBALS['DB_PG_DBPASS'],
-		);
-		
-		$this->dbObj = new cs_phpDB('pgsql');
-		$this->dbObj->connect($parameters);
-		
-		$this->gfObj = new cs_globalFunctions;
-		$this->logger = new cs_webdblogger($this->dbObj, "Auth", false);
-		if($this->is_authenticated()) {
-			$this->userInfo = $_SESSION['auth']['userInfo'];
-			if(!isset($_SESSION['uid']) || $_SESSION['uid'] != $_SESSION['auth']['userInfo']['uid']) {
-				$_SESSION['uid'] = $_SESSION['auth']['userInfo']['uid'];
+		if(isset($db) && is_object($db)) {
+			//make sure the session has been created.
+			parent::__construct(self::COOKIE_NAME);
+
+
+
+			$this->dbObj = $db;
+			$x = new cs_webdbupgrade(dirname(__FILE__) . '/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml', $db);
+			$x->check_versions(true);
+
+			$this->gfObj = new cs_globalFunctions;
+			$this->logger = new cs_webdblogger($this->dbObj, "Auth", false);
+			if($this->is_authenticated()) {
+				$this->userInfo = $_SESSION['auth']['userInfo'];
+				if(!isset($_SESSION['uid']) || $_SESSION['uid'] != $_SESSION['auth']['userInfo']['uid']) {
+					$_SESSION['uid'] = $_SESSION['auth']['userInfo']['uid'];
+				}
+			}
+			else {
+				unset($_SESSION['auth']['userInfo']);
 			}
 		}
 		else {
-			unset($_SESSION['auth']['userInfo']);
+			throw new exception(__METHOD__ .": required database handle not passed");
 		}
 	}//end __construct()
 	//-------------------------------------------------------------------------
@@ -76,9 +76,9 @@ class cs_authUser extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	public function check_sid() {
-		//check the database to see if the sid is valid.
-		$sql = "SELECT * FROM cswal_session_table WHERE session_id='". $this->sid ."'";
-		$numrows = $this->run_sql($sql);
+		//check the database to see if the sid is valid. (TODO: join to auth table and ensure they're still enabled)
+		$sql = "SELECT * FROM cswal_session_table WHERE session_id=:sid";
+		$numrows = $this->dbObj->run_query($sql, array('sid'=>$this->sid));
 		
 		$retval = false;
 		if($numrows == 1) {
@@ -117,27 +117,32 @@ class cs_authUser extends cs_session {
 			$retval = false;
 		}
 		else {
-			$sql = "SELECT * FROM cs_authentication_table WHERE username='". $username ."' " .
-				"AND passwd='". md5($username .'-'. $password) ."' AND user_status_id=1";
+			$sql = "SELECT * FROM cs_authentication_table WHERE username=:username " .
+				"AND passwd=:password AND user_status_id=1";
 			
-			$numrows = $this->run_sql($sql);
+			// NOTE::: in linux, do this:::: echo -e "username-password\c" | md5sum
+			// (without the "\c" or the switch, the sum won't match)
+			$sumThis = $username .'-'. $password;
+			$params = array(
+				'username'		=> $username,
+				'password'		=> md5($sumThis)
+			);
+			$numrows = $this->dbObj->run_query($sql, $params);
 			$retval = $numrows;
 			
 			if($numrows == 1) {
-				$data = $this->dbObj->farray_fieldnames();
+				$data = $this->dbObj->get_single_record();
 				$this->userInfo = $data;
 				$this->update_auth_data($this->userInfo);
 				$insertData = array(
-					'session_id'	=> $this->sid,
-					'date_created'	=> "NOW()",
-					'uid'			=> $data['uid'],
-					'ip'			=> $_SERVER['REMOTE_ADDR']
+					'sid'	=> $this->sid,
+					'uid'	=> $data['uid']
 				);
 				
-				$sql = 'INSERT INTO cswal_session_table '. $this->gfObj->string_from_array($insertData, 'insert', NULL, 'sql');
-				$retval = $this->run_sql($sql);
+				$sql = 'INSERT INTO cswal_session_table (session_id, date_created, uid, last_updated) '.
+					' VALUES (:sid, NOW(), :uid, NOW())';
+				$retval = $this->dbObj->run_query($sql, $insertData);
 				
-				$this->run_sql("UPDATE cs_authentication_table SET last_login='NOW()' WHERE uid=". $data['uid']);
 				$this->do_log("Successfully logged-in (". $retval .")");
 			}
 			
@@ -171,9 +176,9 @@ class cs_authUser extends cs_session {
 	//-------------------------------------------------------------------------
 	protected function get_user_data($uid) {
 		if(is_numeric($uid) && $uid > 0) {
-			$sql = "SELECT * FROM cs_authentication_table WHERE uid=". $uid 
+			$sql = "SELECT * FROM cs_authentication_table WHERE uid=:uid" 
 					." AND user_status_id=1";
-			$numrows = $this->run_sql($sql);
+			$numrows = $this->dbObj->run_query($sql, array('uid'=> $uid));
 			
 			if($numrows == 1) {
 				$retval = $this->dbObj->farray_fieldnames();
@@ -209,8 +214,8 @@ class cs_authUser extends cs_session {
 	public function logout_sid() {
 		$retval = false;
 		if($this->isAuthenticated) {
-			$sql = "DELETE FROM cswal_session_table WHERE session_id='". $this->sid ."'";
-			$retval = $this->run_sql($sql);
+			$sql = "DELETE FROM cswal_session_table WHERE session_id=:sid";
+			$retval = $this->dbObj->run_query($sql, array('sid'=>$this->sid));
 			$dropCookieRes = $this->drop_cookie(self::COOKIE_NAME);
 			$this->do_log("Logged-out user with result (". $retval ."), removed cookie (". self::COOKIE_NAME .") with result (". $dropCookieRes .")", 'debug');
 		}
@@ -221,31 +226,17 @@ class cs_authUser extends cs_session {
 	//-------------------------------------------------------------------------
 	
 	
-	//-------------------------------------------------------------------------
-	private function run_sql($sql) {
-		$numrows = $this->dbObj->exec($sql);
-		$dberror = $this->dbObj->errorMsg();
-		
-		if(strlen($dberror) || !is_numeric($numrows) || $numrows < 0) {
-			throw new exception(__METHOD__ .": invalid numrows (". $numrows .") or database error: ". $dberror ."<BR>\nSQL: ". $sql);
-		}
-		else {
-			$retval = $numrows;
-		}
-		
-		return($retval);
-	}//end run_sql()
-	//-------------------------------------------------------------------------
-	
-	
 	
 	//-------------------------------------------------------------------------
 	public function checkin() {
 		$retval = NULL;
 		if($this->is_authenticated()) {
-			$sql = "UPDATE cswal_session_table SET last_updated='NOW()', " .
-				"num_checkins=num_checkins+1 WHERE session_id='". $this->sid ."';";
-			$retval = $this->run_sql($sql);
+			$sql = "UPDATE cswal_session_table SET last_updated=NOW(), " .
+				"num_checkins=num_checkins+1 WHERE session_id=:sid;";
+			$params = array(
+				'sid'			=> $this->sid
+			);
+			$retval = $this->dbObj->run_query($sql, $params);
 		}
 		$this->logout_inactive_sessions();
 		
@@ -273,8 +264,8 @@ class cs_authUser extends cs_session {
 		if(defined('SESSION_MAX_IDLE')) {
 			$maxIdle = constant('SESSION_MAX_IDLE');
 		}
-		$sql = "DELETE FROM cswal_session_table WHERE last_updated  < (NOW() - interval '". $maxIdle ."')";
-		$numrows = $this->run_sql($sql);
+		$sql = "DELETE FROM cswal_session_table WHERE last_updated  < (NOW() - interval ':maxIdle')";
+		$numrows = $this->dbObj->run_query($sql, array($maxIdle));
 		
 		if($numrows < 0 || !is_numeric($numrows)) {
 			$details = __METHOD__ .": invalid numrows (". $numrows .")";

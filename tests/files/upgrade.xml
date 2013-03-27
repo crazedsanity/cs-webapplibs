@@ -19,20 +19,14 @@
 	to get skipped, or an exception to be thrown, potentially leaving the system 
 	in an unstable state.  Unstable is bad, m'kay?</system_note>
 	
-	<example_initialversion>0.1.0-BETA1</example_initialversion>
+	<initialversion>0.1.0</initialversion>
 	<matching>
-		<v0.4.0>
-			<target_version>0.4.1</target_version>
-			<script_name>upgradeTo0.4.1.php</script_name>
-			<class_name>upgrade_to_0_4_1</class_name>
-			<call_method>run_upgrade</call_method>
-		</v0.4.0>
-		<v0.6.0>
-			<target_version>0.6.1</target_version>
-			<script_name>upgradeTo0.6.1.php</script_name>
-			<class_name>upgrade_to_0_6_1</class_name>
-			<call_method>run_upgrade</call_method>
-		</v0.6.0>
+		<v0.1.0>
+			<target_version>1.0</target_version>
+			<script_name>upgrade-001.php</script_name>
+			<class_name>upgrade_001</class_name>
+			<call_method>do_upgrade</call_method>
+		</v0.1.0>
 	</matching>
 </upgrade>
 

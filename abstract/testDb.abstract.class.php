@@ -1,71 +1,145 @@
 <?php
 
-
+//TODO: make this work for more than just PostgreSQL.
 abstract class testDbAbstract extends UnitTestCase {
 	
-	protected $config = array();
-	protected $db;
-	private $templateDb;
-	private $templateConfig;
+	public $dbParams=array();
+	public $dbObj = null;
+	protected $lock = null;
 	
-	//-----------------------------------------------------------------------------
-	public function __construct($superUserName, $password, $hostname, $port) {
-		/*
-				'host'		=> $this->host,
-				'port'		=> $this->port,
-				'dbname'	=> $this->dbname,
-				'user'		=> $this->user,
-				'password'	=> $this->password
-		*/
-		$this->config = array(
-			'user'		=> $superUserName,
-			'password'	=> $password,
-			'host'		=> $hostname,
-			'port'		=> $port,
-			
-			//make sure the database name is unique and has (almost) no chance of clashing.
-			'dbname'	=> $this->set_dbname(__CLASS__)
-		);
-		$this->templateConfig = $this->config;
-		$this->templateConfig['dbname'] = 'template1';
-		$this->templateDb = new cs_phpdb('pgsql');
-		$this->templateDb->connect($this->templateConfig);
-
+	//-------------------------------------------------------------------------
+	public function __construct() {
 		$this->gfObj = new cs_globalFunctions;
-		
-		$this->db = new cs_phpdb('pgsql');
-		$this->create_db();
+		$this->lock = new cs_lockfile(constant('UNITTEST__LOCKFILE'));
 	}//end __construct()
-	//-----------------------------------------------------------------------------
+	//-------------------------------------------------------------------------
 	
 	
 	
-	//-----------------------------------------------------------------------------
-	private function set_dbname($prefix) {
-		return(strtolower(__CLASS__ .'_'. preg_replace('/\./', '', microtime(true))));
-	}//end set_dbname()
-	//-----------------------------------------------------------------------------
+	//-------------------------------------------------------------------------
+	public function skip() {
+		$this->skipUnless($this->check_lockfile(), "Lockfile missing (". $this->lock->get_lockfile() ."): create one BEFORE database-related tests occur.");
+		$this->skipUnless($this->check_requirements(), "Skipping tests for '". $this->getLabel() ."', database not configured");
+	}
+	//-------------------------------------------------------------------------
 	
 	
 	
-	//-----------------------------------------------------------------------------
-	protected function create_db() {
-		$sql = "CREATE DATABASE ". $this->config['dbname'];
-		$this->templateDb->exec($sql);
+	//-------------------------------------------------------------------------
+	public function check_lockfile() {
+		$retval = false;
 		
-		//now run the SQL file.
-		$this->db->connect($this->config);
-		$this->db->run_sql_file(dirname(__FILE__) .'/../tests/files/test_db.sql');
+		if($this->lock->is_lockfile_present()) {
+			$retval = true;
+		}
+		
+		return($retval);
+	}//end check_lockfile()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public function check_requirements() {
+		// TODO: make *sure* to stop if there's a lockfile from cs_webdbupgrade.
+		
+		$retval=false;
+		
+		
+		if($this->lock->is_lockfile_present()) {
+			$globalPrefix = 'UNITTEST__';
+
+			$requirements = array(
+				'dsn'		=> 'DB_DSN',
+				'user'		=> 'DB_USERNAME',
+				'pass'		=> 'DB_PASSWORD'
+			);
+
+			foreach($requirements as $index => $name) {
+				$myIndex = $globalPrefix . $name;
+				if(defined($myIndex)) {
+					$this->dbParams[$index] = constant($myIndex);
+				}
+				else {
+					#$this->gfObj->debug_print(__METHOD__ .": missing required index (". $myIndex .")",1);
+				}
+			}
+			
+			
+			if(count($this->dbParams) == count($requirements)) {
+				$retval = true;
+			}
+		}
+		else {
+			$this->gfObj->debug_print(__METHOD__ .": lockfile missing (". $this->lock->get_lockfile() .") while attempting to run test '". $this->getLabel() ."'");
+		}
+		
+		
+		#$this->gfObj->debug_print($this->dbParams,1);
+		#$this->gfObj->debug_print("RESULT: (". (count($this->dbParams) == count($requirements)) .")", 1);
+		
+		return($retval);
+	}//end check_requirements()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public function setUp() {
+		$this->internal_connect_db();
+	}//end setUp()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public function tearDown() {
+		
+	}//end tearDown()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public function internal_connect_db() {
+		if(!is_object($this->dbObj)) {
+			$this->dbObj = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
+		}
+		$this->gfObj = new cs_globalFunctions();
+	}//end internal_connect_db()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-----------------------------------------------------------------------------
+	public function reset_db($schemaFile=null) {
+		$retval = false;
+		
+		if(!is_null($schemaFile) && !file_exists($schemaFile)) {
+			throw new exception(__METHOD__ .": schema file (". $schemaFile .") does not exist");
+		}
+		
+		try {
+			$this->internal_connect_db();
+			$this->dbObj->beginTrans();
+
+			$this->dbObj->run_query("DROP SCHEMA public CASCADE");
+			$this->dbObj->run_query("CREATE SCHEMA public AUTHORIZATION " . $this->dbParams['user']);
+
+			if (!is_null($schemaFile)) {
+				$this->dbObj->run_sql_file($schemaFile);
+			}
+
+			$this->dbObj->commitTrans();
+
+			$retval = true;
+		} catch (Exception $e) {
+			$this->dbObj->rollbackTrans();
+			throw $e;
+		}
+		return ($retval);
+		
 	}//end create_db()
-	//-----------------------------------------------------------------------------
-	
-	
-	
-	//-----------------------------------------------------------------------------
-	protected function destroy_db() {
-		$this->db->close();
-		$this->templateDb->exec("DROP DATABASE ". $this->config['dbname']);
-	}//end destroy_db()
 	//-----------------------------------------------------------------------------
 	
 	
@@ -73,6 +147,7 @@ abstract class testDbAbstract extends UnitTestCase {
 	//-----------------------------------------------------------------------------
 	public function __destruct() {
 		#$this->destroy_db();
+		$this->tearDown();
 	}//end __destruct()
 	//-----------------------------------------------------------------------------
 
