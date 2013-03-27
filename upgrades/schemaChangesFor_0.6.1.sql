@@ -6,11 +6,12 @@ DROP TABLE IF EXISTS cswal_session_table;
 
 
 CREATE TABLE cswal_session_table (
-	session_id varchar(40) NOT NULL UNIQUE PRIMARY KEY,
-	uid integer REFERENCES cs_authentication_table(uid),
-	date_created timestamp NOT NULL DEFAULT NOW(),
-	last_updated timestamp NOT NULL DEFAULT NOW(),
-	session_data text
+    session_id varchar(40) NOT NULL UNIQUE PRIMARY KEY,
+    uid integer REFERENCES cs_authentication_table(uid),
+    date_created timestamp NOT NULL DEFAULT NOW(),
+    last_updated timestamp NOT NULL DEFAULT NOW(),
+    num_checkins integer NOT NULL DEFAULT 0,
+    session_data text
 );
 
 ALTER TABLE ONLY cswal_class_table
