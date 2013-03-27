@@ -331,7 +331,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 					}
 				}
 			}
-			$this->matchingDatad = $tConfig;
+			$this->matchingData = $tConfig;
 		}
 		else {
 			$this->error_handler(__METHOD__ .": failed to retrieve 'UPGRADE' section; " .

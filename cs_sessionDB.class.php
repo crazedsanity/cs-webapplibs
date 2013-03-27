@@ -20,7 +20,12 @@ class cs_sessionDB extends cs_session {
 	 * 								used as the session name.
 	 */
 	public function __construct() {
+			exit;
 		
+		$x = new cs_webupgrade();
+		$x->check_versions();
+		exit;
+
 		$this->db = $this->connectDb();
 		
 		//create a logger (this will automatically cause any upgrades to happen).

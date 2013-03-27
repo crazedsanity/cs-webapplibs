@@ -25,7 +25,10 @@ class cs_authUser extends cs_session {
 			parent::__construct(self::COOKIE_NAME);
 
 
+
 			$this->dbObj = $db;
+			$x = new cs_webdbupgrade(dirname(__FILE__) . '/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml', $db);
+			$x->check_versions(true);
 
 			$this->gfObj = new cs_globalFunctions;
 			$this->logger = new cs_webdblogger($this->dbObj, "Auth", false);

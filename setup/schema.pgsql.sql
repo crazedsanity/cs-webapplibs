@@ -147,3 +147,49 @@ CREATE TABLE cswal_session_table (
 	session_data text
 );
 
+
+
+
+--
+-- Group table
+-- Enumerates a list of permissions for a specific group: e.g. for "blog", this could list "create", "edit", and "delete" (among others).
+--
+CREATE TABLE cswal_group_table (
+	group_id serial NOT NULL PRIMARY KEY,
+	group_name text NOT NULL UNIQUE,
+	group_admin integer NOT NULL REFERENCES cs_authentication_table(uid),
+	created TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+--
+-- User + Group table
+-- Assigns a user to one or more groups.
+-- NOTE::: the "user_id" table should be updated to match your database schema.
+--
+CREATE TABLE cswal_user_group_table (
+	user_group_id serial NOT NULL PRIMARY KEY,
+	user_id integer NOT NULL REFERENCES cs_authentication_table(uid),
+	group_id integer NOT NULL REFERENCES cswal_group_table(group_id),
+	created TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+
+--
+-- Permission table
+-- Contains paths along with the owner, default group, & user/group/other 
+--	permissions (similar to *nix filesystem permissions). The permissions for 
+--	user/group/other are stored as bitwise CRUD (Create, Read, Update, Delete)
+--	values; C=1, R=2, U=4, D=8.
+--
+CREATE TABLE cswal_permission_table (
+	permission_id serial NOT NULL PRIMARY KEY,
+	path text NOT NULL,
+	user_id integer NOT NULL REFERENCES cs_authentication_table(uid),
+	group_id integer NOT NULL REFERENCES cswal_group_table(group_id),
+	perm_user integer DEFAULT NULL,
+	perm_group integer DEFAULT NULL,
+	perm_other integer DEFAULT NULL,
+	created TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+

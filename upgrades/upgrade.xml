@@ -27,6 +27,12 @@
 			<class_name>upgrade_to_0_4_1</class_name>
 			<call_method>run_upgrade</call_method>
 		</v0.4.0>
+		<v0.6.0>
+			<target_version>0.6.1</target_version>
+			<script_name>upgradeTo0.6.1.php</script_name>
+			<class_name>upgrade_to_0_6_1</class_name>
+			<call_method>run_upgrade</call_method>
+		</v0.6.0>
 	</matching>
 </upgrade>
 

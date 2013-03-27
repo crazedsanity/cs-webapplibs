@@ -241,6 +241,7 @@ cs_debug_backtrace(1);
 			$this->numRows = $this->sth->rowCount();
 		}
 		catch(PDOException $px) {
+cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": ". $px->getMessage());
 		}
 		return($this->numRows);

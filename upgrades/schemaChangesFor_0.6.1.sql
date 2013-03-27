@@ -16,5 +16,5 @@ CREATE TABLE cswal_session_table (
 ALTER TABLE ONLY cswal_class_table
     ADD CONSTRAINT cswal_class_table_class_name_key UNIQUE (class_name);
 
-ALTER TABLE ONLY cswal_category_table_table
+ALTER TABLE ONLY cswal_category_table
     ADD CONSTRAINT cswal_category_table_category_name_key UNIQUE (category_name);
