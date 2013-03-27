@@ -43,6 +43,14 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		}
 	}
 	
+	public function is_connected() {
+		$retval = false;
+		if(isset($this->dbh) && count($this->dbh->getAvailableDrivers())) {
+			$retval = true;
+		}
+		return($retval);
+	}
+	
 	public function reconnect($dsn, $username, $password, array $driverOptions=null, $writeCommandsToFile=null) {
 		$this->dbh = null;
 		$this->sth = null;
