@@ -204,12 +204,13 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 		
 		$filterStr = '';
 		$params = array();
+		$filterStr = "";
 		if(is_array($filter) && count($filter) > 0) {
-			$filterStr = ' WHERE ';
 			foreach($filter as $field=>$value) {
-				$filterStr .= $field .'=:'. $field;
+				$filterStr = $this->gfObj->create_list($filterStr, $field .'=:'. $field, ' AND ');
 				$params[$field] = $value;
 			}
+			$filterStr = ' WHERE ' . $filterStr;
 		}
 		
 		$sql = 'SELECT * FROM '. $this->tableName . $filterStr . $orderByStr . $limitOffsetStr;
@@ -246,11 +247,11 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 			$required = '';
 			$params = array();
 			foreach($searchFields as $f=>$v) {
-				$filterStr = $this->gfObj->create_list($filterStr, 'lower('. $f .') LIKE :'. $f);
+				$filterStr = $this->gfObj->create_list($filterStr, '(lower('. $f .') LIKE :'. $f .' OR :'. $f .' IS NULL)', ' AND ');
 				$params[$f] = '%'. $v .'%';
 			}
 			foreach($requiredFields as $f=>$v) {
-				$required = $this->gfObj->create_list($required, $f .'=:'. $f);
+				$required = $this->gfObj->create_list($required, $f .'=:'. $f, ', ');
 				$params[$f] = $v;
 			}
 			
@@ -298,25 +299,25 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 			$params = array();
 			
 			foreach($updates as $f=>$v) {
-				$updateString = $this->gfObj->create_list($updateString, $f .'=:'. $f);
+				$updateString = $this->gfObj->create_list($updateString, $f .'=:'. $f, ', ');
 				$params[$f] = $v;
 			}
 			
 			if(is_array($recId)) {
 				foreach($recId as $f=>$v) {
-					$whereClause = $this->gfObj->create_list($whereClause, $f .'=:'. $f);
+					$whereClause = $this->gfObj->create_list($whereClause, $f .'=:'. $f, ' AND ');
 					$params[$f] = $v;
 				}
 			}
 			else {
 				$whereClause = $this->pkeyField .'=:id';
-				$params['id'] = $this->pkeyField;
+				$params['id'] = $recId;
 			}
 			$sql = 'UPDATE '. $this->tableName .' SET '
 				. $updateString 
 				.' WHERE '. $whereClause;
 			try {
-				$retval = $this->dbObj->run_update($sql, true);
+				$retval = $this->dbObj->run_update($sql, $params);
 			}
 			catch(Exception $e) {
 				throw new exception(__METHOD__ .":: failed to update record (". $recId ."), DETAILS::: ". $e->getMessage());
