@@ -132,6 +132,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		
 		$retval = false;
 		if($this->dbConnected !== true) {
+			$prefix = preg_replace('/-/', '_', $this->get_project());
 
 			$retval = true;
 			$dsnVar = $prefix .'-DB_CONNECT_DSN';
@@ -147,7 +148,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			elseif(defined($dsnVar) && defined($userVar) && defined($passVar)) {
 
 				//NOTE::: this is project-specific... so the DSN when called from project "foo-bar" would be "foo_bar-DB_CONNECT_DSN"
-				$prefix = preg_replace('/-/', '_', $this->get_project());
 				$this->dbParams = array(
 					'dsn'	=> constant($dsnVar),
 					'user'	=> constant($userVar),
@@ -161,8 +161,24 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 					throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
 				}
 			}
+			elseif(defined(strtoupper($dsnVar)) && defined(strtoupper($userVar)) && defined(strtoupper($passVar))) {
+
+				//NOTE::: this is project-specific... so the DSN when called from project "foo-bar" would be "foo_bar-DB_CONNECT_DSN"
+				$this->dbParams = array(
+					'dsn'	=> constant(strtoupper($dsnVar)),
+					'user'	=> constant(strtoupper($userVar)),
+					'pass'	=> constant(strtoupper($passVar))
+				);
+
+				try {
+					$this->db = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
+				}
+				catch(exception $e) {
+					throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
+				}
+			}
 			else {
-				throw new exception(__METHOD__ .": no database object passed, and no constants defined to automatically connect");
+				throw new exception(__METHOD__ .": no database object passed, and no constants defined to automatically connect (". $dsnVar .", ". $userVar .", ". $passVar .")");
 			}
 
 			try {
