@@ -118,7 +118,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		$this->set_version_file_location($versionFileLocation);
 		
 		$this->projectName = $this->get_project();
-$this->debug("versionFileLocation=(". $this->versionFileLocation ."), projectName=(". $this->projectName .")");
 		
 
 		$this->check_internal_upgrades();
@@ -133,12 +132,8 @@ $this->debug("versionFileLocation=(". $this->versionFileLocation ."), projectNam
 		
 		$retval = false;
 		if($this->dbConnected !== true) {
-				cs_webdbupgrade::$cache['__current__'] = $this->projectName;
-#1);
-$this->debug("<font color='red'><b><u>CONNECTING DATABASE</u></b></font> (connected=". $this->dbConnected .")... cache::: ". $this->gfObj->debug_print(cs_webdbupgrade::$cache,1));
 
 			$retval = true;
-#cs_debug_backtrace(1);
 			$dsnVar = $prefix .'-DB_CONNECT_DSN';
 			$userVar = $prefix .'-DB_CONNECT_USER';
 			$passVar = $prefix .'-DB_CONNECT_PASSWORD';
@@ -178,7 +173,6 @@ $this->debug("<font color='red'><b><u>CONNECTING DATABASE</u></b></font> (connec
 				throw new exception(__METHOD__ .": failed to create logger::: ". $e->getMessage());
 			}
 			$this->dbConnected = true;
-$this->debug("Setting connected=true");
 		}
 		return($retval);
 	}//end connect_db()
@@ -274,11 +268,9 @@ $this->debug("Setting connected=true");
 	 */
 	public function check_versions($performUpgrade=TRUE) {
 		if(isset(cs_webdbupgrade::$cache[$this->projectName])) {
-$this->debug("skipping upgrades for (". $this->projectName .")... CACHE::: ". $this->gfObj->debug_print(cs_webdbupgrade::$cache,0));
 			$retval = false;
 		}
 		else {
-$this->debug("performing upgrade for (". $this->projectName .")");
 			$this->connect_db();
 			$this->create_lockfile();
 			if($performUpgrade !== true) {
@@ -297,7 +289,6 @@ $this->debug("performing upgrade for (". $this->projectName .")");
 				//okay, all files present: check the version in the VERSION file.
 				$this->read_version_file();
 				$dbVersion = $this->get_database_version();
-$this->debug("no upgrade in progress");
 
 				if(!is_array($dbVersion)) {
 					$this->load_initial_version();
@@ -307,31 +298,14 @@ $this->debug("no upgrade in progress");
 				$retval = FALSE;
 				
 				$conflict = $this->check_for_version_conflict();
-
-//				if($conflict == true) {
-//					$performUpgrade = false;
-//				}
-$this->debug("considering upgrade... performUpgrade=(". $performUpgrade ."), conflict=(". $conflict ."), versionsDiffer=(". $versionsDiffer ."), dbVersion=(". $this->databaseVersion ."), fileVersion=(". $this->versionFileVersion .")");
 				
 				if($performUpgrade && $conflict != null && $versionsDiffer) {
-$this->debug("calling perform_upgrade... ");
 					$retval = $this->perform_upgrade();
-$this->debug("finished, retval=(". $retval .")");
 				}
-
-//				if($versionsDiffer == TRUE && $performUpgrade === TRUE) {
-//					//reset the return value, so it'll default to failure until we say otherwise.
-//					$retval = NULL;
-//
-//					//Perform the upgrade!
-//					$this->perform_upgrade();
-//				}
-$this->debug("finished upgrade ", 1);
 			}
 			
 			if($performUpgrade === true) {
 				// put this into cache so we don't try doing it again.
-	$this->debug("<font color='red'><b>updating</b></font> cache for project=(". $this->projectName ."), internal=(". $this->internalProjectName .")");
 				cs_webdbupgrade::$cache[$this->projectName] = array(
 					'versionFileVersion'	=> $this->versionFileVersion,
 					'databaseVersion'		=> $this->databaseVersion
@@ -444,7 +418,6 @@ $this->debug("finished upgrade ", 1);
 			$this->error_handler(__METHOD__ .": upgrade already in progress...????");
 		}
 		else {
-$this->debug("<h1>upgrading</h1>");
 			$lockConfig = $this->upgrade_in_progress(TRUE);
 			$this->fsObj->cd("/");
 			
@@ -468,7 +441,6 @@ $this->debug("<h1>upgrading</h1>");
 				}
 				
 				$upgradeList = $this->get_upgrade_list();
-$this->debug("UPGRADE LIST: ". $this->gfObj->debug_print($upgradeList,0));
 				try {
 					$i=0;
 					$this->do_log(__METHOD__ .": starting to run through the upgrade list, starting at (". $this->databaseVersion ."), " .
@@ -640,7 +612,6 @@ $this->debug("UPGRADE LIST: ". $this->gfObj->debug_print($upgradeList,0));
 			}
 		}
 		
-$this->debug("version conflict=(". $retval .") ");
 		return($retval);
 	}//end check_for_version_conflict()
 	//=========================================================================
@@ -1146,15 +1117,6 @@ $this->debug("version conflict=(". $retval .") ");
 		}
 	}//end do_log()
 	//=========================================================================
-	
-	
-	private function debug($msg) {
-$bt = debug_backtrace();
-$method = $bt[1]['class'] .'::'. $bt[1]['function'];
-$line = $bt[1]['line'];
-//$this->gfObj->debug_print(__METHOD__ .": CALLING METHOD=(". $method ."), line=(". $line .")",1);
-		$this->gfObj->debug_print(" [". cs_webdbupgrade::$cache['__calls__'] .", ". $line ."] -- [". $this->projectName ."] ". $method . ": ". $msg,1);
-	}
 	
 	
 }//end upgrade{}
