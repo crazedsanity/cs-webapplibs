@@ -1,20 +1,28 @@
 <?php
 
 class cs_sessionDB extends cs_session {
-
+	/** Database object */
 	protected $db;
 	
+	/** Database-logging object */
 	protected $logger = null;
 	
+	/** Category for the logger */
 	protected $logCategory = "DB Sessions";
 	
+	/** table name in database */
 	const tableName = 'cswal_session_table';
+	
+	/** Name of primary key column in database */
 	const tablePKey = 'session_id';
 	
+	/** static value to test if it's been initialized, to help with optimization */
 	static $initialized = false;
 	
+	/** Helps with file-based logging: will differentiate between separate page calls */
 	static $runDate;
 	
+	/** Filesystem Object for handling file-based logging */
 	protected $fsObj = null;
 	
 	//-------------------------------------------------------------------------
@@ -28,10 +36,8 @@ class cs_sessionDB extends cs_session {
 	public function __construct() {
 		
 		date_default_timezone_set('America/Chicago');
-		#cs_sessionDB::$runDate = DateTime::format('U.u');
 		cs_sessionDB::$runDate = microtime();
 		
-$this->flogger("starting, session.save_handler=(". ini_get('session.save_handler') .")");
 
 		$this->db = $this->connectDb();
 		
@@ -40,7 +46,6 @@ $this->flogger("starting, session.save_handler=(". ini_get('session.save_handler
 		
 		//create a logger (this will automatically cause any upgrades to happen).
 		$this->logger = new cs_webdblogger($this->db, 'Session DB', true);
-#error_reporting(E_ALL);
 		
 		$createSession = true;
 		if(self::$initialized == true) {
@@ -48,7 +53,6 @@ $this->flogger("starting, session.save_handler=(". ini_get('session.save_handler
 		}
 		
 		if(self::$initialized !== true) {
-$this->flogger("NOT INITIALIZED...(". self::$initialized ."), statically called value=(". cs_sessionDB::$initialized .")");
 			//now tell PHP to use this class's methods for saving the session.
 			$setRes = session_set_save_handler(
 				array($this, 'sessdb_open'),
@@ -61,7 +65,6 @@ $this->flogger("NOT INITIALIZED...(". self::$initialized ."), statically called 
 
 			if($setRes == TRUE) {
 				self::$initialized = true;
-$this->flogger("set 'initialized'... (". self::$initialized ."), statically called value=(". cs_sessionDB::$initialized .")");
 			}
 			else {
 				$gf = new cs_globalFunctions;
@@ -69,16 +72,13 @@ $this->flogger("set 'initialized'... (". self::$initialized ."), statically call
 				cs_debug_backtrace(1);
 				throw new exception(__METHOD__ .": failed to set session save handler, session_id=(". $id ."), result=(". strip_tags($gf->debug_var_dump($setRes,0)) .')');
 			}
-$this->flogger("result of setting save handler=(". $setRes .")");
 		}
 		
 		// the following prevents unexpected effects when using objects as save handlers
 		register_shutdown_function('session_write_close');
-$this->flogger(__METHOD__ .": createSession=(". $createSession .")");
 		
 		try {
 			parent::__construct($createSession);
-$this->flogger(__METHOD__ .": session_id=(". session_id() .")");
 		}
 		catch(Exception $e) {
 			$this->flogger($e->getMessage());
@@ -310,7 +310,6 @@ $this->flogger("started...");
 	
 	//-------------------------------------------------------------------------
 	public function updateUid($uid, $sid) {
-$this->flogger("started...");
 		$sql = 'UPDATE '. self::tableName .' SET uid=:uid WHERE session_id=:session_id';
 		
 		$params = array(
@@ -333,18 +332,12 @@ $this->flogger("started...");
 	
 	//-------------------------------------------------------------------------
 	public function sessdb_write($sid, $data) {
-$this->flogger("started...");
 		if(is_string($sid) && strlen($sid) >= 20) {
 			$type = "insert";
 			try {
 				if($this->is_valid_sid($sid)) {
-//					if(strlen($data)) {
-						$type = "update";
-						$res = $this->doUpdate($sid, $data);
-//					}
-//					else {
-//						$this->do_log(__METHOD__ .": refusing to write empty session (cowardly)");
-//					}
+					$type = "update";
+					$res = $this->doUpdate($sid, $data);
 				}
 				else {
 					$type = "insert";
@@ -368,7 +361,6 @@ $this->flogger("started...");
 	
 	//-------------------------------------------------------------------------
 	public function sessdb_destroy($sid) {
-$this->flogger("started...");
 		try {
 			$sql = "DELETE FROM ". self::tableName ." WHERE session_id=:session_id";
 			$params = array('session_id'=>$sid);
