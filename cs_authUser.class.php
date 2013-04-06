@@ -1,6 +1,6 @@
 <?php
 
-class cs_authUser extends cs_session {
+class cs_authUser extends cs_sessiondb {
 	
 	/** Database connection object */
 	protected $dbObj;
@@ -68,7 +68,8 @@ class cs_authUser extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	public function is_authenticated() {
-		return($this->check_sid());
+		$retval = $this->check_sid();
+		return($retval);
 	}//end is_authenticated()
 	//-------------------------------------------------------------------------
 	
@@ -76,34 +77,7 @@ class cs_authUser extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	public function check_sid() {
-		//check the database to see if the sid is valid. (TODO: join to auth table and ensure they're still enabled)
-		$sql = "SELECT * FROM cswal_session_table WHERE session_id=:sid";
-		$numrows = $this->dbObj->run_query($sql, array('sid'=>$this->sid));
-		
-		$retval = false;
-		if($numrows == 1) {
-			$retval = true;
-		}
-		$this->isAuthenticated = $retval;
-		
-		if($retval && !strlen($_SESSION['auth']['userInfo']['username'])) {
-			//something broke, and username isn't set.
-			if(is_numeric($_SESSION['auto']['userInfo']['uid']) && $_SESSION['auto']['userInfo']['uid'] > 0) {
-				$this->do_log("Username not set, pulling from the database...", 'error');
-				$this->update_auth_data($this->get_user_data($_SESSION['auto']['userInfo']['uid']));
-			}
-			else {
-				//something went wrong, log 'em out.
-				$this->do_log("Username not set, couldn't find UID in session, so logging them out...", 'error');
-				$this->logout_sid();
-				$retval = false;
-				$this->isAuthenticated = $retval;
-			}
-		}
-		#if($retval) {
-			$this->do_cookie();
-		#}
-		
+		$retval = parent::is_authenticated();
 		return($retval);
 	}//end check_sid()
 	//-------------------------------------------------------------------------
@@ -117,41 +91,61 @@ class cs_authUser extends cs_session {
 			$retval = false;
 		}
 		else {
-			$sql = "SELECT * FROM cs_authentication_table WHERE username=:username " .
-				"AND passwd=:password AND user_status_id=1";
-			
-			// NOTE::: in linux, do this:::: echo -e "username-password\c" | md5sum
-			// (without the "\c" or the switch, the sum won't match)
-			$sumThis = $username .'-'. $password;
-			$params = array(
-				'username'		=> $username,
-				'password'		=> md5($sumThis)
-			);
-			$numrows = $this->dbObj->run_query($sql, $params);
-			$retval = $numrows;
-			
-			if($numrows == 1) {
-				$data = $this->dbObj->get_single_record();
-				$this->userInfo = $data;
-				$this->update_auth_data($this->userInfo);
-				$insertData = array(
-					'sid'	=> $this->sid,
-					'uid'	=> $data['uid']
+			$numrows = -1;
+			try {
+				$sql = "SELECT uid, username, is_active, date_created, last_login, 
+					email, user_status_id FROM cs_authentication_table WHERE username=:username " .
+					"AND passwd=:password AND user_status_id=1";
+
+				// NOTE::: in linux, do this:::: echo -e "username-password\c" | md5sum
+				// (without the "\c" or the switch, the sum won't match)
+				$sumThis = $username .'-'. $password;
+				$params = array(
+					'username'		=> $username,
+					'password'		=> md5($sumThis)
 				);
-				
-				$sql = 'INSERT INTO cswal_session_table (session_id, date_created, uid, last_updated) '.
-					' VALUES (:sid, NOW(), :uid, NOW())';
-				$retval = $this->dbObj->run_query($sql, $insertData);
-				
-				$this->do_log("Successfully logged-in (". $retval .")");
+				$numrows = $this->dbObj->run_query($sql, $params);
+				$retval = $numrows;
 			}
-			
-			if($retval == 1) {
-				$this->do_cookie();
+			catch(Exception $e) {
+				$this->do_log(__METHOD__ .": Exception encountered::: ");
+				throw new exception(__METHOD__ .": DETAILS::: ". $e->getMessage());
 			}
-			$retval = $this->check_sid();
-			$this->do_log("Return value from check_sid() was (". $retval .")", 'debug');
+			try {
+				if($numrows == 1) {
+					$data = $this->dbObj->get_single_record();
+					$this->userInfo = $data;
+					$this->update_auth_data($this->userInfo);
+					
+					/*
+					 * NOTE::: this assumes that there's already a record in the 
+					 * session table... this would probably need to be revisited 
+					 * in the event that authentication is implemented without 
+					 * database storage for sessions.
+					 */
+					$updateRes = $this->updateUid($data['uid'], $this->sid);
+					if($updateRes == 0) {
+						$insertRes = $this->doInsert($this->sid, serialize($_SESSION), $this->uid);
+						$this->do_log(__METHOD__ .": inserted new session record, updateRes=(". $updateRes ."), insertRes=(". $insertRes .")", 'debug');
+					}
+
+					$this->do_log("Successfully logged-in (". $retval .")");
+				}
+				else {
+					$this->do_log("Authentication failure, username=(". $username .")");
+				}
+
+				if($retval == 1) {
+					$this->do_cookie();
+				}
+				$retval = $this->check_sid();
+				$this->do_log("Return value from check_sid() was (". $retval .")", 'debug');
+			}
+			catch(Exception $e) {
+				throw new exception(__METHOD__ .": DETAILS: ". $e->getMessage());
+			}
 		}
+
 		
 		return($retval);
 	}//end login()
@@ -176,8 +170,9 @@ class cs_authUser extends cs_session {
 	//-------------------------------------------------------------------------
 	protected function get_user_data($uid) {
 		if(is_numeric($uid) && $uid > 0) {
-			$sql = "SELECT * FROM cs_authentication_table WHERE uid=:uid" 
-					." AND user_status_id=1";
+			$sql = "SELECT uid, username, is_active, date_created, last_login, 
+				email, user_status_id FROM cs_authentication_table 
+				WHERE uid=:uid AND user_status_id=1";
 			$numrows = $this->dbObj->run_query($sql, array('uid'=> $uid));
 			
 			if($numrows == 1) {
@@ -205,6 +200,7 @@ class cs_authUser extends cs_session {
 	//-------------------------------------------------------------------------
 	protected function update_auth_data(array $data) {
 		$_SESSION['auth']['userInfo'] = $data;
+		$_SESSION['uid'] = $data['uid'];
 	}//end update_auth_data()
 	//-------------------------------------------------------------------------
 	
@@ -212,15 +208,9 @@ class cs_authUser extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	public function logout_sid() {
-		$retval = false;
-		if($this->isAuthenticated) {
-			$sql = "DELETE FROM cswal_session_table WHERE session_id=:sid";
-			$retval = $this->dbObj->run_query($sql, array('sid'=>$this->sid));
-			$dropCookieRes = $this->drop_cookie(self::COOKIE_NAME);
-			$this->do_log("Logged-out user with result (". $retval ."), removed cookie (". self::COOKIE_NAME .") with result (". $dropCookieRes .")", 'debug');
-		}
-		$this->check_sid(FALSE);
-		
+		$_SESSION = array();
+		#unset($_SESSION);
+		$retval = $this->doUpdate($this->sid, null, null);
 		return($retval);
 	}//end logout_sid()
 	//-------------------------------------------------------------------------
@@ -260,20 +250,8 @@ class cs_authUser extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	private function logout_inactive_sessions() {
-		$maxIdle = '3 days';
-		if(defined('SESSION_MAX_IDLE')) {
-			$maxIdle = constant('SESSION_MAX_IDLE');
-		}
-		$sql = "DELETE FROM cswal_session_table WHERE last_updated  < (NOW() - interval ':maxIdle')";
-		$numrows = $this->dbObj->run_query($sql, array($maxIdle));
-		
-		if($numrows < 0 || !is_numeric($numrows)) {
-			$details = __METHOD__ .": invalid numrows (". $numrows .")";
-			$this->do_log($details, 'exception in code');
-			throw new exception($details);
-		}
-		
-		return($numrows);
+		$retval = parent::sessdb_gc();
+		return($retval);
 	}//end logout_inactive_sessions()
 	//-------------------------------------------------------------------------
 }//end authUser{}
