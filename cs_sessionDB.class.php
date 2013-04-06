@@ -90,7 +90,6 @@ class cs_sessionDB extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	protected function connectDb($dsn=null,$user=null,$password=null) {
-$this->flogger("started...");
 		
 		if(is_null($dsn)) {
 			if(defined('SESSION_DB_DSN')) {
@@ -121,7 +120,6 @@ $this->flogger("started...");
 		
 		try {
 			$db = new cs_phpDB($dsn, $user, $pass);
-$this->flogger("Connected database");
 		}
 		catch(Exception $e) {
 			$this->exception_handler($e->getMessage());
@@ -138,7 +136,6 @@ $this->flogger("Connected database");
 	 * Determines if the appropriate table exists in the database.
 	 */
 	public function sessdb_table_exists() {
-$this->flogger("started...");
 		try {
 			$this->db->run_query("SELECT * FROM ". self::tableName .
 					" ORDER BY ". self::tablePKey ." LIMIT 1");
@@ -157,7 +154,6 @@ $this->flogger("started...");
 	
 	//-------------------------------------------------------------------------
 	protected function is_valid_sid($sid) {
-$this->flogger("started...");
 		$isValid = false;
 		if(strlen($sid) >= 20) {
 			try {
@@ -198,8 +194,6 @@ $this->flogger("started...");
 	 * Close the session (call the "gc" method)
 	 */
 	public function sessdb_close() {
-$this->flogger("started...");
-		#$this->sessdb_write(session_id(), serialize($_SESSION));
 		return($this->sessdb_gc(0));
 	}//end sessdb_close()
 	//-------------------------------------------------------------------------
@@ -219,11 +213,7 @@ $this->flogger("started...");
 			
 			if($numRows == 1) {
 				$data = $this->db->get_single_record();
-$this->flogger("Got a record... DATA::: ". $this->gfObj->debug_print($data,0));
 				$retval = $data['session_data'];
-			}
-			else {
-$this->flogger("no records found for sid=(". $sid .")");
 			}
 		}
 		catch(exception $e) {
@@ -231,7 +221,6 @@ $this->flogger("no records found for sid=(". $sid .")");
 
 			$this->exception_handler(__METHOD__ .": failed to read::: ". $e->getMessage());
 		}
-$this->flogger("done, retval=(". $retval .")");
 		return($retval);
 	}//end sessdb_read()
 	//-------------------------------------------------------------------------
@@ -240,7 +229,6 @@ $this->flogger("done, retval=(". $retval .")");
 	
 	//-------------------------------------------------------------------------
 	protected function doInsert($sid, $data, $uid=null) {
-$this->flogger("started...");
 		if(is_array($data)) {
 			$data = serialize($data);
 		}
@@ -274,7 +262,6 @@ $this->flogger("started...");
 	
 	//-------------------------------------------------------------------------
 	protected function doUpdate($sid, $data=null, $uid=null) {
-$this->flogger("started...");
 		$updateFields = array(
 			'session_data'	=> $data,
 			'session_id'	=> $sid
@@ -388,7 +375,6 @@ $this->flogger("started...");
 	 * TODO: make the usage of $maxLifetime make sense (or remove it)
 	 */
 	public function sessdb_gc($maxLifetime=null) {
-$this->flogger("started...");
 		$retval = -1;
 		$dateFormat = 'Y-m-d H:M:S';
 		$strftimeFormat = '%Y-%m-%d %H:%M:%S';
@@ -449,7 +435,6 @@ $this->flogger("started...");
 	
 	//-------------------------------------------------------------------------
 	protected function do_log($message, $type) {
-$this->flogger("started...");
 		
 		try {
 			//check if the logger object has been created.
@@ -472,7 +457,6 @@ $this->flogger("started...");
 	
 	//-------------------------------------------------------------------------
 	protected function exception_handler($message, $throwException=false) {
-$this->flogger($message);
 		try {
 			$message .= "\n\nBACKTRACE:::\n". cs_debug_backtrace(0);
 			$this->flogger($message);
@@ -531,7 +515,6 @@ $this->flogger($message);
 	
 	//-------------------------------------------------------------------------
 	public function is_authenticated() {
-$this->flogger("started...");
 		$retval = false;
 		$parentRes = false;
 		
