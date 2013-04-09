@@ -82,7 +82,12 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		$this->set_version_file_location(dirname(__FILE__) .'/VERSION');
 		$this->internalProjectName = $this->get_project();
 		
-				cs_webdbupgrade::$cache['__calls__'] += 1;
+		if(isset(cs_webdbupgrade::$cache['__calls__'])) {
+			cs_webdbupgrade::$cache['__calls__'] += 1;
+		}
+		else {
+			cs_webdbupgrade::$cache['__calls__'] = 1;
+		}
 		//Check for some required constants.
 		if(!defined('LIBDIR')) {
 			throw new exception(__METHOD__ .": required constant 'LIBDIR' not set");
