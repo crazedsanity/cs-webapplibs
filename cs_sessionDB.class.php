@@ -261,11 +261,13 @@ class cs_sessionDB extends cs_session {
 	
 	
 	//-------------------------------------------------------------------------
-	protected function doUpdate($sid, $data=null, $uid=null) {
+	protected function doUpdate($sid, $data, $uid=null) {
+		$retval = null;
 		$updateFields = array(
 			'session_data'	=> $data,
 			'session_id'	=> $sid
 		);
+		
 		if(!is_null($uid) && strlen($uid)) {
 			$updateFields['uid'] = $uid;
 		}
@@ -275,22 +277,46 @@ class cs_sessionDB extends cs_session {
 		}
 		
 		if(is_null($data)) {
+			// Avoids accidentally removing session data.
 			unset($updateFields['session_data']);
 		}
 		
-		$sql = 'UPDATE '. self::tableName .' SET'.
-			$this->create_sql_update_string($updateFields) .
+		$sql = 'UPDATE '. self::tableName .' SET '.
+			$this->create_sql_update_string($updateFields, array('session_id' => 'varchar(40)')) .
 			' WHERE session_id=:session_id';
 		
 		try {
 			$retval = $this->db->run_update($sql, $updateFields);
 		}
 		catch(Exception $e) {
-			$this->exception_handler($e->getMessage());
+			$gf = new cs_globalFunctions;
+			$this->exception_handler($e->getMessage() . " --- SQL::: ". $sql . " -- PARAMETERS::: ". strip_tags($gf->debug_print($updateFields,0)));
 		}
 		
 		return($retval);
 	}//end doUpdate()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public function logout($sid) {
+		$retval = -1;
+		$sql = "UPDATE ". self::tableName ." SET uid=NULL, session_data=NULL WHERE 
+				session_id=:session_id::varchar(40)";
+		
+		$updateFields = array('session_id' => $sid);
+		
+		try {
+			$retval = $this->db->run_update($sql, $updateFields);
+		}
+		catch(Exception $e) {
+			$gf = new cs_globalFunctions;
+			$this->exception_handler($e->getMessage());
+		}
+		
+		return($retval);
+	}//end logout()
 	//-------------------------------------------------------------------------
 	
 	
@@ -488,11 +514,11 @@ class cs_sessionDB extends cs_session {
 			$fullBt = debug_backtrace();
 			$bt = $fullBt[1];
 			
-			$method = $bt['method'];
+			@$method = $bt['method'];
 			$class = $bt['class'];
 			$file = $bt['file'];
 			if(!isset($bt['method'])) {
-				$method = $fullBt[0]['method'];
+				@$method = $fullBt[0]['method'];
 				$class = $fullBt[0]['class'];
 				$file = $fullBt[0]['file'];
 			}
@@ -535,12 +561,17 @@ class cs_sessionDB extends cs_session {
 	
 	
 	//-------------------------------------------------------------------------
-	public function create_sql_update_string(array $fields) {
+	public function create_sql_update_string(array $fields, array $castFields = null) {
 		$retval = "";
 		if(count($fields)) {
 			foreach($fields as $k=>$v) {
 				//$retval = $k .'=:'. $v;
-				$retval = $this->gfObj->create_list($retval, $k .'=:'. $k, ', ');
+				//handle casting to a certain type, e.g. :session_id::varchar(40)
+				$k2 = $k;
+				if(isset($castFields[$k])) {
+					$k2 = $k .'::'. $castFields[$k];
+				}
+				$retval = $this->gfObj->create_list($retval, $k .'=:'. $k2, ', ');
 			}
 			$retval = " ". $retval;
 		}

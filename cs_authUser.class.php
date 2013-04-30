@@ -210,7 +210,7 @@ class cs_authUser extends cs_sessiondb {
 	public function logout_sid() {
 		$_SESSION = array();
 		#unset($_SESSION);
-		$retval = $this->doUpdate($this->sid, null, null);
+		$retval = $this->logout($this->sid);
 		return($retval);
 	}//end logout_sid()
 	//-------------------------------------------------------------------------
