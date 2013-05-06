@@ -12,18 +12,9 @@ class cs_registerUser {
 	public $debug=array();
 	
 	//-------------------------------------------------------------------------
-	public function __construct() {
+	public function __construct(cs_phpDB $db) {
 		
-		$parameters = array(
-			'host'		=> $GLOBALS['DB_PG_HOST'],
-			'dbname'	=> $GLOBALS['DB_PG_DBNAME'],
-			'port'		=> $GLOBALS['DB_PG_PORT'],
-			'user'		=> $GLOBALS['DB_PG_DBUSER'],
-			'password'	=> $GLOBALS['DB_PG_DBPASS'],
-		);
-		
-		$this->dbObj = new cs_phpDB('pgsql');
-		$this->dbObj->connect($parameters);
+		$this->dbObj = $db;
 		
 		$this->logger = new cs_webdblogger($this->dbObj, 'Registration');
 		
@@ -32,38 +23,25 @@ class cs_registerUser {
 	//-------------------------------------------------------------------------
 	
 	
-	//-------------------------------------------------------------------------
-	private function run_sql($sql) {
-		$numrows = $this->dbObj->exec($sql);
-		$dberror = $this->dbObj->errorMsg();
-		
-		if(strlen($dberror) || !is_numeric($numrows) || $numrows < 0) {
-			$details = __METHOD__ .": invalid numrows (". $numrows .") or database error: ". $dberror ."<BR>\nSQL: ". $sql;
-			$this->logger->log_by_class($details, 'code exception');
-			throw new exception($details);
-		}
-		else {
-			$retval = $numrows;
-		}
-		
-		return($retval);
-	}//end run_sql()
-	//-------------------------------------------------------------------------
-	
-	
 	
 	//-------------------------------------------------------------------------
 	public function check_username_available($username) {
 		$retval = false;
-		$sql = "SELECT * FROM cs_authentication_table WHERE username='".
-			$this->gfObj->cleanString($username, 'sql') ."'";
+		$sql = "SELECT * FROM cs_authentication_table WHERE username=:username";
 		
-		$check = $this->run_sql($sql);
-		if($check == 0) {
-			$retval = true;
+		try {
+			$check = $this->dbObj->run_query($sql, array('username'=>$username));
+			if($check == 0) {
+				$retval = true;
+			}
+			$this->logger->log_by_class(__METHOD__ .": username=[". $username ."], result=(". 
+					$this->gfObj->interpret_bool($retval, array(0,1)) .")", 'precheck');
 		}
-		$this->logger->log_by_class(__METHOD__ .": username=[". $username ."], result=(". 
-				$this->gfObj->interpret_bool($retval, array(0,1)) .")", 'precheck');
+		catch(Exception $e) {
+			$details = __METHOD__ .": determine username availability, DETAILS::: ". $e->getMessage();
+			$this->logger->log_by_class($details, 'exception');
+			throw new exception($details);
+		}
 		return($retval);
 	}//end check_username_available()
 	//-------------------------------------------------------------------------
@@ -174,13 +152,11 @@ class cs_registerUser {
 							'passwd'	=> md5($username .'-'. $password),
 							'email'		=> $email
 						);
-						$insertSql = "INSERT INTO cs_authentication_table " 
-								. $this->gfObj->string_from_array($insertData, 'insert');
+						$insertSql = "INSERT INTO cs_authentication_table (username, passwd, email) 
+								VALUES (:username, :passwd, :email)";
 						
-						if($this->run_sql($insertSql) == 1) {
-							$this->run_sql("SELECT currval('cs_authentication_table_uid_seq')");
-							$data = $this->dbObj->farray();
-							$retval = $data[0];
+						try {
+							$retval = $this->dbObj->run_insert($insertSql, $insertData, 'cs_authentication_table_uid_seq');
 							
 							//now let's build the activation email.
 							require_once(constant('LIBDIR') ."/phpmailer/class.phpmailer.php");
@@ -200,8 +176,8 @@ class cs_registerUser {
 							
 							$this->debug[__METHOD__] = $this->send_activation_email($activateData);
 						}
-						else {
-							$details = __METHOD__ .": failed to create new user";
+						catch(Exception $e) {
+							$details = __METHOD__ .": failed to create new user, DETAILS::: ". $e->getMessage();
 							$this->logger->log_by_class($details, 'exception');
 							throw new exception($details);
 						}
