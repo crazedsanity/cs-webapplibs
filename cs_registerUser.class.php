@@ -270,9 +270,10 @@ class cs_registerUser {
 	public function activate_user($uid, $hash) {
 		$activateRes = false;
 		if(is_numeric($uid) && strlen($hash) == 32) {
-			$sql = "SELECT * FROM cs_authentication_table WHERE uid=". $uid;
+			$sql = "SELECT * FROM cs_authentication_table WHERE uid=:uid";
 			try {
-				$data = $this->dbObj->run_query($sql);
+				$this->dbObj->run_query($sql, array('uid'=>$uid));
+				$data = $this->dbObj->get_single_record();
 				
 				$checkHash = md5($uid .'-'. $data['username']);
 				if($hash == $checkHash) {
