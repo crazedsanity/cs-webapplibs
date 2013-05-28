@@ -70,7 +70,7 @@ class cs_sessionDB extends cs_session {
 				$gf = new cs_globalFunctions;
 				$id = session_id();
 				cs_debug_backtrace(1);
-				throw new exception(__METHOD__ .": failed to set session save handler, session_id=(". $id ."), result=(". strip_tags($gf->debug_var_dump($setRes,0)) .')');
+				$this->exception_handler(__METHOD__ .": failed to set session save handler, session_id=(". $id ."), result=(". strip_tags($gf->debug_var_dump($setRes,0)) .')', true);
 			}
 		}
 		
