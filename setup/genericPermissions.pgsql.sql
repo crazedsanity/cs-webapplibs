@@ -18,11 +18,7 @@ CREATE TABLE cswal_group_table (
 CREATE TABLE cswal_permission_table (
 	permission_id serial NOT NULL PRIMARY KEY,
 	location text NOT NULL UNIQUE,
-	user_id integer NOT NULL REFERENCES cs_authentication_table(uid),
-	user_permissions smallint NOT NULL DEFAULT 15,
-	group_id integer NOT NULL REFERENCES cswal_group_table(group_id),
-	group_permissions smallint NOT NULL DEFAULT 6,
-	other_permissions smallint NOT NULL DEFAULT 2
+	default_permissions smallint NOT NULL DEFAULT 2
 );
 
 CREATE TABLE cswal_group_permission_table (

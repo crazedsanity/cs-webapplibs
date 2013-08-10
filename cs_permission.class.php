@@ -38,16 +38,21 @@ class cs_permission {
 	public $gf = null;
 	public $db = null;
 	
+	
+	
+	//--------------------------------------------------------------------------
 	public function __construct(cs_phpdb $db) {
 		$this->gf = new cs_globalFunctions();
 		$this->db = $db;
-	}
+	}//end __construct()
+	//--------------------------------------------------------------------------
 	
+	
+	
+	//--------------------------------------------------------------------------
 	/**
 	 * The easiest way to set $defaultPerms (in a readable way) is like:  
-	 *	$defaultPerms = CS_CREATE 
-	 * @param type $location
-	 * @param type $defaultPerms
+	 *	$defaultPerms = CS_CREATE | CS_READ | CS_UPDATE 
 	 */
 	public function create_permission($location, $defaultPerms) {
 		$tLocation = $this->clean_location($location);
@@ -73,9 +78,18 @@ class cs_permission {
 		
 		return ($newId);
 	}//end create_permission()
+	//--------------------------------------------------------------------------
 	
 	
 	
+	//--------------------------------------------------------------------------
+	public function get_permission($path) {
+	}//end get_permission()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
 	public function clean_location($url) {
 		$bits = preg_split('/\@/', $url);
 		
@@ -88,9 +102,11 @@ class cs_permission {
 		
 		return($retval);
 	}//end clean_location()
+	//--------------------------------------------------------------------------
 	
 	
 	
+	//--------------------------------------------------------------------------
 	public function get_perms_from_string($string) {
 		$tString = preg_replace('/[^c|r|u|d]/', '', strtolower($string));
 		$retval = 0;
@@ -112,6 +128,195 @@ class cs_permission {
 		
 		return($retval);
 	}//end get_perms_from_string()
+	//--------------------------------------------------------------------------
 	
+
+	
+	//--------------------------------------------------------------------------
+	public function create_group($name, $description) {
+		$params = array(
+			'name'	=> $name,
+			'desc'	=> $description
+		);
+		
+		$sql = 'INSERT INTO '. self::T_GROUP .' (group_name, group_description)'
+				.' VALUES (:name, :desc)';
+		
+		try {
+			$groupId = $this->db->run_insert($sql, $params, self::S_GROUP);
+		}
+		catch(Exception $ex) {
+			throw new exception(__METHOD__ .": unable to create group, DETAILS::: ". $ex->getMessage());
+		}
+		
+		return($groupId);
+	}//end create_group()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	public function create_group_permission($groupId, $permissionId, $perms) {
+		$permInt = $perms;
+		if(!is_numeric($perms)) {
+			$permInt = $this->get_perms_from_string($perms);
+		}
+		$params = array(
+			'gid'	=> $groupId,
+			'pid'	=> $permissionId,
+			'perm'	=> $permInt
+		);
+		
+		$sql = 'INSERT INTO '. self::T_GPERM .' (group_id, permission_id, permissions)'
+				.' VALUES (:gid, :pid, :perm)';
+		
+		try {
+			$newId = $this->db->run_insert($sql, $params, self::S_GPERM);
+		}
+		catch(Exception $ex) {
+			throw new exception(__METHOD__ .": failed to create group permission, DETAILS::: ". $ex->getMessage());
+		}
+		
+		return($newId);
+	}//end create_group_permission()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	public function create_user_group($userId, $groupId) {
+		$params = array(
+			'uid'	=> $userId,
+			'gid'	=> $groupId
+		);
+		$sql = 'INSERT INTO '. self::T_UG .' (user_id, group_id) VALUES (:uid, :gid)';
+		
+		try {
+			$newId = $this->db->run_insert($sql, $params, self::S_UG);
+		}
+		catch(Exception $ex) {
+			throw new exception(__METHOD__ .": failed to create user group, DETAILS::: ". $ex->getMessage());
+		}
+		
+		return($newId);
+	}//end create_user_group()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	public function create_user_permission($userId, $perms) {
+		$permInt = $perms;
+		if(!is_numeric($perms)) {
+			$permInt = $this->get_perms_from_string($perms);
+		}
+		$params = array(
+			'uid'	=> $userId,
+			'perms'	=> $permInt
+		);
+		
+		$sql = 'INSERT INTO '. self::T_UP .' (user_id, permissions) VALUES '
+				.'(:uid, :perms)';
+		
+		try {
+			$newId = $this->db->run_insert($sql, $params, self::S_UP);
+		}
+		catch(Exception $ex) {
+			throw new exception(__METHOD__ .": failed to create user permission, DETAILS::: ". $ex->getMessage());
+		}
+		
+		return($newId);
+	}//end create_user_permission()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	public function can_create($perms) {
+		$permInt = $perms;
+		if(!is_numeric($permInt)) {
+			$permInt = $this->get_perms_from_string($perms);
+		}
+		
+		$retval = false;
+		if($permInt & CS_CREATE) {
+			$retval = true;
+		}
+		return($retval);
+	}//end can_create()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	public function can_read($perms) {
+		$permInt = $perms;
+		if(!is_numeric($permInt)) {
+			$permInt = $this->get_perms_from_string($perms);
+		}
+		
+		$retval = false;
+		if($permInt & CS_READ) {
+			$retval = true;
+		}
+		return($retval);
+	}//end can_read()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	public function can_update($perms) {
+		$permInt = $perms;
+		if(!is_numeric($permInt)) {
+			$permInt = $this->get_perms_from_string($perms);
+		}
+		
+		$retval = false;
+		if($permInt & CS_UPDATE) {
+			$retval = true;
+		}
+		return($retval);
+	}//end can_update()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	public function can_delete($perms) {
+		$permInt = $perms;
+		if(!is_numeric($permInt)) {
+			$permInt = $this->get_perms_from_string($perms);
+		}
+		
+		$retval = false;
+		if($permInt & CS_DELETE) {
+			$retval = true;
+		}
+		return($retval);
+	}//end can_delete()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	public function create_perms_from_bools($create, $read, $update, $delete) {
+		$retval = 0;
+		if($create) {
+			$retval |= CS_CREATE;
+		}
+		if($read) {
+			$retval |= CS_READ;
+		}
+		if($update) {
+			$retval |= CS_UPDATE;
+		}
+		if($delete) {
+			$retval |= CS_DELETE;
+		}
+		
+		return($retval);
+	}//end create_perms_from_bools()
+	//--------------------------------------------------------------------------
 }
 ?>

@@ -1,8 +1,10 @@
 <?php
 
+require_once(dirname(__FILE__) .'/../cs_permission.class.php');
+
 class testOfCSPermission extends testDbAbstract {
 	public function test_bitwise() {
-		new _perm(); //this ensures the class file has been included
+		$p = new _perm(); //this ensures the class file has been included
 		
 		$gf = new cs_globalFunctions();
 		
@@ -37,18 +39,26 @@ class testOfCSPermission extends testDbAbstract {
 			if(in_array('c', $bits)) {
 				$this->assertEqual($hasC, CS_CREATE, "Permission string '". $name ."' *should* have 'c', but doesn't (". $hasC ." & ". CS_CREATE .")");
 				$testInt |= CS_CREATE;
+				$this->assertTrue($p->can_create($name));
+				$this->assertTrue($p->can_create($permVal));
 			}
 			else {
 				$this->assertNotEqual($hasC, CS_CREATE, "'". $name ."' should *not* have 'c', but does (". $hasC ." & ". CS_CREATE .")");
+				$this->assertFalse($p->can_create($name));
+				$this->assertFalse($p->can_create($permVal));
 			}
 			
 			$hasR = $permVal & CS_READ;
 			if(in_array('r', $bits)) {
 				$this->assertEqual($hasR, CS_READ, "Permission string '". $name ."' *should* have 'r', but doesn't (". $hasR ." & ". CS_READ .")");
 				$testInt |= CS_READ;
+				$this->assertTrue($p->can_read(($name)));
+				$this->assertTrue($p->can_read($permVal));
 			}
 			else {
 				$this->assertNotEqual($hasR, CS_READ, "Permission string '". $name ."' should *not* have 'r', but does (". $hasR ." & ". CS_READ .")");
+				$this->assertFalse($p->can_read($name));
+				$this->assertFalse($p->can_read($permVal));
 			}
 			
 			#
@@ -56,18 +66,26 @@ class testOfCSPermission extends testDbAbstract {
 			if(in_array('u', $bits)) {
 				$this->assertEqual($hasU, CS_UPDATE, "Permission string '". $name ."' *should* have 'u', but doesn't (". $hasU ." & ". CS_UPDATE .")");
 				$testInt |= CS_UPDATE;
+				$this->assertTrue($p->can_update($name));
+				$this->assertTrue($p->can_update($permVal));
 			}
 			else {
 				$this->assertNotEqual($hasU, CS_UPDATE, "Permission string '". $name ."' should *not* have 'u', but does (". $hasU ." & ". CS_UPDATE .")");
+				$this->assertFalse($p->can_update($name));
+				$this->assertFalse($p->can_update($permVal));
 			}
 			
 			$hasD = $permVal & CS_DELETE;
 			if(in_array('d', $bits)) {
 				$this->assertEqual($hasD, CS_DELETE, "Permission string '". $name ."' *should* have 'd', but doesn't (". $hasD ." & ". CS_DELETE .")");
 				$testInt |= CS_DELETE;
+				$this->assertTrue($p->can_delete($name));
+				$this->assertTrue($p->can_delete($permVal));
 			}
 			else {
 				$this->assertNotEqual($hasD, CS_DELETE, "Permission string '". $name ."' should *not* have 'd', but does (". $hasD ." & ". CS_DELETE .")");
+				$this->assertFalse($p->can_delete($name));
+				$this->assertFalse($p->can_delete($permVal));
 			}
 			
 			$this->assertEqual($testInt, $permVal);
