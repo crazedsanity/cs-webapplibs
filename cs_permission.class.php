@@ -1,17 +1,9 @@
 <?php
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
-
 define('CS_CREATE', 1);
 define('CS_READ', 2);
 define('CS_UPDATE', 4);
 define('CS_DELETE', 8);
-
-
-
 
 class cs_permission {
 	
@@ -90,8 +82,53 @@ class cs_permission {
 	
 	
 	//--------------------------------------------------------------------------
+	public function get_path_parts($path) {
+		$retval = array();
+		if(strlen($path) && preg_match('/^\//', $path)) {
+			$bits = preg_split('/@/', $this->clean_location($path));
+
+			$special = null;
+			if(count($bits) == 2) {
+				$special = $bits[1];
+			}
+			
+			$endsWithSlash = false;
+			if(preg_match('~/$~', $bits[0])) {
+				$endsWithSlash = true;
+			}
+
+			$pieces = preg_split('~/~', $bits[0], -1, PREG_SPLIT_NO_EMPTY);
+
+			#$retval[0] = '/';
+			$i = 0;
+			$curPath = "";
+			foreach($pieces as $x) {
+				$curPath .= "/";
+				$retval[$i] = $curPath;
+				$i++;
+				$curPath .= $x;
+				$retval[$i] = $curPath;
+				$i++;
+			}
+			
+			if($endsWithSlash) {
+				$curPath += "/";
+				$retval[$i] = $curPath;
+			}
+			if(!is_null($special)) {
+				$retval['_'] = $special;
+			}
+		}
+		
+		return($retval);
+	}//end get_path_parts()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
 	public function clean_location($url) {
-		$bits = preg_split('/\@/', $url);
+		$bits = preg_split('/@/', $url);
 		
 		if(count($bits) == 2) {
 			$retval = preg_replace('~/+~', '/', strtolower($bits[0])) .'@'. $bits[1];
@@ -130,7 +167,7 @@ class cs_permission {
 	}//end get_perms_from_string()
 	//--------------------------------------------------------------------------
 	
-
+	
 	
 	//--------------------------------------------------------------------------
 	public function create_group($name, $description) {

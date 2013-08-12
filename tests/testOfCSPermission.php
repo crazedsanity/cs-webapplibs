@@ -94,6 +94,8 @@ class testOfCSPermission extends testDbAbstract {
 		
 	}
 	
+	
+	
 	public function test_locationCleaning() {
 		$p = new _perm();
 		$tests = array(
@@ -137,6 +139,45 @@ class testOfCSPermission extends testDbAbstract {
 		foreach($perms as $str => $val) {
 			$checkThis = $p->get_perms_from_string($str);
 			$this->assertEqual($val, $checkThis, "Permission '". $str ."' doesn't match numericially... expected '". $val ."', got '". $checkThis ."'");
+		}
+	}
+	
+	
+	public function test_pathParts() {
+		$p = new _perm();
+		$tests = array(
+			'/x/y/z'	=> array(
+				0	=> '/',
+				1	=> '/x',
+				2	=> '/x/',
+				3	=> '/x/y',
+				4	=> '/x/y/',
+				5	=> '/x/y/z'
+			),
+			'/X/y/Z/'	=> array(
+				0	=> '/',
+				1	=> '/x',
+				2	=> '/x/',
+				3	=> '/x/y',
+				4	=> '/x/y/',
+				5	=> '/x/y/z',
+				6	=> '/x/y/z/'
+			),
+			'/path/to/data/@testProperty'	=> array(
+				0	=> '/',
+				1	=> '/path',
+				2	=> '/path/',
+				3	=> '/path/to',
+				4	=> '/path/to/',
+				5	=> '/path/to/data',
+				6	=> '/path/to/data/',
+				'_'	=> 'testProperty'
+			),
+		);
+		
+		foreach($tests as $path=>$expected) {
+			$actual = $p->get_path_parts($path);
+			$this->assertEqual($expected, $actual, "Missing some paths: ". $p->gf->debug_print($actual,0));
 		}
 	}
 }
