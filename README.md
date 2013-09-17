@@ -48,3 +48,7 @@ There are other classes implemented.  As they're tested (and I have time), more
 documentation will be added here.  For more (or less) up-to-date information, 
 take a look at the "Developer's Corner" on CrazedSanity.com: 
 [http://www.crazedsanity.com/content/devCorner/cs_webapplibs]
+
+# License
+Copyright (c) 2013 "crazedsanity" Dan Falconer
+Dual licensed under the MIT and GPL Licenses.
