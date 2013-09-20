@@ -70,7 +70,7 @@ class testOfCSPermission extends testDbAbstract {
 				$this->assertTrue($p->can_update($permVal));
 			}
 			else {
-				$this->assertNotEqual($hasU, CS_UPDATE, "Permission string '". $name ."' should *not* have 'u', but does (". $hasU ." & ". CS_UPDATE .")");
+			$this->assertNotEqual($hasU, CS_UPDATE, "Permission string '". $name ."' should *not* have 'u', but does (". $hasU ." & ". CS_UPDATE .")");
 				$this->assertFalse($p->can_update($name));
 				$this->assertFalse($p->can_update($permVal));
 			}

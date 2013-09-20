@@ -29,13 +29,14 @@ class cs_permission {
 	
 	public $gf = null;
 	public $db = null;
-	
+	public $uid = 0;
 	
 	
 	//--------------------------------------------------------------------------
-	public function __construct(cs_phpdb $db) {
+	public function __construct(cs_phpdb $db, $uid) {
 		$this->gf = new cs_globalFunctions();
 		$this->db = $db;
+		$this->uid = $uid;
 	}//end __construct()
 	//--------------------------------------------------------------------------
 	
@@ -76,6 +77,12 @@ class cs_permission {
 	
 	//--------------------------------------------------------------------------
 	public function get_permission($path) {
+		if(strlen($path)) {
+			$parts = $this->get_path_parts($path);
+		}
+		else {
+			throw new exception(__METHOD__ .": invalid path (". $path .")");
+		}
 	}//end get_permission()
 	//--------------------------------------------------------------------------
 	
@@ -354,6 +361,59 @@ class cs_permission {
 		
 		return($retval);
 	}//end create_perms_from_bools()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	public function get_path_group_permissions($path) {
+		if(strlen($path)) {
+			$bits = $this->get_path_parts($path);
+			
+			$sql = 'SELECT
+						ug.user_group_id,
+						ug.group_id,
+						ug.user_id,
+						g.group_name,
+						gp.permissions
+					FROM 
+						cswal_permission_table AS p 
+						INNER JOIN cswal_user_permission_table AS up 
+						USING (permission_id)
+					WHERE
+						user_id=:uid AND ';
+			$params = array(
+				'uid'	=> $this->uid
+			);
+			
+			$moreSql = '';
+			$counter=0;
+			foreach($bits as $x) {
+				$paramName = 'loc'. $counter;
+				$addThis = 'location=:'. $paramName;
+				$moreSql = $this->gf->create_list($moreSql, $addThis, ' OR ');
+				$params[$paramName] = $x;
+				$counter++;
+			}
+			
+			$sql .= '('. $moreSql .')';
+			
+			$retval = $this->db->run_query($sql, $params);
+		}
+		else {
+			throw new exception(__METHOD__ .": invalid or zero-length path (". $path .")");
+		}
+		
+		return($retval);
+	}//end get_path_group_permissions
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	public function get_path_default_permissions($path) {
+		
+	}//end get_path_default_permissions()
 	//--------------------------------------------------------------------------
 }
 ?>
