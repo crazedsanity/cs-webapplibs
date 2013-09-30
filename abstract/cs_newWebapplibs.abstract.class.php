@@ -3,30 +3,23 @@
  * Created on Aug 19, 2009
  */
 
-abstract class cs_webapplibsAbstract extends cs_versionAbstract {
+abstract class cs_newWebapplibsAbstract {
 	
-	protected $gfObj;
 	static public $version;
+	protected $gfObj;
 	
 	//-------------------------------------------------------------------------
     public function __construct($makeGfObj=true) {
+		self::$version = new cs_version(dirname(__FILE__) .'/../VERSION');
 		
 		if($makeGfObj === true) {
 			$this->gfObj = new cs_globalFunctions();
 		}
     }//end __construct()
 	//-------------------------------------------------------------------------
-	
-	
-	
-	//-------------------------------------------------------------------------
-	public static function GetVersionObject() {
-		if(!is_object(self::$version)) {
-			self::$version = new cs_version(dirname(__FILE__) .'/../VERSION');
-		}
+	public static function GetVersion() {
 		return(self::$version);
-	}//end GetVersionObject()
-	//-------------------------------------------------------------------------
+	}
 	
 	
 	

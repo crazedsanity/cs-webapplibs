@@ -351,14 +351,14 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			$versionMatches = array();
 			preg_match_all('/\nVERSION: (.*)\n/', $versionFileContents, $versionMatches);
 			if(count($versionMatches) == 2 && count($versionMatches[1]) == 1) {
-				$retval = trim($versionMatches[1][0]);
-				$this->versionFileVersion = $this->get_full_version_string($retval);
+				$this->versionFileVersion = $this->get_full_version_string(trim($versionMatches[1][0]));
+				$retval = $this->versionFileVersion;
 
 				//now retrieve the PROJECT name.
 				$projectMatches = array();
 				preg_match_all('/\nPROJECT: (.*)\n/', $versionFileContents, $projectMatches);
 				if(count($projectMatches) == 2 && count($projectMatches[1]) == 1) {
-					#$this->projectName = trim($projectMatches[1][0]);
+					$this->projectName = trim($projectMatches[1][0]);
 				}
 				else {
 					$this->error_handler(__METHOD__ .": failed to find PROJECT name");
@@ -491,6 +491,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 						}
 						else {
 							$this->do_log(__METHOD__ .": upgradeList::: ". $this->gfObj->debug_print($upgradeList,0), 'debug');
+			cs_global::debug_print(cs_webdbupgrade::$cache,1);
 							$this->error_handler(__METHOD__ .": finished upgrade, but version wasn't updated (expecting '". $this->versionFileVersion ."', got '". $this->databaseVersion ."')!!!");
 						}
 					}

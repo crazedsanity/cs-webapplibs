@@ -121,6 +121,9 @@ abstract class testDbAbstract extends UnitTestCase {
 		
 		try {
 			$this->internal_connect_db();
+			if($this->dbObj->get_transaction_status() == 1) {
+				$this->dbObj->rollbackTrans();
+			}
 			$this->dbObj->beginTrans();
 
 			$this->dbObj->run_query("DROP SCHEMA public CASCADE");
