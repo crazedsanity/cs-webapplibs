@@ -79,7 +79,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	//=========================================================================
 	public function __construct($versionFileLocation, $upgradeConfigFile, cs_phpDB $db=null) {
 		
-		$this->set_version_file_location(dirname(__FILE__) .'/VERSION');
+		parent::__construct(dirname(__FILE__) .'/VERSION');
 		$this->internalProjectName = $this->get_project();
 		
 		if(isset(cs_webdbupgrade::$cache['__calls__'])) {
@@ -100,7 +100,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		
 		$this->db = $db;
 		
-		parent::__construct(true);
+		$this->gfObj = new cs_globalFunctions;
 		if(defined('DEBUGPRINTOPT')) {
 			$this->gfObj->debugPrintOpt = constant('DEBUGPRINTOPT');
 		}
@@ -119,8 +119,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			throw new exception(__METHOD__ .": unable to locate version file (". $versionFileLocation .")");
 		}
 		$this->fsObj =  new cs_fileSystem(constant('SITE_ROOT'));
-		
-		$this->set_version_file_location($versionFileLocation);
 		
 		$this->projectName = $this->get_project();
 		
@@ -143,57 +141,72 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			$dsnVar = $prefix .'-DB_CONNECT_DSN';
 			$userVar = $prefix .'-DB_CONNECT_USER';
 			$passVar = $prefix .'-DB_CONNECT_PASSWORD';
-			if(is_object($this->db)) {
-				$this->dbParams = array(
-					'dsn'	=> $this->db->get_dsn(),
-					'user'	=> $this->db->get_username(),
-					'pass'	=> $this->db->get_password()
-				);
-			}
-			elseif(defined($dsnVar) && defined($userVar) && defined($passVar)) {
-
-				//NOTE::: this is project-specific... so the DSN when called from project "foo-bar" would be "foo_bar-DB_CONNECT_DSN"
-				$this->dbParams = array(
-					'dsn'	=> constant($dsnVar),
-					'user'	=> constant($userVar),
-					'pass'	=> constant($passVar)
-				);
-
-				try {
-					$this->db = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
+cs_global::debug_print(__METHOD__ .": isTest=(". $this->isTest .")",1);
+			if($this->isTest) {
+				if(is_object($this->db)) {
+					//don't reconnect the internal database; pass the handle to the logger, so everything can
+					// stay within a transaction.
+cs_global::debug_print(__METHOD__ ." [". __LINE__ ."]: transaction status::: (". $this->db->get_transaction_status() .")",1);
+					$this->logsObj = new cs_webdblogger($this->db, "Upgrade ". $this->get_project() .' [TEST]', false);
 				}
-				catch(exception $e) {
-					throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
-				}
-			}
-			elseif(defined(strtoupper($dsnVar)) && defined(strtoupper($userVar)) && defined(strtoupper($passVar))) {
-
-				//NOTE::: this is project-specific... so the DSN when called from project "foo-bar" would be "foo_bar-DB_CONNECT_DSN"
-				$this->dbParams = array(
-					'dsn'	=> constant(strtoupper($dsnVar)),
-					'user'	=> constant(strtoupper($userVar)),
-					'pass'	=> constant(strtoupper($passVar))
-				);
-
-				try {
-					$this->db = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
-				}
-				catch(exception $e) {
-					throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
+				else {
+					throw new exception(__METHOD__ .": connecting during a test requires a valid database object");
 				}
 			}
 			else {
-				throw new exception(__METHOD__ .": no database object passed, and no constants defined to automatically connect (". $dsnVar .", ". $userVar .", ". $passVar .")");
+				if(is_object($this->db)) {
+					$this->dbParams = array(
+						'dsn'	=> $this->db->get_dsn(),
+						'user'	=> $this->db->get_username(),
+						'pass'	=> $this->db->get_password()
+					);
+				}
+				elseif(defined($dsnVar) && defined($userVar) && defined($passVar)) {
+	
+					//NOTE::: this is project-specific... so the DSN when called from project "foo-bar" would be "foo_bar-DB_CONNECT_DSN"
+					$this->dbParams = array(
+						'dsn'	=> constant($dsnVar),
+						'user'	=> constant($userVar),
+						'pass'	=> constant($passVar)
+					);
+	
+					try {
+						$this->db = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
+					}
+					catch(exception $e) {
+						throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
+					}
+				}
+				elseif(defined(strtoupper($dsnVar)) && defined(strtoupper($userVar)) && defined(strtoupper($passVar))) {
+	
+					//NOTE::: this is project-specific... so the DSN when called from project "foo-bar" would be "foo_bar-DB_CONNECT_DSN"
+					$this->dbParams = array(
+						'dsn'	=> constant(strtoupper($dsnVar)),
+						'user'	=> constant(strtoupper($userVar)),
+						'pass'	=> constant(strtoupper($passVar))
+					);
+	
+					try {
+						$this->db = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
+					}
+					catch(exception $e) {
+						throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
+					}
+				}
+				else {
+					throw new exception(__METHOD__ .": no database object passed, and no constants defined to automatically connect (". $dsnVar .", ". $userVar .", ". $passVar .")");
+				}
+	
+				try {
+					$loggerDb = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
+					$this->logsObj = new cs_webdblogger($loggerDb, "Upgrade ". $this->get_project(), false);
+				}
+				catch(exception $e) {
+	cs_global::debug_print($loggerDb,1);
+					throw new exception(__METHOD__ .": failed to create logger::: ". $e->getMessage());
+				}
+				$this->dbConnected = true;
 			}
-
-			try {
-				$loggerDb = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
-				$this->logsObj = new cs_webdblogger($loggerDb, "Upgrade ". $this->get_project(), false);
-			}
-			catch(exception $e) {
-				throw new exception(__METHOD__ .": failed to create logger::: ". $e->getMessage());
-			}
-			$this->dbConnected = true;
 		}
 		return($retval);
 	}//end connect_db()
@@ -239,10 +252,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 
 			//set a status flag so we can store log messages (for now).
 			$this->internalUpgradeInProgress = true;
-
-
-			//do stuff here...
-			$this->set_version_file_location(dirname(__FILE__) .'/VERSION');
+			
+			
 			$this->read_version_file();
 
 			//if there is an error, then... uh... yeah.
@@ -259,12 +270,10 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			//do upgrades here...
 			$this->check_versions(true);
 			$this->internalUpgradeInProgress = false;
-
-
-
-
+			
+			
 			//reset internal vars.
-			$this->set_version_file_location($oldVersionFileLocation);
+			parent::__construct($oldVersionFileLocation);
 			$this->upgradeConfigFile = $oldUpgradeConfigFile;
 			$this->read_version_file();
 			
@@ -695,6 +704,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	protected function do_single_upgrade($fromVersion, $toVersion=null) {
+cs_debug_backtrace(1);
 		//Use the "matching_syntax" data in the upgrade.xml file to determine the filename.
 		$versionIndex = "V". $this->get_full_version_string($fromVersion);
 		if(!isset($this->matchingData[$versionIndex])) {

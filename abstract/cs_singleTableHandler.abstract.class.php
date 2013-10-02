@@ -23,8 +23,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @param $cleanStringArr	(array) Array of {fieldName}=>{dataType} for allowing updates & creating records.
 	 */
     public function __construct(cs_phpDB $dbObj, $tableName, $seqName, $pkeyField, array $cleanStringArr) {
-		$this->set_version_file_location(dirname(__FILE__) . '/../VERSION');
-		parent::__construct(true);
+		parent::__construct(dirname(__FILE__) . '/../VERSION');
 		
 		if(isset($dbObj) && is_object($dbObj) && $dbObj->is_connected()) {
 			$this->dbObj = $dbObj;

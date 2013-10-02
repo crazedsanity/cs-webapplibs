@@ -83,15 +83,14 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		else {
 			throw new exception(__METHOD__ .":: invalid database object");
 		}
+cs_global::debug_print(__METHOD__ ." [". __LINE__ ."]: transaction status::: (". $this->db->get_transaction_status() .")",1);
 		
-		$this->set_version_file_location(dirname(__FILE__) . '/VERSION');
+		parent::__construct(dirname(__FILE__) . '/VERSION');
 		
 		$mustBeHigherThan = '1.5.0';
 		if(!$this->is_higher_version($mustBeHigherThan, $this->db->get_version())) {
 			throw new exception(__METHOD__ .": requires cs_phpDB of higher than v". $mustBeHigherThan,1);
 		}
-		
-		parent::__construct(true);
 		
 		//see if there's an upgrade to perform...
 		if($checkForUpgrades === true) {
@@ -456,6 +455,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			}
 			catch(exception $e) {
 				#if($this->setupComplete === true) {
+cs_global::debug_print(__METHOD__ ." [". __LINE__ ."]: transaction status::: (". $this->db->get_transaction_status() .")",1);
 					throw new exception(__METHOD__ .": encountered error::: ". $e->getMessage());
 				/*/
 				}
