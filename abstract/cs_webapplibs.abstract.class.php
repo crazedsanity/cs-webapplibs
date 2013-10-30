@@ -6,15 +6,26 @@
 abstract class cs_webapplibsAbstract extends cs_versionAbstract {
 	
 	protected $gfObj;
+	static public $version;
 	
 	//-------------------------------------------------------------------------
     public function __construct($makeGfObj=true) {
-		$this->set_version_file_location(dirname(__FILE__) . '/../VERSION');
 		
 		if($makeGfObj === true) {
 			$this->gfObj = new cs_globalFunctions();
 		}
     }//end __construct()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public static function GetVersionObject() {
+		if(!is_object(self::$version)) {
+			self::$version = new cs_version(dirname(__FILE__) .'/../VERSION');
+		}
+		return(self::$version);
+	}//end GetVersionObject()
 	//-------------------------------------------------------------------------
 	
 	
