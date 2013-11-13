@@ -265,7 +265,7 @@ class cs_sessionDB extends cs_session {
 		$retval = null;
 		$updateFields = array(
 			'session_data'	=> $data,
-			'session_id'	=> $sid
+			'session_id'	=> $sid,
 		);
 		
 		if(!is_null($uid) && strlen($uid)) {
@@ -281,20 +281,35 @@ class cs_sessionDB extends cs_session {
 			unset($updateFields['session_data']);
 		}
 		
-		$sql = 'UPDATE '. self::tableName .' SET '.
-			$this->create_sql_update_string($updateFields, array('session_id' => 'varchar(40)')) .
-			' WHERE session_id=:session_id';
+		$sql = 'UPDATE '. self::tableName .' SET num_checkins=(num_checkins+1), last_updated=NOW()';
+		
+		$addThis = $this->create_sql_update_string($updateFields, array('session_id' => 'varchar(40)'));
+		if(strlen($addThis)) {
+			$sql .= ', '. $addThis;
+		}
+		
+		$sql .= ' WHERE session_id=:session_id';
 		
 		try {
 			$retval = $this->db->run_update($sql, $updateFields);
 		}
 		catch(Exception $e) {
 			$gf = new cs_globalFunctions;
-			$this->exception_handler($e->getMessage() . " --- SQL::: ". $sql . " -- PARAMETERS::: ". strip_tags($gf->debug_print($updateFields,0)));
+			$message = $e->getMessage() . " --- SQL::: ". $sql . " -- PARAMETERS::: ". strip_tags($gf->debug_print($updateFields,0));
+			$this->exception_handler($message);
+			$retval = $message;
 		}
 		
 		return($retval);
 	}//end doUpdate()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public function checkin($sid) {
+		return($this->doUpdate($sid,null));
+	}//end checkin()
 	//-------------------------------------------------------------------------
 	
 	
@@ -608,6 +623,27 @@ class cs_sessionDB extends cs_session {
 		
 		return($retval);
 	}//end create_sql_insert_string()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public function get_recently_active_sessions($seconds=600) {
+		if(is_null($seconds) || !is_numeric($seconds)) {
+			$seconds = 10;
+		}
+		$sql = "SELECT session_id, uid, date_created, last_updated, num_checkins
+			FROM cswal_session_table WHERE last_updated > NOW() - interval '". $seconds
+				." seconds'";
+		try {
+			$retval = $this->db->run_query($sql);
+		}
+		catch(Exception $ex) {
+			throw new exception($ex);
+		}
+		
+		return($retval);
+	}//end get_recently_active_sessions()
 	//-------------------------------------------------------------------------
 
 
