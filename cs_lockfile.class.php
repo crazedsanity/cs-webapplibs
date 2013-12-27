@@ -32,7 +32,6 @@ class cs_lockfile {
 	public function get_rwdir() {
 
 		$constantName = __CLASS__ . '-RWDIR';
-		$errorPrefix = null;
 		$errorSuffix = " (define or change the value for constant '". $constantName ."')";
 		$errorPrefix = "automatically assigned ";
 		
