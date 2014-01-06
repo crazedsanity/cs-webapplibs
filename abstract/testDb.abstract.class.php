@@ -1,7 +1,7 @@
 <?php
 
 //TODO: make this work for more than just PostgreSQL.
-abstract class testDbAbstract extends UnitTestCase {
+abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	
 	public $dbParams=array();
 	public $dbObj = null;

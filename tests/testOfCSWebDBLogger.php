@@ -1,5 +1,9 @@
 <?php
 
+require_once(dirname(__FILE__) .'/../abstract/testDb.abstract.class.php');
+require_once(dirname(__FILE__) .'/../abstract/cs_webapplibs.abstract.class.php');
+require_once(dirname(__FILE__) .'/../cs_webdblogger.class.php');
+
 class testOfCSWebDbLogger extends testDbAbstract {
 	
 	
