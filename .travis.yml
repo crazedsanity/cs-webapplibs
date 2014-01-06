@@ -1,0 +1,18 @@
+language: php
+
+php:
+  - 5.3
+  - 5.4
+  - 5.5
+
+script: phpunit --coverage-text
+
+services:
+	postgresql
+
+before_script:
+	psql -c 'create database unittest' -U postgres
+
+notifications:
+  email:
+    - github@crazedsanity.com
