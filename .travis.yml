@@ -11,6 +11,7 @@ services:
     postgresql
 
 before_script:
+  - composer install --dev
     psql -c 'create database _unittest_' -U postgres
 
 notifications:
