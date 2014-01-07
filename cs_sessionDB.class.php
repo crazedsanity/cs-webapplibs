@@ -498,6 +498,7 @@ class cs_sessionDB extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	protected function exception_handler($message, $throwException=false) {
+		$logId = null;
 		try {
 			$message .= "\n\nBACKTRACE:::\n". cs_debug_backtrace(0);
 			$this->flogger($message);

@@ -49,25 +49,25 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 			$this->assertTrue(isset($vArr['version_minor']));
 			$this->assertTrue(isset($vArr['version_maintenance']));
 			$this->assertTrue(isset($vArr['version_suffix']));
-			$this->assertEqual(count($vArr), 5, "Version info (". $testThis .") has unexpected number of elements (". count($vArr) .")");
+			$this->assertEquals(count($vArr), 5, "Version info (". $testThis .") has unexpected number of elements (". count($vArr) .")");
 		}
 		
 		// enumerate each piece of a fairly static version string, make sure it works.
 		$vArr = $upgObj->parse_version_string("1.2.3-BETA12");
-		$this->assertEqual($vArr['version_string'], '1.2.3-BETA12');
-		$this->assertEqual($vArr['version_major'], '1');
-		$this->assertEqual($vArr['version_minor'], '2');
-		$this->assertEqual($vArr['version_maintenance'], '3');
-		$this->assertEqual($vArr['version_suffix'], 'BETA12');
+		$this->assertEquals($vArr['version_string'], '1.2.3-BETA12');
+		$this->assertEquals($vArr['version_major'], '1');
+		$this->assertEquals($vArr['version_minor'], '2');
+		$this->assertEquals($vArr['version_maintenance'], '3');
+		$this->assertEquals($vArr['version_suffix'], 'BETA12');
 		
 		
 		// use a condensed version string, make sure it still passes.
 		$vArr = $upgObj->parse_version_string("1.2");
-		$this->assertEqual($vArr['version_string'], '1.2');
-		$this->assertEqual($vArr['version_major'], '1');
-		$this->assertEqual($vArr['version_minor'], '2');
-		$this->assertEqual($vArr['version_maintenance'], '');
-		$this->assertEqual($vArr['version_suffix'], '');
+		$this->assertEquals($vArr['version_string'], '1.2');
+		$this->assertEquals($vArr['version_major'], '1');
+		$this->assertEquals($vArr['version_minor'], '2');
+		$this->assertEquals((string)$vArr['version_maintenance'], '0');
+		$this->assertEquals($vArr['version_suffix'], '');
 		
 		
 		// Parse some suffixes, make sure they're okay.
@@ -75,7 +75,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		foreach($testArray as $suffix) {
 			$vArr = $upgObj->parse_suffix($suffix);
 			
-			$this->assertEqual(count($vArr), 2, "Invalid number of returned elements in (". $suffix .")");
+			$this->assertEquals(count($vArr), 2, "Invalid number of returned elements in (". $suffix .")");
 			
 			$this->assertTrue(isset($vArr['type']), "Missing index 'type'");
 			$this->assertTrue(isset($vArr['number']), "Missing index 'number'");
@@ -95,9 +95,6 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		$upgObj->gfObj = new cs_globalFunctions();
 		$upgObj->fsObj = new cs_fileSystem(dirname(__FILE__) .'/files');
 		
-		$numToPass = 7;
-		$passed = 0;
-		
 		$fileToVersion = array(
 			dirname(__FILE__). '/files/VERSION-1'	=> "1.0.0-RC8000312",
 			dirname(__FILE__) .'/files/VERSION-2'	=> "1.9.0",
@@ -107,11 +104,8 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		foreach($fileToVersion as $file=>$version) {
 			$upgObj->versionFileLocation = $file;
 			if($this->assertTrue(file_exists($file))) {
-				$passed++;
 				try {
-					if($this->assertEqual($version, $upgObj->read_version_file())) {
-						$passed++;
-					}
+					$this->assertEquals($version, $upgObj->read_version_file());
 				}
 				catch(Exception $e) {
 					//yeah...
@@ -126,12 +120,11 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		
 		#$upgObj->config['UPGRADE_CONFIG_FILE'] = $upgradeConfigFile;
 		if($this->assertTrue(file_exists($upgObj->upgradeConfigFile), "Upgrade file (". $upgObj->upgradeConfigFile .") missing")) {
-			$passed++;
 			
 			$upgObj->read_upgrade_config_file();
 			
 			// now make sure things seem to line-up.
-			$this->assertEqual($upgObj->initialVersion, "0.1.0", "Initial version didn't match expected version, parsing failed");
+			$this->assertEquals($upgObj->initialVersion, "0.1.0", "Initial version didn't match expected version, parsing failed");
 			
 			#$this->gfObj->debug_var_dump($upgObj->read_upgrade_config_file(),1);
 			
@@ -141,64 +134,69 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		#$upgObj->versionFileLocation = dirname(__FILE__) .'/files/VERSION-3';
 		
 		
-		if($this->assertEqual($numToPass, $passed, "Some required tests failed, see previous errors for some hints")) {
-			try {
+		//$upgObj->doSetup();
+	}//end test_stuff()
+	//--------------------------------------------------------------------------
+	
+	
+	//--------------------------------------------------------------------------
+	/*
+	 * This test is pretty ugly: the system in question simply wasn't built to 
+	 * be unit-tested, so it needs work... A LOT of work.
+	 */
+	public function xtest_upgrade() {
 				#$this->dbObj->beginTrans();
-				$upgObj->db = $this->dbObj;
-				
-				// attempt to load the required database table.
-				$this->assertTrue($upgObj->load_table() === true, "Failed loading version table");
-				
-				$versionFileLocation = dirname(__FILE__). '/files/VERSION-1';
-				$upgObj->set_version_file_location($versionFileLocation);
-				$upgObj->doSetup($versionFileLocation, $upgradeConfigFile, $this->dbObj);
-				if(!$this->assertEqual($upgObj->versionFileVersion, '1.9.0')) {
-					cs_global::debug_print($upgObj,1);
-				}
-/*
-				$upgObj->read_version_file();
-				$versionCheckRes = $upgObj->check_versions(TRUE);
-				$this->assertTrue($versionCheckRes, "Failed result from check_versions (". $versionCheckRes .")");
-				
-				$initialUpgrade = $upgObj->load_initial_version();
-				$this->assertTrue($initialUpgrade, "Failed initial upgrade (". $initialUpgrade .")");
-				$dbVersion = $upgObj->get_database_version();
-				$this->assertEqual($dbVersion['version_string'], '0.1.0');//that's the initial version specified in the upgrade.xml file
-				
-				$versionCheckRes = $upgObj->check_versions(TRUE);
-				$this->assertTrue($versionCheckRes, "Failed result from check_versions (". $versionCheckRes .")");
-				
-				$this->assertEqual(get_class($upgObj->db), 'cs_phpDB');
-				
-				// now make sure we've got the correct version loaded.
-				$dbVersion = $upgObj->get_database_version();
-				$this->assertEqual("1.0.0-RC8000312", $dbVersion['version_string']);
-				$this->assertNotEqual(false, $dbVersion);
-				$versionFileVersion = "1.0.0-RC8000312";
-				$this->assertEqual($versionFileVersion, $upgObj->read_version_file());
-				//$this->dbObj->rollBackTrans();
-#*/				
-				
-				try {
-					$upgObj->db->exec(file_get_contents(dirname(__FILE__) .'/files/destroy_test_db.sql'));
-				}
-				catch (Exception $e) {
-					// It's all good.  Probably just failed to drop some tables or something.
-				}
-			}
-			catch(Exception $ex) {
-				$this->assertTrue(false, "failed to perform database portion of upgrade... DETAILS::: ". $ex->getMessage() ."<hr>". cs_global::debug_print($upgObj,0));
-			}
+		$upgObj = new upgradeTester();
+		$upgObj->gfObj = new cs_globalFunctions();
+		$upgObj->fsObj = new cs_fileSystem(dirname(__FILE__) .'/files');
+		$upgObj->db = $this->dbObj;
+
+		// attempt to load the required database table.
+		$this->assertTrue($upgObj->load_table() === true, "Failed loading version table");
+
+		$versionFileLocation = dirname(__FILE__) . '/files/VERSION-1';
+		$upgObj->set_version_file_location($versionFileLocation);
+		$upgObj->doSetup($versionFileLocation, $upgradeConfigFile, $this->dbObj);
+		if (!$this->assertEquals($upgObj->versionFileVersion, '1.9.0')) {
+			cs_global::debug_print($upgObj, 1);
 		}
+		/*
+		  $upgObj->read_version_file();
+		  $versionCheckRes = $upgObj->check_versions(TRUE);
+		  $this->assertTrue($versionCheckRes, "Failed result from check_versions (". $versionCheckRes .")");
+
+		  $initialUpgrade = $upgObj->load_initial_version();
+		  $this->assertTrue($initialUpgrade, "Failed initial upgrade (". $initialUpgrade .")");
+		  $dbVersion = $upgObj->get_database_version();
+		  $this->assertEquals($dbVersion['version_string'], '0.1.0');//that's the initial version specified in the upgrade.xml file
+
+		  $versionCheckRes = $upgObj->check_versions(TRUE);
+		  $this->assertTrue($versionCheckRes, "Failed result from check_versions (". $versionCheckRes .")");
+
+		  $this->assertEquals(get_class($upgObj->db), 'cs_phpDB');
+
+		  // now make sure we've got the correct version loaded.
+		  $dbVersion = $upgObj->get_database_version();
+		  $this->assertEquals("1.0.0-RC8000312", $dbVersion['version_string']);
+		  $this->assertNotEquals(false, $dbVersion);
+		  $versionFileVersion = "1.0.0-RC8000312";
+		  $this->assertEquals($versionFileVersion, $upgObj->read_version_file());
+		  //$this->dbObj->rollBackTrans();
+		  # */
+
+		try {
+			$upgObj->db->exec(file_get_contents(dirname(__FILE__) . '/files/destroy_test_db.sql'));
+		} catch (Exception $e) {
+			// It's all good.  Probably just failed to drop some tables or something.
+		}
+
 		try {
 			$upgObj->db->rollbackTrans();
 		}
 		catch(Exception $ex) {
 			//nothing to see here
 		}
-		
-		//$upgObj->doSetup();
-	}//end test_load_schema()
+	}//end test_upgrade()
 	//--------------------------------------------------------------------------
 }
 

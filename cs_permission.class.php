@@ -106,7 +106,6 @@ class cs_permission {
 
 			$pieces = preg_split('~/~', $bits[0], -1, PREG_SPLIT_NO_EMPTY);
 
-			#$retval[0] = '/';
 			$i = 0;
 			$curPath = "";
 			foreach($pieces as $x) {
@@ -119,7 +118,7 @@ class cs_permission {
 			}
 			
 			if($endsWithSlash) {
-				$curPath += "/";
+				$curPath .= "/";
 				$retval[$i] = $curPath;
 			}
 			if(!is_null($special)) {

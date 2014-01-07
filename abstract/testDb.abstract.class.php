@@ -6,11 +6,17 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	public $dbParams=array();
 	public $dbObj = null;
 	protected $lock = null;
+	protected $dsn = "pgsql:host=localhost;dbname=_unittest_";
+	protected $user = "postgres";
+	protected $pass = null;
 	
 	//-------------------------------------------------------------------------
 	public function __construct() {
 		$this->gfObj = new cs_globalFunctions;
 		$this->lock = new cs_lockfile(constant('UNITTEST__LOCKFILE'));
+		
+		$this->tearDown(); //make sure the database is truly in a consistent state
+		$this->setUp();
 	}//end __construct()
 	//-------------------------------------------------------------------------
 	
@@ -45,38 +51,12 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 		
 		$retval=false;
 		
-		
 		if($this->lock->is_lockfile_present()) {
-			$globalPrefix = 'UNITTEST__';
-
-			$requirements = array(
-				'dsn'		=> 'DB_DSN',
-				'user'		=> 'DB_USERNAME',
-				'pass'		=> 'DB_PASSWORD'
-			);
-
-			foreach($requirements as $index => $name) {
-				$myIndex = $globalPrefix . $name;
-				if(defined($myIndex)) {
-					$this->dbParams[$index] = constant($myIndex);
-				}
-				else {
-					#$this->gfObj->debug_print(__METHOD__ .": missing required index (". $myIndex .")",1);
-				}
-			}
-			
-			
-			if(count($this->dbParams) == count($requirements)) {
-				$retval = true;
-			}
+			$retval = true;
 		}
 		else {
 			$this->gfObj->debug_print(__METHOD__ .": lockfile missing (". $this->lock->get_lockfile() .") while attempting to run test '". $this->getLabel() ."'");
 		}
-		
-		
-		#$this->gfObj->debug_print($this->dbParams,1);
-		#$this->gfObj->debug_print("RESULT: (". (count($this->dbParams) == count($requirements)) .")", 1);
 		
 		return($retval);
 	}//end check_requirements()
@@ -85,7 +65,7 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	
 	
 	//-------------------------------------------------------------------------
-	public function setUp() {
+	protected function setUp() {
 		$this->internal_connect_db();
 	}//end setUp()
 	//-------------------------------------------------------------------------
@@ -93,8 +73,8 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	
 	
 	//-------------------------------------------------------------------------
-	public function tearDown() {
-		
+	protected function tearDown() {
+		$this->reset_db();
 	}//end tearDown()
 	//-------------------------------------------------------------------------
 	
@@ -103,7 +83,7 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	//-------------------------------------------------------------------------
 	public function internal_connect_db() {
 		if(!is_object($this->dbObj)) {
-			$this->dbObj = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
+			$this->dbObj = new cs_phpDB($this->dsn, $this->user, $this->pass);
 		}
 		$this->gfObj = new cs_globalFunctions();
 	}//end internal_connect_db()
@@ -127,7 +107,7 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 			$this->dbObj->beginTrans();
 
 			$this->dbObj->run_query("DROP SCHEMA public CASCADE");
-			$this->dbObj->run_query("CREATE SCHEMA public AUTHORIZATION " . $this->dbParams['user']);
+			$this->dbObj->run_query("CREATE SCHEMA public AUTHORIZATION " . $this->user);
 
 			if (!is_null($schemaFile)) {
 				$this->dbObj->run_sql_file($schemaFile);

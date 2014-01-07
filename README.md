@@ -25,6 +25,25 @@ work as expected: MySQL can sometimes automatically commits changes without
 warning, such as when transactions cross transactionable and transactionless 
 tables.
 
+## Testing
+
+Unit testing was previously done with SimpleTest, but now uses (or is being 
+converted to use) PHPUnit: this was done to help ease incorporation with 
+[Travis-CI](http://travis-ci-org) for continuous integration testing. 
+
+Testing database interaction can be a tricky thing, and it must conform to 
+how [Travis-CI's database setup works](http://about.travis-ci.org/docs/user/database-setup/).
+
+To simplify things, the testing is currently only performed against a Postgres
+database.  The settings are hard-coded:
+ * User: postgres
+ * Pass: (none)
+ * database: \_unittest\_
+ * host: localhost
+ * port: (default)
+
+## Documentation
+
 *On to the documentation...*
 
 This is a set of libraries for working with PHP-based web applications.  It 

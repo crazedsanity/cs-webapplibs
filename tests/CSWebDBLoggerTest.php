@@ -45,7 +45,7 @@ class testOfCSWebDbLogger extends testDbAbstract {
 		$myCache = $log->logClassCache;
 		
 		$this->assertTrue(is_array($myCache));
-		$this->assertEqual(count($myCache), 0, "Expected no categories, found some::: ". $this->gfObj->debug_print($myCache,0));
+		$this->assertEquals(count($myCache), 0, "Expected no categories, found some::: ". $this->gfObj->debug_print($myCache,0));
 		
 		$categoryName = "TEST";
 		
@@ -54,14 +54,14 @@ class testOfCSWebDbLogger extends testDbAbstract {
 		$log->logCategoryId = $myCatId;
 		
 		$checkCatId = $log->get_category_id($categoryName);
-		$this->assertEqual($myCatId, $checkCatId, "Duplicate category created");
+		$this->assertEquals($myCatId, $checkCatId, "Duplicate category created");
 		
 		$className = "TESTING";
 		$classId = $log->create_class($className);
 		$this->assertTrue(is_numeric($classId), "Failed to create class, or invalid data returned (". $classId .")");
 		
 		$checkClassId = $log->get_class_id($className);
-		$this->assertEqual($classId, $checkClassId, "Duplicate class created");
+		$this->assertEquals($classId, $checkClassId, "Duplicate class created");
 		
 //		$logId = $log->log_by_class("Just a test", $className, 0);
 //		$this->assertTrue(is_numeric($logId), "No log ID created");
@@ -76,7 +76,7 @@ class testOfCSWebDbLogger extends testDbAbstract {
 		$numRows = $log->db->run_query($sql, $params);
 		$data = $log->db->farray_fieldnames();
 		
-		$this->assertEqual($numRows, count($data), "Invalid number of rows returned: expected(". count($data) ."), got (". $numRows .")");
+		$this->assertEquals($numRows, count($data), "Invalid number of rows returned: expected(". count($data) ."), got (". $numRows .")");
 		
 
 	}//end test_basic_functions()

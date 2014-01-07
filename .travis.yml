@@ -11,7 +11,7 @@ services:
 	postgresql
 
 before_script:
-	psql -c 'create database unittest' -U postgres
+	psql -c 'create database _unittest_' -U postgres
 
 notifications:
   email:

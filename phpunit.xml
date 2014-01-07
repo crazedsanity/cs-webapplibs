@@ -1,7 +1,7 @@
 <phpunit bootstrap="tests/bootstrap.php">
 	<testsuites>
-		<testsuite name="basics">
-			<file>tests/testOfCSWebDBLogger.php</file>
+		<testsuite name="all">
+			<directory>tests</directory>
 		</testsuite>
 	</testsuites>
 </phpunit>
