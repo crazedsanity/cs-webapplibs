@@ -12,7 +12,7 @@ services:
 
 before_script:
   - composer install
-    psql -c 'create database _unittest_' -U postgres
+  - psql -c 'create database _unittest_' -U postgres
 
 notifications:
   email:
