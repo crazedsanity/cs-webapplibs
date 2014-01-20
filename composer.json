@@ -14,10 +14,6 @@
 			"role": "Developer"
 		}
 	],
-	"autoload": {
-		"classmap": ["cs_authToken.class.php", "cs_authUser.class.php", "cs_bbCodeParser.class.php", "cs_idObfuscator.class.php", "cs_lockfile.class.php", "cs_newTabs.class.php", "cs_permission.class.php", "cs_phpDB.class.php", "cs_registerUser.class.php", "cs_sessionDB.class.php", "cs_siteConfig.class.php", "cs_tabs.class.php", "cs_webdblogger.class.php", "cs_webdbupgrade.class.php"]
-
-	},
 	"require": {
 		"php": ">=5.3.0",
 		"crazedsanity/cs-content": ">=1.2.4",
