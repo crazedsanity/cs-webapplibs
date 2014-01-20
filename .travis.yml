@@ -8,10 +8,10 @@ php:
 script: phpunit --coverage-text
 
 services:
-	postgresql
+    postgresql
 
 before_script:
-	psql -c 'create database _unittest_' -U postgres
+    psql -c 'create database _unittest_' -U postgres
 
 notifications:
   email:
