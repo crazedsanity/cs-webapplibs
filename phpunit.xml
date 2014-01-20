@@ -4,4 +4,11 @@
 			<directory>tests</directory>
 		</testsuite>
 	</testsuites>
+	<filter>
+		<blacklist>
+			<directory>./vendor</directory>
+			<directory>./abstract</directory>
+			<file>AutoLoader.class.php</file>
+		</blacklist>
+	</filter>
 </phpunit>
