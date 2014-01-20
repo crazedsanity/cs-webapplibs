@@ -33,19 +33,20 @@ class cs_sessionDB extends cs_session {
 	 * 								this parameter is non-null and non-numeric, the value will be 
 	 * 								used as the session name.
 	 */
-	public function __construct() {
+	public function __construct($automaticUpgrades=true) {
 		
-		date_default_timezone_set('America/Chicago');
 		cs_sessionDB::$runDate = microtime();
 		
 
 		$this->db = $this->connectDb();
 		
-		$x = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml', $this->db);
-		$x->check_versions();
+		if($automaticUpgrades === true) {
+			$x = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml', $this->db);
+			$x->check_versions();
+		}
 		
 		//create a logger (this will automatically cause any upgrades to happen).
-		$this->logger = new cs_webdblogger($this->db, 'Session DB', true);
+		$this->logger = new cs_webdblogger($this->db, 'Session DB', false);
 		
 		$createSession = true;
 		if(self::$initialized == true) {
@@ -90,39 +91,43 @@ class cs_sessionDB extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	protected function connectDb($dsn=null,$user=null,$password=null) {
-		
-		if(is_null($dsn)) {
-			if(defined('SESSION_DB_DSN')) {
-				$dsn = constant('SESSION_DB_DSN');
-			}
-			else {
-				throw new exception(__METHOD__ .": missing DSN setting");
-			}
+		if(isset($this->db)) {
+			$db = $this->db;
 		}
-		
-		if(is_null($user)) {
-			if(defined('SESSION_DB_USER')) {
-				$user = constant('SESSION_DB_USER');
+		else {
+			if(is_null($dsn)) {
+				if(defined('SESSION_DB_DSN')) {
+					$dsn = constant('SESSION_DB_DSN');
+				}
+				else {
+					throw new exception(__METHOD__ .": missing DSN setting");
+				}
 			}
-			else {
-				throw new exception(__METHOD__ .": missing user setting");
+
+			if(is_null($user)) {
+				if(defined('SESSION_DB_USER')) {
+					$user = constant('SESSION_DB_USER');
+				}
+				else {
+					throw new exception(__METHOD__ .": missing user setting");
+				}
 			}
-		}
-		
-		if(is_null($password)) {
-			if(defined('SESSION_DB_PASSWORD')) {
-				$pass = constant('SESSION_DB_PASSWORD');
+
+			if(is_null($password)) {
+				if(defined('SESSION_DB_PASSWORD')) {
+					$pass = constant('SESSION_DB_PASSWORD');
+				}
+				else {
+					throw new exception(__METHOD__ .": missing password setting");
+				}
 			}
-			else {
-				throw new exception(__METHOD__ .": missing password setting");
+
+			try {
+				$db = new cs_phpDB($dsn, $user, $pass);
 			}
-		}
-		
-		try {
-			$db = new cs_phpDB($dsn, $user, $pass);
-		}
-		catch(Exception $e) {
-			$this->exception_handler($e->getMessage());
+			catch(Exception $e) {
+				$this->exception_handler($e->getMessage());
+			}
 		}
 		
 		return($db);
@@ -326,7 +331,6 @@ class cs_sessionDB extends cs_session {
 			$retval = $this->db->run_update($sql, $updateFields);
 		}
 		catch(Exception $e) {
-			$gf = new cs_globalFunctions;
 			$this->exception_handler($e->getMessage());
 		}
 		

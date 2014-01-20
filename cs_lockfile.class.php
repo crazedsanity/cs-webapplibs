@@ -2,16 +2,16 @@
 
 class cs_lockfile {
 	/**  */
-	private $lockFile = null;
+	protected $lockFile = null;
 	
 	/** Default name for the lockfile. */
 	const defaultLockfile = "upgrade.lock";
 	
 	/** */
-	private $rwDir;
+	protected $rwDir;
 	
 	/**  */
-	private $fsObj = null;
+	protected $fsObj = null;
 	
 	//=========================================================================
 	public function __construct($lockFile=null) {
@@ -45,18 +45,20 @@ class cs_lockfile {
 		}
 		
 		if (is_dir($rwDir)) {
+			//@codeCoverageIgnoreStart
 			if (is_readable($rwDir)) {
 				if (is_writable($rwDir)) {
 					// WINNER!
 					$this->rwDir = $rwDir;
 				} else {
-					throw new exception(__METHOD__ . ": " . $errorPrefix . "directory (" . $rwDir . ") not writable" . $errorSuffix);
+					throw new ErrorException(__METHOD__ . ": " . $errorPrefix . "directory (" . $rwDir . ") not writable" . $errorSuffix);
 				}
 			} else {
-				throw new exception(__METHOD__ . ": " . $errorPrefix . "directory (" . $rwDir . ") not readable" . $errorSuffix);
+				throw new ErrorException(__METHOD__ . ": " . $errorPrefix . "directory (" . $rwDir . ") not readable" . $errorSuffix);
 			}
+			//@codeCoverageIgnoreEnd
 		} else {
-			throw new exception(__METHOD__ . ": " . $errorPrefix . "value is not a directory" . $errorSuffix);
+			throw new ErrorException(__METHOD__ . ": " . $errorPrefix . "value is not a directory" . $errorSuffix);
 		}
 		
 		return($this->rwDir);

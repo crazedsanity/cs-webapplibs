@@ -1,7 +1,5 @@
 <?php
 
-require_once(dirname(__FILE__) .'/../cs_permission.class.php');
-
 class testOfCSPermission extends testDbAbstract {
 	public function test_bitwise() {
 		$p = new _perm(); //this ensures the class file has been included

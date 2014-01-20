@@ -1012,8 +1012,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	
-	//=========================================================================cs_debug_backtrace(1);
-
+	//=========================================================================
 	public function load_table() {
 
 		$schemaFileLocation = dirname(__FILE__) .'/setup/schema.'. $this->db->get_dbtype() .'.sql';

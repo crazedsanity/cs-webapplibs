@@ -1,42 +1,21 @@
-## Web Application Libraries
+# CS Web DB Upgrade
 
-*For info about upgrades, check the "upgrades" folder*
+## Expected Environment
 
-(a.k.a. "CS-WebAppLibs" or "CSWAL")
+CS Web DB Upgrade is built with a few preconceptions about your web application.
 
-__WARNING #1:__ Version 0.5.x and above utilize PDO and prepared statements. 
-Applications/libraries/frameworks that were written against a prior version may 
-need to be rewritten to handle the differences.  In theory, it is still fully 
-backwards-compatible... but I make no guarantees.
+1. there is a concept of a "production" application
+1. there is a test environment in which changes are tested
+1. 
 
-__WARNING #2:__ If you don't read what sparse documentation there is, you 
-probably won't get it.
-
-__WARNING #3:__ This code was not written for the faint of heart. The naming 
-conventions may be inconsistent. Some of these classes, such as the WebDBUpgrade 
-system, is made to be transparent, so interacting with it can be difficult; 
-others, such as the logging system, are meant to be used with little need to 
-understand their inner-workings. 
-
-__WARNING #4:__ Due to lack of help, the only officially-supported database is 
-PostgreSQL.  Most things should be fairly well database-agnostic, though some of 
-the fancier features (such as transactions within the upgrade system) may not 
-work as expected: MySQL can sometimes automatically commits changes without 
-warning, such as when transactions cross transactionable and transactionless 
-tables.
-
-*On to the documentation...*
-
-### CS Web DB Upgrade
-
-This system is built to make upgrading a database-driven app seamless.  No need
-to coordinate SQL or schema changes with the code updates: previously, one would 
-have to take the entire website down, run the schema/SQL change, update the code, 
-and (if you're lucky) check a "test" website to ensure it works before unleashing
-it upon your users.... if you're unlucky, they both must be run in unison, and 
+CS Web DB Upgrade is built to make upgrading a database-driven web application seamless.  No 
+more need to coordinate SQL or schema changes with the code updates: previously, 
+one would have to take the entire website down, run the schema/SQL change, 
+update the code, and (if you're lucky) check a "test" website to ensure it works 
+before unleashingit upon your users.... if you're unlucky, they both must be run in unison, and 
 if the SQL or schema change fails, you're in for a lot of sweating and praying.
 
-Meet your saviour!  This system adds the ability to allow your system to upgrade 
+Meet your savior!  This system adds the ability to allow your system to upgrade 
 itself.  Whenever you increment the version in your VERSION file, it can run a 
 custom script that will do everything you need AND keep others out until it is 
 done.  Once the system is updated, the next thing to touch the code containing 

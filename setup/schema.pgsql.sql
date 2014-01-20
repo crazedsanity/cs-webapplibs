@@ -2,6 +2,7 @@
 --
 -- The user status table is a list of statuses indicating what state a user's
 --	account is in.
+-- THESE VALUES MUST MATCH THE CODE.
 --
 CREATE TABLE cs_user_status_table (
     user_status_id integer NOT NULL PRIMARY KEY,

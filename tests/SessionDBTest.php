@@ -19,6 +19,12 @@ class testOfCSSessionDB extends testDbAbstract {
 	}
 	
 	//TODO: umm... actually perform tests...?
+	/**
+	 * @covers cs_sessionDB::doInsert
+	 * @covers cs_sessionDB::__construct
+	 * @covers cs_sessionDB::connectDb
+	 * @covers cs_sessionDb::exception_handler
+	 */
 	public function test_basics() {
 		$this->reset_db(dirname(__FILE__) .'/../setup/schema.pgsql.sql');
 		#$this->assertTrue(defined('SESSION_DB_DSN'), 'Missing DSN for SessionDB');

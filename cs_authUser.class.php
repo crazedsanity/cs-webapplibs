@@ -49,7 +49,9 @@ class cs_authUser extends cs_sessionDB {
 				}
 			}
 			else {
-				unset($_SESSION['auth']['userInfo']);
+				if(isset($_SESSION) && isset($_SESSION['auth']) && isset($_SESSION['auth']['userInfo'])) {
+					unset($_SESSION['auth']['userInfo']);
+				}
 			}
 		}
 		else {
@@ -118,7 +120,6 @@ class cs_authUser extends cs_sessionDB {
 				throw new InvalidArgumentException(__METHOD__ .": invalid data (". $v .") for '". $k ."'");
 			}
 		}
-$this->gfObj->debug_print(__METHOD__ .": sum data::: ". implode($separator, $dataToHash),1);
 		$retval = sha1(implode($separator, $dataToHash));
 		
 		return $retval;
@@ -134,7 +135,6 @@ $this->gfObj->debug_print(__METHOD__ .": sum data::: ". implode($separator, $dat
 			$retval = false;
 		}
 		else {
-			$numrows = -1;
 			try {
 				$sql = "SELECT uid, username, user_status_id, date_created, last_login, 
 					email, user_status_id FROM cs_authentication_table WHERE username=:username " .
@@ -147,7 +147,6 @@ $this->gfObj->debug_print(__METHOD__ .": sum data::: ". implode($separator, $dat
 					'username'		=> $username,
 					'password'		=> $this->getPasswordHash($sumThis)
 				);
-$this->gfObj->debug_print(__METHOD__ .": params::: ". $this->gfObj->debug_print($params,0,0),1);
 				$retval = $this->db->run_query($sql, $params);
 			}
 			catch(Exception $e) {
@@ -155,11 +154,11 @@ $this->gfObj->debug_print(__METHOD__ .": params::: ". $this->gfObj->debug_print(
 				throw new exception(__METHOD__ .": DETAILS::: ". $e->getMessage());
 			}
 			try {
-				if($numrows == 1) {
+				if($retval == 1) {
 					$data = $this->db->get_single_record();
 					$this->userInfo = $data;
 					$this->update_auth_data($this->userInfo);
-					
+
 					/*
 					 * NOTE::: this assumes that there's already a record in the 
 					 * session table... this would probably need to be revisited 
@@ -167,15 +166,15 @@ $this->gfObj->debug_print(__METHOD__ .": params::: ". $this->gfObj->debug_print(
 					 * database storage for sessions.
 					 */
 					$updateRes = $this->updateUid($data['uid'], $this->sid);
-					if($updateRes == 0) {
+					if ($updateRes == 0) {
 						$insertRes = parent::doInsert($this->sid, $_SESSION, $this->uid);
-						$this->do_log(__METHOD__ .": inserted new session record, updateRes=(". $updateRes ."), insertRes=(". $insertRes .")", 'debug');
+						$this->do_log(__METHOD__ . ": inserted new session record, updateRes=(" . $updateRes . "), insertRes=(" . $insertRes . ")", 'debug');
 					}
 
 					$this->do_log("Successfully logged-in (". $retval .")");
 				}
 				else {
-					$this->do_log("Authentication failure, username=(". $username .")");
+					$this->do_log("Authentication failure, username=(". $username ."), retval=(". $retval .")");
 				}
 
 				if($retval == 1) {
