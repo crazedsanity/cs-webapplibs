@@ -35,7 +35,26 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	//--------------------------------------------------------------------------
 	public function tearDown() {
 		parent::tearDown();
+		
+		//if there was a problem, a lock file might be left over: delete it.
+//		@unlink(dirname(__FILE__) .'/files/rw/upgrade.lock');
+		@unlink(dirname(__FILE__) .'/files/rw/upgrade_001.do_upgrade.test');
 	}//end tearDown()
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	public function test_calls() {
+		$x = new upgradeTester();
+		
+		$this->assertEquals(0, $x->_getCalls());
+		$x->_setCalls(9999);
+		$this->assertEquals(9999, $x->_getCalls());
+		
+//		$x->_setCalls(0);
+//		$this->assertEquals(0, $x->_getCalls());
+	}
 	//--------------------------------------------------------------------------
 	
 	
@@ -43,6 +62,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	//--------------------------------------------------------------------------
 	public function test_versionParsing() {
 		$upgObj = new upgradeTester();
+		$this->assertEquals(0, $upgObj->_getCalls());
 		
 		// These should all pass muster.
 		$testVersions = array(
@@ -99,6 +119,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	//--------------------------------------------------------------------------
 	public function test_dbVersions() {
 		$x = new upgradeTester();
+		$this->assertEquals(0, $x->_getCalls());
 		$x->db = $this->dbObj;
 		$x->versionFileLocation = dirname(__FILE__) .'/files/VERSION-1';
 		$x->upgradeConfigFile = dirname(__FILE__) .'/files/upgrade.ini';
@@ -131,6 +152,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	//--------------------------------------------------------------------------
 	public function test_lockingLogic() {
 		$x = new upgradeTester();
+		$this->assertEquals(0, $x->_getCalls());
 		$x->lockObj = new cs_lockfile("unittest.lock");
 		$x->databaseVersion = '1.2.3';
 		
@@ -152,6 +174,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	//--------------------------------------------------------------------------
 	public function test_exceptionNoVersionData() {
 		$x = new upgradeTester();
+		$this->assertEquals(0, $x->_getCalls());
 		$x->db = $this->dbObj;
 		$x->projectName = __FUNCTION__;
 		
@@ -178,6 +201,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	//--------------------------------------------------------------------------
 	public function test_versionConflict() {
 		$x = new upgradeTester();
+		$this->assertEquals(0, $x->_getCalls());
 		$x->db = $this->dbObj;
 		
 		$initialVersion = '1.2.3';
@@ -215,6 +239,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	//--------------------------------------------------------------------------
 	public function test_versionFile() {
 		$x = new upgradeTester;
+		$this->assertEquals(0, $x->_getCalls());
 		$x->db = $this->dbObj;
 		
 		foreach($this->fileToVersion as $file => $version) {
@@ -231,6 +256,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	//--------------------------------------------------------------------------
 	public function test_reconnectDb() {
 		$x = new upgradeTester;
+		$this->assertEquals(0, $x->_getCalls());
 		$x->db = $this->dbObj;
 		$x->projectName = __FUNCTION__;
 		
@@ -259,6 +285,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	//--------------------------------------------------------------------------
 	public function test_cache() {
 		$x = new upgradeTester();
+		$this->assertEquals(0, $x->_getCalls());
 		$x->db = $this->dbObj;
 		$x->projectName = __FUNCTION__;
 		
@@ -278,38 +305,106 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	
 	
 	//--------------------------------------------------------------------------
-	public function test_calls() {
+	public function test_readUpgradeConfigFile() {
 		$x = new upgradeTester();
+		$x->db = $this->dbObj;
+		$x->upgradeConfigFile = dirname(__FILE__) .'/files/upgrade.ini';
 		
-		$this->assertEquals(0, $x->_getCalls());
-		$x->_setCalls(9999);
-		$this->assertEquals(9999, $x->_getCalls());
+		$matchingData = $x->read_upgrade_config_file();
+		$this->assertTrue(is_array($matchingData));
+		$this->assertTrue(isset($matchingData['0.1.0']));
+		$this->assertTrue(isset($matchingData['1.0']));
+		$this->assertTrue(isset($matchingData['1.1.1']));
+		
+//		$checks = 0;
+		$lastVersion = null;
+		foreach($matchingData as $v=>$d) {
+			$this->assertTrue(isset($d['target_version']));
+			$this->assertTrue($x->is_higher_version($v, $d['target_version']));
+			
+			if(!is_null($lastVersion)) {
+				//the current version ($v) MUST be higher than the last one ($lastVersion)
+				$this->assertTrue($x->is_higher_version($lastVersion, $v), "lastVersion (". $lastVersion .") not higher than current (". $v .")");
+			}
+			$lastVersion = $v;
+		}
 	}
 	//--------------------------------------------------------------------------
 	
 	
 	
 	//--------------------------------------------------------------------------
-	public function xtest_normalCall() {
+	public function test_normalCall() {
 		
 		/*
 		 * NOTE::: this is a *simulated* normal call, as using cs_webdbupgrade{} 
 		 *	directly would not allow testing of protected members.
 		 */
 		$x = new upgradeTester();
+		$x->lockObj = new cs_lockfile();
+		$this->assertEquals(0, $x->_getCalls());
 		$x->projectName = __FUNCTION__;
-//		$x->set_initial_version('1.0.0');
+		
+		$this->assertTrue(is_numeric(cs_webdbupgrade::UPGRADE_SCRIPTED));
+		$this->assertTrue(is_numeric(cs_webdbupgrade::UPGRADE_VERSION_ONLY));
+		
 		$x->doSetup(
 				dirname(__FILE__) .'/files/VERSION-1', 
 				dirname(__FILE__) .'/files/upgrade.ini',
 				$this->dbObj
 		);
+		$x->set_initial_version('0.0.1');
 		
 		$this->assertEquals(1, $x->_getCalls());
 		$this->assertEquals(__FUNCTION__, $x->projectName);
-		$this->assertEquals($x->parse_version_string('1.0.0'), $x->get_database_version());
+		$this->assertEquals($x->parse_version_string('0.0.1'), $x->get_database_version());
 		$this->assertEquals(1, $x->_getCalls());
+		
+		$this->assertFalse($x->is_upgrade_in_progress());
+		
+		$matching = $x->read_upgrade_config_file();
+		$this->assertTrue(is_array($matching));
+		$this->assertEquals(3, count($matching));
+		
+		$this->assertFalse($x->is_upgrade_in_progress());
+		
+		//the scripted upgrade, from v0.1.0 to v1.0.0, is going to create a test file; make sure it's NOT present already.
+		$this->assertFalse(file_exists('upgrade_001.do_upgrade.test'));
+		
+		// version only upgrade.
+		{
+			$this->assertEquals(cs_webdbupgrade::UPGRADE_VERSION_ONLY, $x->do_single_upgrade('0.0.1', '0.1.0'));
+
+			//this method doesn't care about lock files...
+			$this->assertFalse($x->is_upgrade_in_progress());
+			$this->assertEquals($x->parse_version_string('0.1.0'), $x->get_database_version());
+		}
+		
+		//Test a scripted upgrade..
+		{
+			$this->assertEquals(cs_webdbupgrade::UPGRADE_SCRIPTED, $x->do_single_upgrade('0.1.0', '1.0'));
+			$this->assertTrue(file_exists('upgrade_001.do_upgrade.test'));
+			$this->assertEquals($x->parse_version_string('1.0'), $x->get_database_version());
+		}
+		
+		//another version-only upgrade...
+		{
+			$this->assertFalse($x->is_upgrade_in_progress());
+			$this->assertEquals(cs_webdbupgrade::UPGRADE_VERSION_ONLY, $x->do_single_upgrade('1.0', '1.1.1'));
+			
+		}
+		
+		//final version-only upgrade.
+		{
+			$this->assertFalse($x->is_upgrade_in_progress());
+			$this->assertEquals(cs_webdbupgrade::UPGRADE_VERSION_ONLY, $x->do_single_upgrade('1.1.1', '1.3'));
+		}
+		
+		//
+//		$this->assertTrue($x->check_versions(false));
+//		$this->assertEquals($x->parse_version_string('1.1.1'), $x->get_database_version());
 	}
+	//--------------------------------------------------------------------------
 	
 	
 	
@@ -425,6 +520,8 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 class upgradeTester extends cs_webdbupgrade {
 	
 	public function __construct() {
+		parent::$cache = array();
+		parent::$calls = 0;
 		return;
 	}//end __construct()
 	
@@ -445,7 +542,7 @@ class upgradeTester extends cs_webdbupgrade {
 	
 	
 	public function perform_upgrade() {
-		parent::perform_upgrade();
+		return parent::perform_upgrade();
 	}//end perform_upgrade()
 	
 	
@@ -465,12 +562,12 @@ class upgradeTester extends cs_webdbupgrade {
 	
 	
 	public function do_single_upgrade($fromVersion, $toVersion=null) {
-		parent::do_single_upgrade($fromVersion, $toVersion);
+		return parent::do_single_upgrade($fromVersion, $toVersion);
 	}//end do_single_upgrade()
 	
 	
 	public function do_scripted_upgrade(array $upgradeData) {
-		parent::do_scripted_upgrade($upgradeData);
+		return parent::do_scripted_upgrade($upgradeData);
 	}//end do_scripted_upgrade()
 	
 	
@@ -484,33 +581,21 @@ class upgradeTester extends cs_webdbupgrade {
 	}//end parse_suffix()
 	
 	
-	public function fix_xml_config($config, $path=null) {
-		parent::fix_xml_config($config, $path);
-	}//end fix_xml_config()
-	
-	
-	public function remove_lockfile() {
-		parent::remove_lockfile();
-	}//end remove_lockfile()
-	
-	
 	public function get_full_version_string($versionString) {
 		return(parent::get_full_version_string($versionString));
 	}//end get_full_version_string
 	
 	
-	public function do_log($message, $type) {
-		parent::do_log($message, $type);
+	public function do_log($message, $type='exception in code') {
+		return parent::do_log($message, $type);
 	}//end do_log()
 	
 	public function check_versions($doUpgrade=FALSE) {
-		parent::check_versions($doUpgrade);
-		cs_webdbupgrade::$cache = array();
+		return parent::check_versions($doUpgrade);
 	}//end check_versions
 	
 	public function check_internal_upgrades() {
-		parent::check_internal_upgrades();
-		cs_webdbupgrade::$cache = array();
+		return parent::check_internal_upgrades();
 	}
 	
 	public function set_initial_version($versionString) {

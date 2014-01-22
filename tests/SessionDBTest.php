@@ -63,11 +63,11 @@ class sessionTester extends cs_sessionDB {
 		return(parent::is_valid_sid($sid));
 	}
 	
-	public function doInsert($sid, $data) {
-		return(parent::doInsert($sid, $data));
+	public function doInsert($sid, $data, $uid=NULL) {
+		return(parent::doInsert($sid, $data, $uid));
 	}
 	
-	public function doUpdate($sid, $data) {
-		return(parent::doUpdate($sid, $data));
+	public function doUpdate($sid, $data, $uid=NULL) {
+		return(parent::doUpdate($sid, $data, $uid));
 	}
 }

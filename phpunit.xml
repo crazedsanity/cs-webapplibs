@@ -1,4 +1,7 @@
-<phpunit bootstrap="tests/bootstrap.php">
+<phpunit 
+	bootstrap="tests/bootstrap.php"
+	convertErrorsToExceptions="true"
+	>
 	<testsuites>
 		<testsuite name="all">
 			<directory>tests</directory>

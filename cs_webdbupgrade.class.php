@@ -37,6 +37,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	/** */
 	private $internalProjectName = "";
 	
+	protected $internalVersion;
+	
 	/** Avoids an exception if the project has no version information in the database */
 	protected $allowNoDBVersion=true; //TODO: make allowNoDBVersion accessible or remove altogether
 	
@@ -71,8 +73,15 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		'RC'		//all known bugs fixed, searching for unknown ones
 	);
 	
+	const UPGRADE_VERSION_ONLY = 0;
+	const UPGRADE_SCRIPTED = 1;
+	
 	//=========================================================================
 	public function __construct($versionFileLocation, $upgradeConfigFile, cs_phpDB $db) {
+		
+		$this->internalVersion = new cs_version();
+		$this->internalVersion->set_version_file_location(dirname(__FILE__) .'/VERSION');
+		$this->internalProjectName = $this->internalVersion->get_project();
 		
 		$this->set_version_file_location(dirname(__FILE__) .'/VERSION');
 		$this->internalProjectName = $this->get_project();
@@ -82,6 +91,11 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		else {
 			self::$calls = 1;
+		}
+		
+		if(self::$calls > 100) {
+//			cs_debug_backtrace(1);
+			throw new LogicException(__METHOD__ .": called too many times (". self::$calls .")... ");
 		}
 		
 		$this->db = $db;
@@ -100,11 +114,11 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		
 		$this->set_version_file_location($versionFileLocation);
 		
-		$this->projectName = $this->get_project();
+//		$this->projectName = $this->get_project();
 		
 
-		$this->check_internal_upgrades();
-		$this->check_versions(false);
+//		$this->check_internal_upgrades();
+//		$this->check_versions(false);
 	}//end __construct()
 	//=========================================================================
 	
@@ -334,6 +348,12 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 						throw new LogicException(__METHOD__ . ": version must be in order of lowest to highest");
 					}
 				}
+				
+				//certain indexes MUST be set.
+				if(!isset($d['target_version'])) {
+					throw new ErrorException(__METHOD__ .": missing target version for '". $myVersion ."'");
+				}
+				
 				$this->matchingData[$myVersion] = $d;
 			}
 		} else {
@@ -614,33 +634,32 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	protected function do_single_upgrade($fromVersion, $toVersion=null) {
-		//Use the "matching_syntax" data in the upgrade.xml file to determine the filename.
-		$versionIndex = "V". $this->get_full_version_string($fromVersion);
-		if(!isset($this->matchingData[$versionIndex])) {
-			//version-only upgrade.
-			$this->newVersion = $toVersion;
-			$this->update_database_version($toVersion);
-		}
-		else {
+		$upgradeType = self::UPGRADE_VERSION_ONLY;
+		
+		$versionIndex = $this->get_full_version_string($fromVersion);
+		
+		if(isset($this->matchingData[$versionIndex])) {
 			//scripted upgrade...
 			$upgradeData = $this->matchingData[$versionIndex];
-			
-			if(isset($upgradeData['TARGET_VERSION']) && count($upgradeData) > 1) {
-				$this->newVersion = $upgradeData['TARGET_VERSION'];
-				if(isset($upgradeData['SCRIPT_NAME']) && isset($upgradeData['CLASS_NAME']) && isset($upgradeData['CALL_METHOD'])) {
-					//good to go; it's a scripted upgrade.
+			if(isset($upgradeData['target_version']) && count($upgradeData) > 1) {
+				$this->newVersion = $upgradeData['target_version'];
+				if(isset($upgradeData['script_name']) && isset($upgradeData['class_name']) && isset($upgradeData['call_method'])) {
 					$this->do_scripted_upgrade($upgradeData);
-					$this->update_database_version($upgradeData['TARGET_VERSION']);
-				}
-				else {
-					$this->error_handler(__METHOD__ .": not enough information to run scripted upgrade for ". $versionIndex);
+					$toVersion = $upgradeData['target_version'];
+					$upgradeType = self::UPGRADE_SCRIPTED;
 				}
 			}
 			else {
-				$this->error_handler(__METHOD__ .": target version not specified, unable to proceed with upgrade for ". $versionIndex);
+				$this->error_handler(__METHOD__ .": target version not specified, unable to proceed with scripted upgrade for ". $versionIndex);
 			}
 		}
+		
+		$this->newVersion = $toVersion;
+		$this->update_database_version($toVersion);
+		
 		$this->do_log("Finished upgrade to ". $this->newVersion, 'system');
+		
+		return $upgradeType;
 	}//end do_single_upgrade()
 	//=========================================================================
 	
@@ -707,7 +726,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	protected function do_scripted_upgrade(array $upgradeData) {
-		$myConfigFile = $upgradeData['SCRIPT_NAME'];
+		$myConfigFile = $upgradeData['script_name'];
 		
 		$this->do_log("Preparing to run script '". $myConfigFile ."'", 'debug');
 		
@@ -718,9 +737,9 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		
 		if(file_exists($fileName)) {
 			
-			$this->do_log("(". __CLASS__ .") Performing scripted upgrade (". $myConfigFile .") from file '". $fileName ."'", 'DEBUG');
-			$createClassName = $upgradeData['CLASS_NAME'];
-			$classUpgradeMethod = $upgradeData['CALL_METHOD'];
+			$this->do_log("(". __CLASS__ .") Performing scripted upgrade (". $myConfigFile .") from file '". $fileName ."'", 'debug');
+			$createClassName = $upgradeData['class_name'];
+			$classUpgradeMethod = $upgradeData['call_method'];
 			require_once($fileName);
 			
 			//now check to see that the class we need actually exists.

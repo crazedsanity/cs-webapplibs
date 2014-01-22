@@ -120,8 +120,8 @@ class _test_authUser extends cs_authUser {
 	}
 	
 	
-	public function getPasswordHash(array $info) {
-		return parent::getPasswordHash($info);
+	public function getPasswordHash(array $info, $separator='-') {
+		return parent::getPasswordHash($info, $separator);
 	}
 	
 	

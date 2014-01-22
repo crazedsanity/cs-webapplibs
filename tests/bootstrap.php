@@ -15,3 +15,5 @@ define('UNITTEST_ACTIVE', 1);
 date_default_timezone_set("America/Chicago");
 
 AutoLoader::registerDirectory(dirname(__FILE__) .'/../');
+
+error_reporting(E_ALL);

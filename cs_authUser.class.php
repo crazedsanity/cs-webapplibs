@@ -304,7 +304,7 @@ class cs_authUser extends cs_sessionDB {
 	
 	
 	//-------------------------------------------------------------------------
-	public function checkin() {
+	public function checkin($sid=null) {
 		$retval = NULL;
 		if($this->is_authenticated()) {
 			$sql = "UPDATE cswal_session_table SET last_updated=NOW(), " .
@@ -312,6 +312,9 @@ class cs_authUser extends cs_sessionDB {
 			$params = array(
 				'sid'			=> $this->sid
 			);
+			if(!is_null($sid)) {
+				$params['sid'] = $sid;
+			}
 			$retval = $this->db->run_query($sql, $params);
 		}
 		$this->logout_inactive_sessions();
