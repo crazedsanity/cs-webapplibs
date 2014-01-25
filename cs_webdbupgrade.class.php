@@ -39,9 +39,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	protected $internalVersion;
 	
-	/** Avoids an exception if the project has no version information in the database */
-	protected $allowNoDBVersion=true; //TODO: make allowNoDBVersion accessible or remove altogether
-	
 	/** Log messages to store during an internal upgrade (to avoid problems) */
 	protected $storedLogs = array();
 	protected $debugLogs=array();
@@ -113,8 +110,9 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		
 		$this->set_version_file_location($versionFileLocation);
+		$this->lockObj = new cs_lockfile();
 		
-//		$this->projectName = $this->get_project();
+		$this->projectName = $this->get_project();
 		
 
 //		$this->check_internal_upgrades();
@@ -230,42 +228,33 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	 * with the one in the VERSION file; if it does, then it checks the version 
 	 * listed in the database.
 	 */
-	public function check_versions($performUpgrade=TRUE) {
+	public function check_versions($performUpgrade=true) {
 		if(isset(self::$cache[$this->projectName])) {
 			$retval = false;
 		}
 		else {
-			$this->reconnect_db();
-			$this->set_upgrade_in_progress();
-			if($performUpgrade !== true) {
-				$performUpgrade = false;
-			}
-
-			//first, check that all files exist.
-			$retval = NULL;
-
-			//check to see if the lock files for upgrading exist.
-			if($this->is_upgrade_in_progress()) {
+			if($performUpgrade && $this->is_upgrade_in_progress()) {
 				$this->do_log("Upgrade in progress", 'notice');
 				throw new exception(__METHOD__ .": upgrade in progress");
 			}
-			else {
-				//okay, all files present: check the version in the VERSION file.
-				$this->read_version_file();
-				$dbVersion = $this->get_database_version();
-
-				if(!is_array($dbVersion)) {
-					$this->load_initial_version();
-				}
-
-				$versionsDiffer = !($this->versionFileVersion == $this->databaseVersion);
-				$retval = FALSE;
-				
-				$conflict = $this->check_for_version_conflict();
-				
-				if($performUpgrade && $conflict != null && $versionsDiffer) {
-					$retval = $this->perform_upgrade();
-				}
+			
+			$retval = NULL;
+			
+			//okay, all files present: check the version in the VERSION file.
+			$this->read_version_file();
+			$dbVersion = $this->get_database_version(true);
+			
+			if (!is_array($dbVersion)) {
+				$this->load_initial_version();
+			}
+			
+			$versionsDiffer = !($this->versionFileVersion == $this->databaseVersion);
+			$retval = false;
+			
+			$conflict = $this->check_for_version_conflict();
+			
+			if ($performUpgrade && $conflict != null && $versionsDiffer) {
+				$retval = $this->perform_upgrade();
 			}
 			
 			if($performUpgrade === true) {
@@ -451,16 +440,15 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	//=========================================================================
 	public function set_upgrade_in_progress() {
 		$retval = false;
-		if(strlen($this->databaseVersion)) {
-			if(!$this->lockObj->is_lockfile_present()) {
-				$details = $this->projectName .': Upgrade from '. $this->databaseVersion .' started at '. date('Y-m-d H:i:s');
-				$this->lockObj->create_lockfile($details);
-			}
-			$retval = $this->lockObj->is_lockfile_present();
+		$showDbVersion = $this->databaseVersion;
+		if(is_null($showDbVersion) || !strlen($showDbVersion)) {
+			$showDbVersion = "(unknown)";
 		}
-		else {
-			$this->error_handler(__METHOD__ .": missing internal databaseVersion (". $this->databaseVersion .")");
+		if(!$this->lockObj->is_lockfile_present()) {
+			$details = $this->projectName .': Upgrade from '. $showDbVersion .' started at '. date('Y-m-d H:i:s');
+			$this->lockObj->create_lockfile($details);
 		}
+		$retval = $this->lockObj->is_lockfile_present();
 		
 		return $retval;
 	}//end set_upgrade_in_progress()
@@ -580,7 +568,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	public function get_database_version() {
+	public function get_database_version($missingVersionAllowed=false) {
 		$sql = "SELECT * FROM ". $this->dbTable ." WHERE ".
 				"project_name=:projectName";
 		
@@ -609,7 +597,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 				}
 			}
 			elseif(!strlen($dberror) && $numrows == 0) {
-				if($this->allowNoDBVersion) {
+				if($missingVersionAllowed) {
 					$retval = false;
 				}
 				else {
@@ -962,7 +950,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	public function load_initial_version() {
 		//if there's an INITIAL_VERSION in the upgrade config file, use that.
 		$this->read_upgrade_config_file();
-		$insertData = array();
 		if(isset($this->initialVersion) && strlen($this->initialVersion)) {
 			$parseThis = $this->initialVersion;
 		}

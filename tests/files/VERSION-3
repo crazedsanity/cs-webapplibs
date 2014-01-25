@@ -1,5 +1,3 @@
-## Stores the current version of the cs-versionparse system, and it's source.  
-## Please do NOT modify this file.
 
 VERSION: 8.0.4003-RC2
 PROJECT: cs-webapplibstest

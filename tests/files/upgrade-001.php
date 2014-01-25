@@ -1,6 +1,8 @@
 <?php
 
-
+/**
+ * @codeCoverageIgnore
+ */
 class upgrade_001 {
 	
 	public function __construct() {
