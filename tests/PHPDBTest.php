@@ -186,6 +186,7 @@ class TestOfCSPHPDB extends testDbAbstract {
 		}
 //		
 		// test to see that old-school SQL works...
+		$this->dbObj->run_query("SET TIME ZONE '". date_default_timezone_get() ."'");
 		$numRows = $this->dbObj->run_query('SELECT (CURRENT_TIMESTAMP = CURRENT_TIMESTAMP) as date_test, CURRENT_TIMESTAMP as date;');
 		$this->assertEquals($numRows, 1, "Expected one row, actually returned (". $numRows .")");
 		
