@@ -141,7 +141,9 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 
 			$retval = true;
 		} catch (Exception $e) {
-			$this->dbObj->rollbackTrans();
+			if(is_object($this->dbObj)) {
+				$this->dbObj->rollbackTrans();
+			}
 			throw $e;
 		}
 		return ($retval);
