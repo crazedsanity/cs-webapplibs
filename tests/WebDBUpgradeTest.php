@@ -154,7 +154,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	public function test_lockingLogic() {
 		$x = new upgradeTester();
 		$this->assertEquals(0, $x->_getCalls());
-		$x->lockObj = new cs_lockfile("unittest.lock");
+		$x->lockObj = new cs_lockfile(dirname(__FILE__) .'/files/rw', "unittest.lock");
 		$x->databaseVersion = '1.2.3';
 		
 		try {
@@ -349,7 +349,8 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		$x->doSetup(
 				dirname(__FILE__) .'/files/VERSION-1', 
 				dirname(__FILE__) .'/files/upgrade.ini',
-				$this->dbObj
+				$this->dbObj,
+				dirname(__FILE__) .'/files/rw'
 		);
 		$x->projectName = __FUNCTION__;
 		$x->set_initial_version('0.0.1');
@@ -418,7 +419,8 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		$upgObj->doSetup(
 				dirname(__FILE__) .'/files/VERSION-4', 
 				dirname(__FILE__) .'/files/upgrade.ini',
-				$this->dbObj
+				$this->dbObj,
+				dirname(__FILE__) .'/files/rw'
 		);
 		
 		$this->assertTrue((bool)strlen($upgObj->projectName));
@@ -461,8 +463,11 @@ class upgradeTester extends cs_webdbupgrade {
 	}//end __construct()
 	
 	
-	public function doSetup($versionFileLocation, $upgradeConfigFile, cs_phpDB $db = null, $lockFile = 'unittest_upgrade.lock') {
-		parent::__construct($versionFileLocation, $upgradeConfigFile, $db, $lockFile);
+	public function doSetup($versionFileLocation, $upgradeConfigFile, cs_phpDB $db = null, $rwDir=null, $lockFile = 'unittest_upgrade.lock') {
+		if(is_null($rwDir) || !strlen($rwDir)) {
+			$rwDir = dirname(__FILE__) .'/files/rw';
+		}
+		parent::__construct($versionFileLocation, $upgradeConfigFile, $db, $rwDir, $lockFile);
 	}//end doSetup()
 	
 	
