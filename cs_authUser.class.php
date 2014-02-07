@@ -34,7 +34,7 @@ class cs_authUser extends cs_sessionDB {
 		if(isset($db) && is_object($db)) {
 			//make sure the session has been created.
 			$this->db = $db;
-			parent::__construct(self::COOKIE_NAME, false);
+			parent::__construct(false, $db);
 			
 			if($automaticUpgrade === true) {
 				$this->check_for_upgrades();
