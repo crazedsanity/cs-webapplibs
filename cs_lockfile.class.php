@@ -14,11 +14,33 @@ class cs_lockfile {
 	protected $fsObj = null;
 	
 	//=========================================================================
-	public function __construct($lockFile=null) {
-		if(!is_null($lockFile)) {
-			$this->set_lockfile(basename($lockFile));
+	public function __construct($rwDir, $lockFile="upgrade.lock") {
+		if(!is_null($lockFile) && strlen($lockFile) > 1) {
+			$this->lockFile = $lockFile;
 		}
-		$this->fsObj = new cs_fileSystem($this->get_rwdir());
+		else {
+			$this->lockFile = self::defaultLockfile;
+		}
+		
+		if(!is_null($rwDir) && strlen($rwDir)) {	
+			if(is_dir($rwDir) && is_readable($rwDir)) {
+				if(is_writable($rwDir)) {
+					$this->rwDir = $rwDir;
+				}
+				else {
+					throw new InvalidArgumentException("directory (". $rwDir .") is readable but not writable");
+				}
+			}
+			else {
+				throw new InvalidArgumentException("specified path (". $rwDir .") is not a directory or is not readable");
+			}
+		}
+		else {
+			throw new InvalidArgumentException("no path specified for rwDir");
+		}
+		$this->set_lockfile($this->lockFile);
+		
+		$this->fsObj = new cs_fileSystem($this->rwDir);
 	}
 	//=========================================================================
 	
@@ -30,37 +52,9 @@ class cs_lockfile {
 	 * @return string (full path to readable/writable directory) 
 	 */
 	public function get_rwdir() {
-
-		$constantName = __CLASS__ . '-RWDIR';
-		$errorSuffix = " (define or change the value for constant '". $constantName ."')";
-		$errorPrefix = "automatically assigned ";
-		
-		$rwDir = $this->rwDir;
-		if (!isset($this->rwDir)) {
-			
-			$rwDir = dirname(__FILE__) . '/../../rw';
-			if (defined($constantName)) {
-				$rwDir = constant($constantName);
-			}
+		if(!is_dir($this->rwDir)) {
+			throw new ErrorException("Invalid rwDir (". $this->rwDir .")");
 		}
-		
-		if (is_dir($rwDir)) {
-			//@codeCoverageIgnoreStart
-			if (is_readable($rwDir)) {
-				if (is_writable($rwDir)) {
-					// WINNER!
-					$this->rwDir = $rwDir;
-				} else {
-					throw new ErrorException(__METHOD__ . ": " . $errorPrefix . "directory (" . $rwDir . ") not writable" . $errorSuffix);
-				}
-			} else {
-				throw new ErrorException(__METHOD__ . ": " . $errorPrefix . "directory (" . $rwDir . ") not readable" . $errorSuffix);
-			}
-			//@codeCoverageIgnoreEnd
-		} else {
-			throw new ErrorException(__METHOD__ . ": " . $errorPrefix . "value is not a directory" . $errorSuffix);
-		}
-		
 		return($this->rwDir);
 	}//end get_rwdir()
 	//=========================================================================
@@ -69,21 +63,7 @@ class cs_lockfile {
 	
 	//=========================================================================
 	public function get_lockfile() {
-		$pathToLockfile = null;
-		if(!isset($this->rwDir) && !isset($this->lockFile)) {
-			try {
-				$this->lockFile = self::defaultLockfile;
-				$this->rwDir = $this->get_rwdir();
-			}
-			catch(Exception $e) {
-				throw new Exception(__METHOD__ .": error while getting lockfile::: ". $e->getMessage());
-			}
-		}
-		elseif(isset($this->rwDir) && !isset($this->lockFile)) {
-			$this->lockFile = self::defaultLockfile;
-		}
 		$pathToLockfile = $this->rwDir .'/'. $this->lockFile;
-		
 		return($pathToLockfile);
 	}//end get_lockfile()
 	//=========================================================================
@@ -93,25 +73,30 @@ class cs_lockfile {
 	//=========================================================================
 	public function set_lockfile($name=null) {
 		
-		if($this->is_lockfile_present()) {
-			throw new exception(__METHOD__ .": cannot change lockfile name when file exists (". $this->get_lockfile() .")");
+		if(!is_null($name) && $this->lockFile === $name && $this->is_lockfile_present()) {
+			//do nothing.
 		}
-		elseif(is_null($name)) {
-			$name = self::defaultLockfile;
-		}
-		
-		$this->lockFile = $name;
-		try {
-			if(!strpos($name, '\\') && !strpos($name, '/')) { //preg_match('/\//', $name) && !preg_match('/\\/', $name)) {
-				$this->get_rwdir();
-				$this->lockFile = $name;
+		else {
+			if($this->is_lockfile_present()) {
+				throw new exception(__METHOD__ .": cannot change lockfile name (to '". $name ."') when file exists (". $this->lockFile .")");
 			}
-			else {
-				throw new exception(__METHOD__ .": name (". $name .") has invalid characters");
+			elseif(is_null($name)) {
+				$name = self::defaultLockfile;
 			}
-		}
-		catch(exception $e) {
-			throw new exception(__METHOD__ .": error while setting lockfile::: ". $e->getMessage());
+
+			$this->lockFile = $name;
+			try {
+				if(!strpos($name, '\\') && !strpos($name, '/')) { //preg_match('/\//', $name) && !preg_match('/\\/', $name)) {
+					$this->get_rwdir();
+					$this->lockFile = $name;
+				}
+				else {
+					throw new exception(__METHOD__ .": name (". $name .") has invalid characters");
+				}
+			}
+			catch(exception $e) {
+				throw new exception(__METHOD__ .": error while setting lockfile::: ". $e->getMessage());
+			}
 		}
 		
 		return($this->lockFile);
@@ -124,7 +109,7 @@ class cs_lockfile {
 	public function is_lockfile_present() {
 		$retval = false;
 		try {
-			$pathToLockfile = $this->get_lockfile();
+			$pathToLockfile = $this->rwDir .'/'. $this->lockFile;
 			$retval = file_exists($pathToLockfile);
 		}
 		catch(Exception $e) {
@@ -139,7 +124,6 @@ class cs_lockfile {
 	
 	//=========================================================================
 	public function create_lockfile($contents=null) {
-		
 		if(!$this->is_lockfile_present()) {
 			$retval = $this->fsObj->create_file($this->get_lockfile());
 			
