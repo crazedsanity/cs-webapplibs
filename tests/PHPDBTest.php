@@ -15,6 +15,17 @@ class TestOfCSPHPDB extends testDbAbstract {
 	
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * @covers cs_phpDB::beginTrans
+	 * @covers cs_phpDB::get_transaction_status
+	 * @covers cs_phpDB::farray_fieldnames
+	 * @covers cs_phpDB::get_dbType
+	 * @covers cs_phpDB::run_query
+	 * @covers cs_phpDB::run_insert
+	 * @covers cs_phpDB::farray_nvp
+	 * @covers cs_phpDB::commitTrans
+	 * @covers cs_phpDB::farray
+	 */
 	public function test_basics() {
 		$this->assertTrue(is_object($this->dbObj), "No database objects to test");
 		
@@ -29,16 +40,10 @@ class TestOfCSPHPDB extends testDbAbstract {
 				$beginTransRes = $this->dbObj->beginTrans();
 				$transactionStatus = $this->dbObj->get_transaction_status();
 				$this->assertTrue($transactionStatus);
-				$beginTransRes = true;
 				if($this->assertTrue($beginTransRes, "Start of transaction failed (". $beginTransRes ."), status=(". $transactionStatus .")")) {
 					
-					try {
-						$this->dbObj->exec('CREATE TABLE test (id serial not null PRIMARY KEY, data text not null);');
-						$this->assertTrue($this->dbObj->get_transaction_status(), "Got out of transaction...?");
-					}
-					catch(Exception $e) {
-						
-					}
+					$this->dbObj->exec('CREATE TABLE test (id serial not null PRIMARY KEY, data text not null);');
+					$this->assertTrue($this->dbObj->get_transaction_status(), "Got out of transaction...?");
 					
 					
 					// Make sure we get 0 rows before any data has been inserted.
@@ -124,7 +129,6 @@ class TestOfCSPHPDB extends testDbAbstract {
 						}
 						catch(Exception $ex) {
 							$errorInfo = $this->dbObj->errorInfo();
-							#$this->gfObj->debug_print($ex);
 							
 							// Make sure it said something about a duplicate key, throw an error if not.
 							$this->assertTrue(strstr($errorInfo[2], "duplicate key"), "Error was strange... (". $this->gfObj->debug_print($errorInfo,0));
@@ -182,6 +186,7 @@ class TestOfCSPHPDB extends testDbAbstract {
 		}
 //		
 		// test to see that old-school SQL works...
+		$this->dbObj->run_query("SET TIME ZONE '". date_default_timezone_get() ."'");
 		$numRows = $this->dbObj->run_query('SELECT (CURRENT_TIMESTAMP = CURRENT_TIMESTAMP) as date_test, CURRENT_TIMESTAMP as date;');
 		$this->assertEquals($numRows, 1, "Expected one row, actually returned (". $numRows .")");
 		

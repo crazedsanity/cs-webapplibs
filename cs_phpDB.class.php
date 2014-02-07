@@ -24,14 +24,6 @@ class cs_phpDB extends cs_webapplibsAbstract {
 	protected $numRows = -1;
 	
 	//=========================================================================
-	/**
-	 * 
-	 * @param string $type
-	 * @param bool $writeCommandsToFile		(change this to a string for a filename, 
-	 * 											or use boolean true and it write to 
-	 * 											a default filename (__CLASS__.log). 
-	 * @return unknown_type
-	 */
 	public function __construct($dsn, $username, $password, array $driverOptions=null, $writeCommandsToFile=null) {
 		parent::__construct();
 		$this->gfObj = new cs_globalFunctions();
@@ -42,7 +34,11 @@ class cs_phpDB extends cs_webapplibsAbstract {
 			throw $ex;
 		}
 	}
+	//=========================================================================
 	
+	
+	
+	//=========================================================================
 	public function is_connected() {
 		$retval = false;
 		if(isset($this->dbh) && count($this->dbh->getAvailableDrivers())) {
@@ -50,7 +46,11 @@ class cs_phpDB extends cs_webapplibsAbstract {
 		}
 		return($retval);
 	}
+	//=========================================================================
 	
+	
+	
+	//=========================================================================
 	public function reconnect($dsn, $username, $password, array $driverOptions=null, $writeCommandsToFile=null) {
 		$this->dbh = null;
 		$this->sth = null;
@@ -103,7 +103,6 @@ class cs_phpDB extends cs_webapplibsAbstract {
 			}
 		}
 		catch(PDOException $e) {
-cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": failed to connect to database: ".
 					$e->getMessage());
 		}
@@ -140,7 +139,6 @@ cs_debug_backtrace(1);
 			}
 		}
 		else {
-			cs_debug_backtrace();
 			throw new exception(__METHOD__ .': FATAL: unsupported method ('. $methodName .') for database of type ('. $this->dbType .')');
 		}
 		return($retval);
@@ -287,13 +285,6 @@ cs_debug_backtrace(1);
 	
 	
 	//=========================================================================
-	/***
-	 * 
-	 * "numbered" is special: when there's only one result and numbered=false, 
-	 *		the returned array will just be all the fields for that first record.
-	 * "unsetIndex" means that the index field will be removed from the record's 
-	 *		array.
-	 */
 	public function farray_fieldnames($index=null) {
 		$retval = null;
 		if(is_object($this->sth)) {
@@ -420,6 +411,8 @@ cs_debug_backtrace(1);
 		return($retval);
 	}//end exec()
 	//=========================================================================
+	
+	
 	
 	// wrapper methods (for backwards-compatibility)
 	public function beginTrans() {return($this->dbh->beginTransaction());}

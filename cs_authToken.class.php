@@ -20,6 +20,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 	//=========================================================================
 	/**
 	 * The CONSTRUCTOR.  Sets internal properties & such.
+	 * @codeCoverageIgnore
 	 */
 	public function __construct(cs_phpDB $db) {
 		
@@ -110,10 +111,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 			);
 		}
 		catch(exception $e) {
-			$this->gfObj->debug_print(__METHOD__ .": SQL::: ". $sql,1);
-			$this->gfObj->debug_print($insertData,1);
-			cs_debug_backtrace(1);
-			throw new exception(__METHOD__ .": failed to create token::: ". $e->getMessage());
+			throw new ErrorException(__METHOD__ .": failed to create token::: ". $e->getMessage());
 		}
 		
 		return($tokenInfo);

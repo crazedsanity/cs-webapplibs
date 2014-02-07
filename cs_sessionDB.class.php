@@ -25,6 +25,9 @@ class cs_sessionDB extends cs_session {
 	/** Filesystem Object for handling file-based logging */
 	protected $fsObj = null;
 	
+	/** stored value of the last exception encountered */
+	public $lastException = null;
+	
 	//-------------------------------------------------------------------------
 	/**
 	 * The constructor.
@@ -33,19 +36,20 @@ class cs_sessionDB extends cs_session {
 	 * 								this parameter is non-null and non-numeric, the value will be 
 	 * 								used as the session name.
 	 */
-	public function __construct() {
+	public function __construct($automaticUpgrades=true, cs_phpDB $db=null) {
 		
-		date_default_timezone_set('America/Chicago');
-		cs_sessionDB::$runDate = microtime();
+		self::$runDate = microtime();
 		
-
-		$this->db = $this->connectDb();
 		
-		$x = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml', $this->db);
-		$x->check_versions();
+		$this->db = $db;
+		
+		if($automaticUpgrades === true) {
+			$x = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml', $this->db);
+			$x->check_versions();
+		}
 		
 		//create a logger (this will automatically cause any upgrades to happen).
-		$this->logger = new cs_webdblogger($this->db, 'Session DB', true);
+		$this->logger = new cs_webdblogger($this->db, 'Session DB', false);
 		
 		$createSession = true;
 		if(self::$initialized == true) {
@@ -76,6 +80,7 @@ class cs_sessionDB extends cs_session {
 		
 		// the following prevents unexpected effects when using objects as save handlers
 		register_shutdown_function('session_write_close');
+		$this->gfObj = new cs_globalFunctions;
 		
 		try {
 			parent::__construct($createSession);
@@ -89,40 +94,47 @@ class cs_sessionDB extends cs_session {
 	
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	protected function connectDb($dsn=null,$user=null,$password=null) {
-		
-		if(is_null($dsn)) {
-			if(defined('SESSION_DB_DSN')) {
-				$dsn = constant('SESSION_DB_DSN');
-			}
-			else {
-				throw new exception(__METHOD__ .": missing DSN setting");
-			}
+		if(isset($this->db)) {
+			$db = $this->db;
 		}
-		
-		if(is_null($user)) {
-			if(defined('SESSION_DB_USER')) {
-				$user = constant('SESSION_DB_USER');
+		else {
+			if(is_null($dsn)) {
+				if(defined('SESSION_DB_DSN')) {
+					$dsn = constant('SESSION_DB_DSN');
+				}
+				else {
+					throw new exception(__METHOD__ .": missing DSN setting");
+				}
 			}
-			else {
-				throw new exception(__METHOD__ .": missing user setting");
+
+			if(is_null($user)) {
+				if(defined('SESSION_DB_USER')) {
+					$user = constant('SESSION_DB_USER');
+				}
+				else {
+					throw new exception(__METHOD__ .": missing user setting");
+				}
 			}
-		}
-		
-		if(is_null($password)) {
-			if(defined('SESSION_DB_PASSWORD')) {
-				$pass = constant('SESSION_DB_PASSWORD');
+
+			if(is_null($password)) {
+				if(defined('SESSION_DB_PASSWORD')) {
+					$pass = constant('SESSION_DB_PASSWORD');
+				}
+				else {
+					throw new exception(__METHOD__ .": missing password setting");
+				}
 			}
-			else {
-				throw new exception(__METHOD__ .": missing password setting");
+
+			try {
+				$db = new cs_phpDB($dsn, $user, $pass);
 			}
-		}
-		
-		try {
-			$db = new cs_phpDB($dsn, $user, $pass);
-		}
-		catch(Exception $e) {
-			$this->exception_handler($e->getMessage());
+			catch(Exception $e) {
+				$this->exception_handler($e->getMessage());
+			}
 		}
 		
 		return($db);
@@ -155,21 +167,17 @@ class cs_sessionDB extends cs_session {
 	//-------------------------------------------------------------------------
 	protected function is_valid_sid($sid) {
 		$isValid = false;
-		if(strlen($sid) >= 20) {
-			try {
-				$sql = "SELECT * FROM ". self::tableName ." WHERE session_id=:sid";
-				$this->db->run_query($sql, array('sid'=>$sid));
-				$numrows = $this->db->numRows();
-				if($numrows == 1) {
-					$isValid = true;
-				}
-				elseif($numrows > 0 || $numrows < 0) {
-					$this->exception_handler(__METHOD__ .": invalid numrows returned (". $numrows .")",true);
-				}
+		try {
+			$sql = "SELECT * FROM " . self::tableName . " WHERE session_id=:sid";
+			$this->db->run_query($sql, array('sid' => $sid));
+			$numrows = $this->db->numRows();
+			if ($numrows == 1) {
+				$isValid = true;
+			} elseif ($numrows > 0 || $numrows < 0) {
+				$this->exception_handler(__METHOD__ . ": invalid numrows returned (" . $numrows . ")", true);
 			}
-			catch(exception $e) {
-				$this->exception_handler(__METHOD__ .": invalid sid (". $sid .")");
-			}
+		} catch (exception $e) {
+			$this->exception_handler(__METHOD__ . ": invalid sid (" . $sid . ")");
 		}
 		
 		return($isValid);
@@ -182,7 +190,7 @@ class cs_sessionDB extends cs_session {
 	/**
 	 * Open the session (doesn't really do anything)
 	 */
-	public function sessdb_open($savePath, $sessionName) {
+	public function sessdb_open($savePath=null, $sessionName=null) {
 		return(true);
 	}//end sessdb_open()
 	//-------------------------------------------------------------------------
@@ -194,7 +202,7 @@ class cs_sessionDB extends cs_session {
 	 * Close the session (call the "gc" method)
 	 */
 	public function sessdb_close() {
-		return($this->sessdb_gc(0));
+		return($this->sessdb_gc(null));
 	}//end sessdb_close()
 	//-------------------------------------------------------------------------
 	
@@ -248,7 +256,10 @@ class cs_sessionDB extends cs_session {
 		try {
 			$sql = 'INSERT INTO '. self::tableName .' '. $this->create_sql_insert_string($sqlData);
 
-			$this->db->run_query($sql, $sqlData);
+			$rowsInserted = $this->db->run_query($sql, $sqlData);
+			if($rowsInserted != 1) {
+				throw new exception(__METHOD__ .": failed to insert data, rows inserted=(". $rowsInserted .")");
+			}
 		}
 		catch(Exception $e) {
 			$this->exception_handler($e->getMessage());
@@ -326,7 +337,6 @@ class cs_sessionDB extends cs_session {
 			$retval = $this->db->run_update($sql, $updateFields);
 		}
 		catch(Exception $e) {
-			$gf = new cs_globalFunctions;
 			$this->exception_handler($e->getMessage());
 		}
 		
@@ -415,48 +425,25 @@ class cs_sessionDB extends cs_session {
 	 * 
 	 * TODO: make the usage of $maxLifetime make sense (or remove it)
 	 */
-	public function sessdb_gc($maxLifetime=null) {
+	public function sessdb_gc($maxIdleSeconds=1440, $maxLifeSeconds=null) {
+		
+		if(!is_null($maxIdleSeconds) && !is_integer($maxIdleSeconds)) {
+			throw new LogicException(__METHOD__ .": invalid specification for seconds (". $maxIdleSeconds .")");
+		}
 		$retval = -1;
-		$dateFormat = 'Y-m-d H:M:S';
-		$strftimeFormat = '%Y-%m-%d %H:%M:%S';
-		$nowTime = date($dateFormat);
 		$excludeCurrent = true;
 		$params = array();
 		
-		if(defined('SESSION_MAX_TIME') || defined('SESSION_MAX_IDLE')) {
-			$maxFreshness = null;
-			if(defined('SESSION_MAX_TIME')) {
-				//date_created < '2012-12-01 22:01:45''
-				$date = strtotime('- '. constant('SESSION_MAX_TIME'));
-				$params ['dateCreated'] = strftime($strftimeFormat, $date);
-				$maxFreshness = "date_created < :dateCreated";	//". strftime($strftimeFormat, $date) ."'";
-				$excludeCurrent=false;
-			}
-			if(defined('SESSION_MAX_IDLE')) {
-				
-				$date = strtotime('- '. constant('SESSION_MAX_IDLE'));
-				$params['lastUpdated'] = strftime($strftimeFormat, $date);
-				
-				$addThis = "last_updated < :lastUpdated";	//'". strftime($strftimeFormat, $date) ."'";
-				
-				$maxFreshness = $this->gfObj->create_list($maxFreshness, $addThis, ' OR ');
-			}
+		if(!is_null($maxIdleSeconds) && $maxIdleSeconds > 0) {
+			$maxIdleSeconds = "NOW() - interval '". $maxIdleSeconds ." seconds'";
 		}
-		elseif(is_null($maxLifetime) || !is_numeric($maxLifetime) || $maxLifetime <= 0) {
-			//pull it from PHP's ini settings.
-			$maxLifetime = ini_get("session.gc_maxlifetime");
-			$interval = $maxLifetime .' seconds';
-			
-			$dt1 = strtotime($nowTime .' - '. $interval);
-			$params['lastUpdated'] = date($dateFormat, $dt1);
-			$maxFreshness = "last_updated < :lastUpdated";//'". date($dateFormat, $dt1) ."'";
+		else {
+			$maxIdleSeconds = "NOW() - interval '". ini_get('session.gc_maxlifetime') ."'";
 		}
 		
-		
+		$sql = "DELETE FROM ". self::tableName ." WHERE last_updated < ". $maxIdleSeconds;
 		
 		try {
-			//destroy old sessions, but don't complain if nothing is deleted.
-			$sql = "DELETE FROM ". self::tableName ." WHERE ". $maxFreshness;
 			if(strlen($this->sid) && $excludeCurrent === false) {
 				$params['session_id'] = $this->sid;
 				$sql .= " AND session_id != :session_id";
@@ -464,7 +451,7 @@ class cs_sessionDB extends cs_session {
 			$retval = $this->db->run_update($sql, $params);
 		}
 		catch(exception $e) {
-			$this->exception_handler(__METHOD__ .": exception while cleaning: ". $e->getMessage());
+			$this->exception_handler(__METHOD__ .": exception while cleaning: ". $e->getMessage() . "\nSQL::: ". $sql ."\n\nPARAMS: ". print_r($params, 1));
 		}
 		
 		return($retval);
@@ -476,7 +463,7 @@ class cs_sessionDB extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	protected function do_log($message, $type) {
-		
+		$retval = null;
 		try {
 			//check if the logger object has been created.
 			if(!is_object($this->logger)) {
@@ -500,7 +487,10 @@ class cs_sessionDB extends cs_session {
 	protected function exception_handler($message, $throwException=false) {
 		$logId = null;
 		try {
-			$message .= "\n\nBACKTRACE:::\n". cs_debug_backtrace(0);
+			$this->lastException = $message;
+			if(function_exists('cs_debug_backtrace')) {
+				$message .= "\n\nBACKTRACE:::\n". cs_debug_backtrace(0);
+			}
 			$this->flogger($message);
 			$logId = $this->do_log($message, 'exception in code');
 			if($throwException === true) {
@@ -518,6 +508,9 @@ class cs_sessionDB extends cs_session {
 	
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	protected function flogger($msg) {
 		$msg = strip_tags($msg);
 		if(!is_object($this->fsObj)) {

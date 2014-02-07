@@ -1,92 +1,97 @@
-## Web Application Libraries
+# CS Web DB Upgrade
 
-*For info about upgrades, check the "upgrades" folder*
+_NOTE:_ this documentation is a work in progress, so take it as more guideline than rule.  If you find something wrong with it, fix it and let me know through a pull request or however you'd like... or tell me about it.  Or deal with it... whatever you prefer.
 
-(a.k.a. "CS-WebAppLibs" or "CSWAL")
 
-__WARNING #1:__ Version 0.5.x and above utilize PDO and prepared statements. 
-Applications/libraries/frameworks that were written against a prior version may 
-need to be rewritten to handle the differences.  In theory, it is still fully 
-backwards-compatible... but I make no guarantees.
+## Preconceptions
 
-__WARNING #2:__ If you don't read what sparse documentation there is, you 
-probably won't get it.
+CS Web DB Upgrade is built with a few preconceptions about your web application.
 
-__WARNING #3:__ This code was not written for the faint of heart. The naming 
-conventions may be inconsistent. Some of these classes, such as the WebDBUpgrade 
-system, is made to be transparent, so interacting with it can be difficult; 
-others, such as the logging system, are meant to be used with little need to 
-understand their inner-workings. 
+1. there is a concept of a "production" application
+1. there is a test environment in which changes are tested
+1. upgrades are scripted (schema, database values, filesystem things, etc)
 
-__WARNING #4:__ Due to lack of help, the only officially-supported database is 
-PostgreSQL.  Most things should be fairly well database-agnostic, though some of 
-the fancier features (such as transactions within the upgrade system) may not 
-work as expected: MySQL can sometimes automatically commits changes without 
-warning, such as when transactions cross transactionable and transactionless 
-tables.
+The system can be configured to automatically upgrade every time a page is viewed,
+via a custom shell script, or... however you want.  It's your application.
 
-*On to the documentation...*
+## What It Does
 
-### CS Web DB Upgrade
+CS Web DB Upgrade is built to make upgrading a database-driven web application 
+seamless. Instead of manually changing things in a certain sequence, automate 
+that process by scripting it!
 
-This system is built to make upgrading a database-driven app seamless.  No need
-to coordinate SQL or schema changes with the code updates: previously, one would 
-have to take the entire website down, run the schema/SQL change, update the code, 
-and (if you're lucky) check a "test" website to ensure it works before unleashing
-it upon your users.... if you're unlucky, they both must be run in unison, and 
-if the SQL or schema change fails, you're in for a lot of sweating and praying.
+The Old Way:
 
-Meet your saviour!  This system adds the ability to allow your system to upgrade 
+1. Manually "mark" the site as being in maintenance (replacing the site with one that responds to all requests with "down for maintenance" or some such)
+1. Manually update the code (overwrite it by extracting a zip, or using an SCM command--```svn update``` or ```git pull```)
+1. Manually run schema changes
+1. Manually update existing records
+1. Manually fix existing configuration files
+1. Manually fix existing misc files (eg. paths for images)
+1. Hope things worked so far... if not, fix them, maybe do some praying and sweating
+1. Manually "unmark" the site as beinig in maintenance mode (see #1)
+
+Did you see a pattern?
+
+Meet your savior!  This system adds the ability to allow your system to upgrade 
 itself.  Whenever you increment the version in your VERSION file, it can run a 
 custom script that will do everything you need AND keep others out until it is 
 done.  Once the system is updated, the next thing to touch the code containing 
 the upgrade system will cause it to run.
 
-CAVEATS: while this system will work with MySQL, I **STRONGLY** recommend 
-against it.  It was built using PostgreSQL, which has a rock solid transaction 
-system: if the upgrade fails, everything rolls-back and it is up to a developer
-to figure out what went wrong--but the system is left in a CONSISTENT STATE. 
-With MySQL, this will only work with InnoDB tables--and only if ALL AFFECTED 
-TABLES ARE InnoDB.  There are also many things that will cause an implicit 
-commit, meaning the code will think its in a transaction after that point, but 
-it actually isn't (which is possibly worse than not having transactional 
-capabilities at all).
+The New Way:
 
-The first time this system is implemented, you need to be aware that it will 
-look for an "INITIALVERSION" value in your upgrade.xml file.  This version 
-determines where it should start, so intermediary upgrade scripts will run. It 
-is important to realize, however, that this setting can cause grief in and of 
-itself: if you give the wrong version, scripts might run that shouldn't.  This 
-is especially important for long-running projects that are expected to be able 
-to be installed at any version: subsequent releases should update this initial 
-version (or remove it) as necessary.
+1. Manually (or automatically) update application
+1. Run the upgrade script (generally runs automatically when the application is used)
 
-MySQL TRANSACTION INFO::: http://dev.mysql.com/doc/refman/5.0/en/implicit-commit.html
+That's it!  If the upgrade breaks for any reason, a special "lock file" will 
+automatically put your application into "maintenance mode", preventing users 
+from hitting the database.  And this frees you from having to do anything 
+special in order to turn on that "maintenance mode."  Yay!
 
-<pre>
-WORK FLOW:
+## How to Work With CS Web DB Upgrade
 
- --> Is there an existing LOCK file?
-	 YES::
-	 	--> HALT (tell the user there's an upgrade in progress).
-	 NO:::
-	 	--> System checks VERSION file vs. version in database
-	 	--> Does version file's version match database version?
-	 		YES:::
-	 			-- good to go. 
-	 			-- CONTINUE
-	 		NO:::
-	 			--> CREATE LOCK FILE
-	 			--> find named script in upgrade.xml file
-	 			--> include script, create new class, call method (in upgrade.xml file)
-	 			--> did upgrade succeed?
-	 				YES:::
-	 					--> remove LOCK file
-	 					--> CONTINUE
-	 				NO:::
-	 					--> stop upgrade process.
-	 					--> HALT
- --> (continues as before)
-</pre>
+These steps help you get going with as little fuss as possible.  Once you're
+familiar with the system, you'll be able to do just about anything you like.
 
-For more information on the Lockfile system used with this, check out [cs_lockfile](README_lockfile.md).
+Create a file, ```upgrades/upgrade.ini```.  The "main" section is the most 
+important.  Here's a sample:
+
+```
+[main]
+initial_version=0.0.1
+
+[v0.0.1]
+target_version=0.0.2
+script_name=upgradeTo0.0.2.php
+class_name=upgrade_to_0_0_2
+call_method=run_upgrade
+
+[v0.0.2]
+target_version=0.1.0
+script_name=upgradeTo0.1.0.php
+class_name=upgrade_to_0_1_0
+call_method=run_upgrade
+
+[v0.3.5-ALPHA1]
+target_version=0.3.5-BETA2
+script_name=upgradeTo0.3.5-BETA2.php
+class_name=upgrade_to_0_3_5_BETA2
+call_method=run_upgrade
+
+[v0.3.6]
+target_version=1.0.0
+script_name=upgradeTo1.0.0.php
+class_name=upgrade_to_1_0_0
+call_method=run_upgrade
+```
+
+The flow should be somewhat obvious.  Each index (excluding "main") is parsed as 
+a version.  So the upgrade path is:
+
+0.0.1 -> 0.0.2 -> 0.0.2 -> 0.1.0 -> 0.3.5-ALPHA1 -> 0.3.6 -> 1.0.0
+
+So, if there's an existing installation that has a version in the database of 
+0.2.0, all scripts from 0.3.5-ALPHA1 and beyond are run, to get it to the current 
+version, which is probably at least 1.0.0 (though it could easily be 1.0.1 or 
+higher; not all upgrades require scripted changes).

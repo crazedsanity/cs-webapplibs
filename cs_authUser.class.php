@@ -1,9 +1,9 @@
 <?php
 
-class cs_authUser extends cs_sessiondb {
+class cs_authUser extends cs_sessionDB {
 	
 	/** Database connection object */
-	protected $dbObj;
+	protected $db;
 	
 	/** cs_globalFunctions class. */
 	protected $gfObj;
@@ -17,21 +17,31 @@ class cs_authUser extends cs_sessiondb {
 	/** Cached data from check_sid() */
 	protected $isAuthenticated=NULL;
 	
+	/** Table name */
+	protected $table = 'cs_authentication_table';
+	
+	/** Sequence name */
+	protected $seq = 'cs_authentication_table_uid_seq';
+	
+	//these MUST match the database!
+	const STATUS_DISABLED = 0;
+	const STATUS_ENABLED = 1;
+	const STATUS_PENDING = 2;
+	
 	//-------------------------------------------------------------------------
-	public function __construct(cs_phpDB $db) {
+	public function __construct(cs_phpDB $db, $automaticUpgrade=true) {
 
 		if(isset($db) && is_object($db)) {
 			//make sure the session has been created.
-			parent::__construct(self::COOKIE_NAME);
-
-
-
-			$this->dbObj = $db;
-			$x = new cs_webdbupgrade(dirname(__FILE__) . '/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml', $db);
-			$x->check_versions(true);
-
+			$this->db = $db;
+			parent::__construct(false, $db);
+			
+			if($automaticUpgrade === true) {
+				$this->check_for_upgrades();
+			}
+			
 			$this->gfObj = new cs_globalFunctions;
-			$this->logger = new cs_webdblogger($this->dbObj, "Auth", false);
+			$this->logger = new cs_webdblogger($this->db, "Auth", false);
 			if($this->is_authenticated()) {
 				$this->userInfo = $_SESSION['auth']['userInfo'];
 				if(!isset($_SESSION['uid']) || $_SESSION['uid'] != $_SESSION['auth']['userInfo']['uid']) {
@@ -39,13 +49,31 @@ class cs_authUser extends cs_sessiondb {
 				}
 			}
 			else {
-				unset($_SESSION['auth']['userInfo']);
+				if(isset($_SESSION) && isset($_SESSION['auth']) && isset($_SESSION['auth']['userInfo'])) {
+					unset($_SESSION['auth']['userInfo']);
+				}
 			}
 		}
 		else {
 			throw new exception(__METHOD__ .": required database handle not passed");
 		}
 	}//end __construct()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
+	protected function check_for_upgrades() {
+		$x = new cs_webdbupgrade(
+				dirname(__FILE__) . '/VERSION', 
+				dirname(__FILE__) . '/upgrades/upgrade.xml', 
+				$this->db
+		);
+		$x->check_versions(true);
+	}
 	//-------------------------------------------------------------------------
 	
 	
@@ -68,7 +96,7 @@ class cs_authUser extends cs_sessiondb {
 	
 	//-------------------------------------------------------------------------
 	public function is_authenticated() {
-		$retval = $this->check_sid();
+		$retval = parent::is_authenticated();
 		return($retval);
 	}//end is_authenticated()
 	//-------------------------------------------------------------------------
@@ -85,38 +113,52 @@ class cs_authUser extends cs_sessiondb {
 	
 	
 	//-------------------------------------------------------------------------
+	protected function getPasswordHash(array $dataToHash, $separator='-') {
+		
+		foreach($dataToHash as $k=>$v) {
+			if(!strlen($v)) {
+				throw new InvalidArgumentException(__METHOD__ .": invalid data (". $v .") for '". $k ."'");
+			}
+		}
+		$retval = sha1(implode($separator, $dataToHash));
+		
+		return $retval;
+	}//end getPasswordHash()
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
 	public function login($username, $password) {
 		if($this->is_authenticated()) {
 			$this->do_log("User (". $username .") is already logged in, can't login again", 'error');
 			$retval = false;
 		}
 		else {
-			$numrows = -1;
 			try {
-				$sql = "SELECT uid, username, is_active, date_created, last_login, 
+				$sql = "SELECT uid, username, user_status_id, date_created, last_login, 
 					email, user_status_id FROM cs_authentication_table WHERE username=:username " .
 					"AND passwd=:password AND user_status_id=1";
 
-				// NOTE::: in linux, do this:::: echo -e "username-password\c" | md5sum
+				// NOTE::: in linux, do this:::: echo -e "username-password\c" | sha1sum
 				// (without the "\c" or the switch, the sum won't match)
-				$sumThis = $username .'-'. $password;
+				$sumThis = array('username' => $username, 'passwd' => $password);
 				$params = array(
 					'username'		=> $username,
-					'password'		=> md5($sumThis)
+					'password'		=> $this->getPasswordHash($sumThis)
 				);
-				$numrows = $this->dbObj->run_query($sql, $params);
-				$retval = $numrows;
+				$retval = $this->db->run_query($sql, $params);
 			}
 			catch(Exception $e) {
 				$this->do_log(__METHOD__ .": Exception encountered::: ");
 				throw new exception(__METHOD__ .": DETAILS::: ". $e->getMessage());
 			}
 			try {
-				if($numrows == 1) {
-					$data = $this->dbObj->get_single_record();
+				if($retval == 1) {
+					$data = $this->db->get_single_record();
 					$this->userInfo = $data;
 					$this->update_auth_data($this->userInfo);
-					
+
 					/*
 					 * NOTE::: this assumes that there's already a record in the 
 					 * session table... this would probably need to be revisited 
@@ -124,15 +166,15 @@ class cs_authUser extends cs_sessiondb {
 					 * database storage for sessions.
 					 */
 					$updateRes = $this->updateUid($data['uid'], $this->sid);
-					if($updateRes == 0) {
-						$insertRes = $this->doInsert($this->sid, serialize($_SESSION), $this->uid);
-						$this->do_log(__METHOD__ .": inserted new session record, updateRes=(". $updateRes ."), insertRes=(". $insertRes .")", 'debug');
+					if ($updateRes == 0) {
+						$insertRes = parent::doInsert($this->sid, $_SESSION, $this->uid);
+						$this->do_log(__METHOD__ . ": inserted new session record, updateRes=(" . $updateRes . "), insertRes=(" . $insertRes . ")", 'debug');
 					}
 
 					$this->do_log("Successfully logged-in (". $retval .")");
 				}
 				else {
-					$this->do_log("Authentication failure, username=(". $username .")");
+					$this->do_log("Authentication failure, username=(". $username ."), retval=(". $retval .")");
 				}
 
 				if($retval == 1) {
@@ -154,13 +196,57 @@ class cs_authUser extends cs_sessiondb {
 	
 	
 	//-------------------------------------------------------------------------
-	protected function do_cookie() {
-		$cookieExpiration = '120 days';
-		if(defined('SESSION_MAX_TIME')) {
-			$cookieExpiration = constant('SESSION_MAX_TIME');
+	//TODO: use more stuff here, like a salt and/or their UID.
+	public function update_passwd(array $user, $newPass) {
+		
+		if(is_array($user) && isset($user['username']) && isset($user['uid']) && $user['uid'] > 0) {
+			
+			$sql = 'UPDATE '. $this->table .' SET passwd=:new WHERE uid=:uid';
+			$params = array(
+				'new'	=> $this->getPasswordHash(array($user['username'], $newPass)),
+				'uid'	=> $user['uid'],
+			);
+			
+			try {
+				$numRows = $this->db->run_update($sql, $params);
+
+				if($numRows == 1) {
+					$retval = true;
+				}
+				else {
+					throw new ErrorException(__METHOD__ .": failed to update password");
+				}
+			}
+			catch(Exception $ex) {
+				
+			}
 		}
-		$createCookieRes = $this->create_cookie(self::COOKIE_NAME, $this->sid, $cookieExpiration, '/', '.crazedsanity.com');
-		#$this->do_log("Result of creating cookie: ". $createCookieRes, 'debug');
+		elseif(isset($user['uid']) && $user['uid'] == 0) {
+			throw new InvalidArgumentException(__METHOD__ .": cannot change password for anonymous user");
+		}
+		else {
+			throw new InvalidArgumentException(__METHOD__ .": invalid user info or password");
+		}
+		
+		return $retval;
+	}//end update_passwd
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	protected function do_cookie() {
+		if(defined('UNITTEST_ACTIVE')) {
+			$createCookieRes = false;
+		}
+		else {
+			$cookieExpiration = '120 days';
+			if(defined('SESSION_MAX_TIME')) {
+				$cookieExpiration = constant('SESSION_MAX_TIME');
+			}
+			$createCookieRes = $this->create_cookie(self::COOKIE_NAME, $this->sid, $cookieExpiration, '/', '.crazedsanity.com');
+			#$this->do_log("Result of creating cookie: ". $createCookieRes, 'debug');
+		}
 		return($createCookieRes);
 	}//end do_cookie()
 	//-------------------------------------------------------------------------
@@ -170,13 +256,13 @@ class cs_authUser extends cs_sessiondb {
 	//-------------------------------------------------------------------------
 	protected function get_user_data($uid) {
 		if(is_numeric($uid) && $uid > 0) {
-			$sql = "SELECT uid, username, is_active, date_created, last_login, 
-				email, user_status_id FROM cs_authentication_table 
+			$sql = "SELECT uid, username, user_status_id, date_created, last_login, 
+				passwd, email, user_status_id FROM cs_authentication_table 
 				WHERE uid=:uid AND user_status_id=1";
-			$numrows = $this->dbObj->run_query($sql, array('uid'=> $uid));
+			$numrows = $this->db->run_query($sql, array('uid'=> $uid));
 			
 			if($numrows == 1) {
-				$retval = $this->dbObj->farray_fieldnames();
+				$retval = $this->db->get_single_record();
 			}
 			else {
 				//
@@ -218,7 +304,7 @@ class cs_authUser extends cs_sessiondb {
 	
 	
 	//-------------------------------------------------------------------------
-	public function checkin() {
+	public function checkin($sid=null) {
 		$retval = NULL;
 		if($this->is_authenticated()) {
 			$sql = "UPDATE cswal_session_table SET last_updated=NOW(), " .
@@ -226,7 +312,10 @@ class cs_authUser extends cs_sessiondb {
 			$params = array(
 				'sid'			=> $this->sid
 			);
-			$retval = $this->dbObj->run_query($sql, $params);
+			if(!is_null($sid)) {
+				$params['sid'] = $sid;
+			}
+			$retval = $this->db->run_query($sql, $params);
 		}
 		$this->logout_inactive_sessions();
 		

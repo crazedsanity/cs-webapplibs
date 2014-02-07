@@ -1,14 +1,6 @@
 <?php
 /*
  * Created on Jan 25, 2009
- * 
- * FILE INFORMATION:
- * 
- * $HeadURL$
- * $Id$
- * $LastChangedDate$
- * $LastChangedBy$
- * $LastChangedRevision$
  */
 
 class testOfCSAuthToken extends testDbAbstract {
@@ -45,7 +37,6 @@ class testOfCSAuthToken extends testDbAbstract {
 	function test_token_basics() {
 		$this->internal_connect_db();
 		$dbObj = $this->dbObj;
-		$type = 'pgsql';
 		
 		#$dbObj->beginTrans();
 		$tok = new cs_authToken($dbObj);

@@ -1,7 +1,35 @@
-# XML-Based Site Configuration (cs_siteConfig)
+# INI-Based Site Configuration (cs_siteConfig)
 
 _NOTE:_ this documentation is a work in progress, so take it as more guideline than rule.  If you find something wrong with it, fix it and let me know through a pull request or however you'd like... or tell me about it.  Or deal with it... whatever you prefer.
 
+_NOTE2:_ converting from XML to INI is fairly straightforward.  Please take a look at the provided examples for reference.
+
+_NOTE3:_ this still needs some updating...
+
+## How It Works
+
+Create an INI file that holds configuration information.  In your code, create 
+an instance of cs_siteConfig which points to the appropriate configuration file, 
+and you're pretty much done.  The code can now make use of constants and global 
+variables defined in that file.
+
+Example INI:
+
+```
+[website]
+RWDIR={_DIRNAMEOFFILE_}
+
+```
+
+Special Vars:
+
+ * _DIRNAMEOFFILE_: 
+ * _CONFIGFILE_: synonym for ```_DIRNAMEOFFILE_```
+ * _THISFILE_: synonym for ```_DIRNAMEOFFILE_```
+ * _APPURL_: 
+
+
+### The Old Way (XML-BASED)
 ## How It Works
 
 All you have to do to start using cs_siteConfig is build an instance of it:

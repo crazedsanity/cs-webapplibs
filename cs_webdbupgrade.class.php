@@ -7,9 +7,6 @@
 
 class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
-	/** cs_fileSystem{} object: for filesystem read/write operations. */
-	protected $fsObj;
-	
 	/** cs_globalFunctions{} object: debugging, array, and string operations. */
 	protected $gfObj;
 	
@@ -40,8 +37,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	/** */
 	private $internalProjectName = "";
 	
-	/** Avoids an exception if the project has no version information in the database */
-	protected $allowNoDBVersion=true; //TODO: make allowNoDBVersion accessible or remove altogether
+	protected $internalVersion;
 	
 	/** Log messages to store during an internal upgrade (to avoid problems) */
 	protected $storedLogs = array();
@@ -53,19 +49,17 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	protected $dbPrimaryKey = 'version_id';
 	protected $upgradeConfigFile;
 	protected $dbParams = array();
-	protected $rwDir = "";
+	protected $rwDir = "/tmp";
 	protected $initialVersion = "";
 	protected $matchingData = array();
 	
 	protected $lockObj = null;
 	
-	protected static $lockfile;
 	protected static $cache = array();
 	
 	protected static $calls = 0;
 	
 	private $dbConnected = false;
-	private $upgradeType = null;
 	
 	
 	/** List of acceptable suffixes; example "1.0.0-BETA3" -- NOTE: these MUST be in 
@@ -76,38 +70,36 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		'RC'		//all known bugs fixed, searching for unknown ones
 	);
 	
+	const UPGRADE_VERSION_ONLY = 0;
+	const UPGRADE_SCRIPTED = 1;
+	
+	protected $lockFile='upgrade.lock';
+	
 	//=========================================================================
-	public function __construct($versionFileLocation, $upgradeConfigFile, cs_phpDB $db=null) {
+	public function __construct($versionFileLocation, $upgradeConfigFile, cs_phpDB $db, $rwDir) {
+		
+		$this->internalVersion = new cs_version();
+		$this->internalVersion->set_version_file_location(dirname(__FILE__) .'/VERSION');
+		$this->internalProjectName = $this->internalVersion->get_project();
 		
 		$this->set_version_file_location(dirname(__FILE__) .'/VERSION');
 		$this->internalProjectName = $this->get_project();
 		
-		if(isset(cs_webdbupgrade::$cache['__calls__'])) {
-			cs_webdbupgrade::$cache['__calls__'] += 1;
+		if(isset(self::$calls)) {
+			self::$calls += 1;
 		}
 		else {
-			cs_webdbupgrade::$cache['__calls__'] = 1;
+			self::$calls = 1;
 		}
-		//Check for some required constants.
-		if(!defined('LIBDIR')) {
-			throw new exception(__METHOD__ .": required constant 'LIBDIR' not set");
-		}
-		if(!defined('SITE_ROOT')) {
-			// TODO: this should really be using a "RW" directory.
-			// TODO: make the "rwDir" code (further down) more apparent.
-			throw new exception(__METHOD__ .": required constant 'SITE_ROOT' not set");
+		
+		if(self::$calls > 100) {
+//			cs_debug_backtrace(1);
+			throw new LogicException(__METHOD__ .": called too many times (". self::$calls .")... ");
 		}
 		
 		$this->db = $db;
 		
 		parent::__construct(true);
-		if(defined('DEBUGPRINTOPT')) {
-			$this->gfObj->debugPrintOpt = constant('DEBUGPRINTOPT');
-		}
-		
-		if(defined('DBTYPE')) {
-			$this->dbType = constant('DBTYPE');
-		}
 		
 		if(!file_exists($upgradeConfigFile) || !is_readable($upgradeConfigFile)) {
 			throw new exception(__METHOD__ .": required upgrade config file location (". $upgradeConfigFile .") not set or unreadable");
@@ -118,104 +110,55 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		if(!strlen($versionFileLocation) || !file_exists($versionFileLocation)) {
 			throw new exception(__METHOD__ .": unable to locate version file (". $versionFileLocation .")");
 		}
-		$this->fsObj =  new cs_fileSystem(constant('SITE_ROOT'));
 		
 		$this->set_version_file_location($versionFileLocation);
 		
+		if(!is_null($rwDir) && strlen($rwDir) > 0) {
+			$this->rwDir = $rwDir;
+			$rwType = 'passed';
+		}
+		elseif(defined('RWDIR')) {
+			$this->rwDir = constant('RWDIR');
+			$rwType = 'defined';
+		}
+		else {
+			throw new InvalidArgumentException(__METHOD__ .": required RWDIR not specified");
+		}
+		
+		if (!is_dir($this->rwDir) || !is_readable($this->rwDir) || !is_writable($this->rwDir)) {
+			throw new ErrorException($rwType ." RWDIR var (" . $this->rwDir . ") is not a directory or is not readable/writable");
+		}
+		
+		
+		$this->lockObj = new cs_lockfile($this->rwDir, $this->lockFile);
+		
 		$this->projectName = $this->get_project();
 		
-
-		$this->check_internal_upgrades();
-		$this->check_versions(false);
+		
+//		$this->check_internal_upgrades();
+//		$this->check_versions(false);
 	}//end __construct()
 	//=========================================================================
 	
 	
 	
 	//=========================================================================
-	protected function connect_db() {
+	protected function reconnect_db() {
 		
-		$retval = false;
-		if($this->dbConnected !== true) {
-			$prefix = preg_replace('/-/', '_', $this->get_project());
-
-			$retval = true;
-			$dsnVar = $prefix .'-DB_CONNECT_DSN';
-			$userVar = $prefix .'-DB_CONNECT_USER';
-			$passVar = $prefix .'-DB_CONNECT_PASSWORD';
-			if(is_object($this->db)) {
-				$this->dbParams = array(
-					'dsn'	=> $this->db->get_dsn(),
-					'user'	=> $this->db->get_username(),
-					'pass'	=> $this->db->get_password()
-				);
-			}
-			elseif(defined($dsnVar) && defined($userVar) && defined($passVar)) {
-
-				//NOTE::: this is project-specific... so the DSN when called from project "foo-bar" would be "foo_bar-DB_CONNECT_DSN"
-				$this->dbParams = array(
-					'dsn'	=> constant($dsnVar),
-					'user'	=> constant($userVar),
-					'pass'	=> constant($passVar)
-				);
-
-				try {
-					$this->db = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
-				}
-				catch(exception $e) {
-					throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
-				}
-			}
-			elseif(defined(strtoupper($dsnVar)) && defined(strtoupper($userVar)) && defined(strtoupper($passVar))) {
-
-				//NOTE::: this is project-specific... so the DSN when called from project "foo-bar" would be "foo_bar-DB_CONNECT_DSN"
-				$this->dbParams = array(
-					'dsn'	=> constant(strtoupper($dsnVar)),
-					'user'	=> constant(strtoupper($userVar)),
-					'pass'	=> constant(strtoupper($passVar))
-				);
-
-				try {
-					$this->db = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
-				}
-				catch(exception $e) {
-					throw new exception(__METHOD__ .": failed to connect to database or logger error: ". $e->getMessage());
-				}
-			}
-			else {
-				throw new exception(__METHOD__ .": no database object passed, and no constants defined to automatically connect (". $dsnVar .", ". $userVar .", ". $passVar .")");
-			}
-
-			try {
-				$loggerDb = new cs_phpDB($this->dbParams['dsn'], $this->dbParams['user'], $this->dbParams['pass']);
-				$this->logsObj = new cs_webdblogger($loggerDb, "Upgrade ". $this->get_project(), false);
-			}
-			catch(exception $e) {
-				throw new exception(__METHOD__ .": failed to create logger::: ". $e->getMessage());
-			}
-			$this->dbConnected = true;
+		if(is_object($this->db)) {
+			$dsn = $this->db->get_dsn();
+			$user = $this->db->get_username();
+			$pass = $this->db->get_password();
+			
+			$this->db->reconnect($dsn, $user, $pass);
+			$this->dbConnected = $this->db->is_connected();
 		}
-		return($retval);
+		else {
+			throw new LogicException(__METHOD__ .": database object not found");
+		}
+		
+		return $this->dbConnected;
 	}//end connect_db()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	protected function create_lockfile() {
-		
-		if(!is_object($this->lockObj) || (is_object($this->lockObj) && $this->lockObj->is_lockfile_present())) {
-			$this->lockObj = new cs_lockfile();
-			$this->lockObj->set_lockfile("upgrade.lock");
-			self::$lockfile = $this->lockObj->get_lockfile();
-
-
-			if($this->lockObj->is_lockfile_present()) {
-				//there is an existing lockfile...
-				throw new exception(__METHOD__ .": upgrade in progress: ". $this->lockObj->read_lockfile());
-			}
-		}
-	}//end create_lockfile()
 	//=========================================================================
 	
 	
@@ -228,9 +171,9 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		$oldProjectName = $this->projectName;
 		$this->projectName = $this->internalProjectName;
 		
-		if(!isset(cs_webdbupgrade::$cache[$this->projectName])) {
+		if(!isset(self::$cache[$this->projectName])) {
 			
-			$this->connect_db();
+			$this->reconnect_db();
 			
 			$oldVersionFileLocation = $this->versionFileLocation;
 			$oldUpgradeConfigFile = $this->upgradeConfigFile;
@@ -268,7 +211,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			$this->upgradeConfigFile = $oldUpgradeConfigFile;
 			$this->read_version_file();
 			
-			cs_webdbupgrade::$cache[$this->projectName] = array(
+			self::$cache[$this->projectName] = array(
 				'versionFileVersion'	=> $this->versionFileVersion,
 				'databaseVersion'		=> $this->databaseVersion
 			);
@@ -287,47 +230,38 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	 * with the one in the VERSION file; if it does, then it checks the version 
 	 * listed in the database.
 	 */
-	public function check_versions($performUpgrade=TRUE) {
-		if(isset(cs_webdbupgrade::$cache[$this->projectName])) {
+	public function check_versions($performUpgrade=true) {
+		if(isset(self::$cache[$this->projectName])) {
 			$retval = false;
 		}
 		else {
-			$this->connect_db();
-			$this->create_lockfile();
-			if($performUpgrade !== true) {
-				$performUpgrade = false;
-			}
-
-			//first, check that all files exist.
-			$retval = NULL;
-
-			//check to see if the lock files for upgrading exist.
-			if($this->upgrade_in_progress()) {
+			if($performUpgrade && $this->is_upgrade_in_progress()) {
 				$this->do_log("Upgrade in progress", 'notice');
 				throw new exception(__METHOD__ .": upgrade in progress");
 			}
-			else {
-				//okay, all files present: check the version in the VERSION file.
-				$this->read_version_file();
-				$dbVersion = $this->get_database_version();
-
-				if(!is_array($dbVersion)) {
-					$this->load_initial_version();
-				}
-
-				$versionsDiffer = !($this->versionFileVersion == $this->databaseVersion);
-				$retval = FALSE;
-				
-				$conflict = $this->check_for_version_conflict();
-				
-				if($performUpgrade && $conflict != null && $versionsDiffer) {
-					$retval = $this->perform_upgrade();
-				}
+			
+			$retval = NULL;
+			
+			//okay, all files present: check the version in the VERSION file.
+			$this->read_version_file();
+			$dbVersion = $this->get_database_version(true);
+			
+			if (!is_array($dbVersion)) {
+				$this->load_initial_version();
+			}
+			
+			$versionsDiffer = !($this->versionFileVersion == $this->databaseVersion);
+			$retval = false;
+			
+			$conflict = $this->check_for_version_conflict();
+			
+			if ($performUpgrade && $conflict != null && $versionsDiffer) {
+				$retval = $this->perform_upgrade();
 			}
 			
 			if($performUpgrade === true) {
 				// put this into cache so we don't try doing it again.
-				cs_webdbupgrade::$cache[$this->projectName] = array(
+				self::$cache[$this->projectName] = array(
 					'versionFileVersion'	=> $this->versionFileVersion,
 					'databaseVersion'		=> $this->databaseVersion
 				);
@@ -346,8 +280,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		
 		//okay, all files present: check the version in the VERSION file.
 		if(file_exists($this->versionFileLocation)) {
-			$versionFileContents = $this->fsObj->read($this->versionFileLocation);
-
+			$versionFileContents = file_get_contents($this->versionFileLocation);
+			
 			$versionMatches = array();
 			preg_match_all('/\nVERSION: (.*)\n/', $versionFileContents, $versionMatches);
 			if(count($versionMatches) == 2 && count($versionMatches[1]) == 1) {
@@ -383,49 +317,41 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	 * Read information from our config file, so we know what to expect.
 	 */
 	protected function read_upgrade_config_file() {
-		try {
-			$xmlString = $this->fsObj->read($this->upgradeConfigFile);
-		}
-		catch(exception $e) {
-			throw new exception(__METHOD__ .": failed to read upgrade config file::: ". $e->getMessage());
-		}
 		
-		//parse the file.
-		$xmlParser = new cs_phpxmlParser($xmlString);
+		$config = parse_ini_file($this->upgradeConfigFile,true);
 		
-		if($xmlParser->get_root_element() == 'UPGRADE') {
-			
-			//see if there's an "initial version" setting.
-			try {
-				$this->initialVersion = $xmlParser->get_tag_value('/UPGRADE/INITIALVERSION');
-			}
-			catch(Exception $e) {
-				//no worries, this only happens when the tag doesn't exist or it doesn't have data (that is okay).
+		if(is_array($config)) {
+			$myConfig = $config;
+			if(isset($config['main'])) {
+				if(isset($config['main']['initial_version'])) {
+					$this->initialVersion = $config['main']['initial_version'];
+				}
+				unset($myConfig['main']);
 			}
 			
-			$tConfig = array();
-			if(is_array($xmlParser->get_data('/UPGRADE/MATCHING'))) {
-				$matchingData = $xmlParser->get_data('/UPGRADE/MATCHING');
-				foreach($matchingData as $index=>$array) {
-					$array = $array[0];
-					foreach($array as $matchingName=>$subInfo) {
-						if(isset($subInfo[0][cs_phpxmlCreator::dataIndex])) {
-							$tConfig[$index][$matchingName] = $subInfo[0][cs_phpxmlCreator::dataIndex];
-						}
-						else {
-							throw new exception(__METHOD__ .": invalid data beneath matching (". $index .")::: ". $this->gfObj->debug_print($subInfo,0));
-						}
+			$lastVersion = null;
+			foreach ($myConfig as $v => $d) {
+				$myVersion = preg_replace('/^v/', '', $v);
+				if (is_null($lastVersion)) {
+					$lastVersion = $myVersion;
+				} else {
+					if (!$this->is_higher_version($lastVersion, $myVersion)) {
+						throw new LogicException(__METHOD__ . ": version must be in order of lowest to highest");
 					}
 				}
+				
+				//certain indexes MUST be set.
+				if(!isset($d['target_version'])) {
+					throw new ErrorException(__METHOD__ .": missing target version for '". $myVersion ."'");
+				}
+				
+				$this->matchingData[$myVersion] = $d;
 			}
-			$this->matchingData = $tConfig;
-		}
-		else {
-			$this->error_handler(__METHOD__ .": failed to retrieve 'UPGRADE' section; " .
-					"make sure upgrade.xml's ROOT element is 'UPGRADE'");
+		} else {
+			$this->initialVersion = $this->versionFileVersion;
 		}
 		
-		return($xmlParser);
+		return $this->matchingData;
 	}//end read_upgrade_config_file()
 	//=========================================================================
 	
@@ -434,13 +360,12 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	//=========================================================================
 	protected function perform_upgrade() {
 		$transactionStartedExternally = $this->db->get_transaction_status();
-		if($this->upgrade_in_progress()) {
+		if($this->is_upgrade_in_progress()) {
 			//ew.  Can't upgrade.
 			$this->error_handler(__METHOD__ .": upgrade already in progress...????");
 		}
 		else {
-			$lockConfig = $this->upgrade_in_progress(TRUE);
-			$this->fsObj->cd("/");
+			$lockConfig = $this->is_upgrade_in_progress(TRUE);
 			
 			$this->do_log("Starting upgrade process...", 'begin');
 			
@@ -491,7 +416,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 						}
 						else {
 							$this->do_log(__METHOD__ .": upgradeList::: ". $this->gfObj->debug_print($upgradeList,0), 'debug');
-			cs_global::debug_print(cs_webdbupgrade::$cache,1);
 							$this->error_handler(__METHOD__ .": finished upgrade, but version wasn't updated (expecting '". $this->versionFileVersion ."', got '". $this->databaseVersion ."')!!!");
 						}
 					}
@@ -515,18 +439,29 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	//=========================================================================
 	
 	
+	//=========================================================================
+	public function set_upgrade_in_progress() {
+		$retval = false;
+		$showDbVersion = $this->databaseVersion;
+		if(is_null($showDbVersion) || !strlen($showDbVersion)) {
+			$showDbVersion = "(unknown)";
+		}
+		if(!$this->lockObj->is_lockfile_present()) {
+			$details = $this->projectName .': Upgrade from '. $showDbVersion .' started at '. date('Y-m-d H:i:s');
+			$this->lockObj->create_lockfile($details);
+		}
+		$retval = $this->lockObj->is_lockfile_present();
+		
+		return $retval;
+	}//end set_upgrade_in_progress()
+	//=========================================================================
+	
+	
 	
 	//=========================================================================
-	public function upgrade_in_progress($makeItSo=FALSE) {
+	public function is_upgrade_in_progress($makeItSo=FALSE) {
 		if($makeItSo === TRUE) {
-			if(strlen($this->databaseVersion)) {
-				$details = $this->projectName .': Upgrade from '. $this->databaseVersion .' started at '. date('Y-m-d H:i:s');
-				$this->lockObj->create_lockfile($details);
-				$retval = TRUE;
-			}
-			else {
-				$this->error_handler(__METHOD__ .": missing internal databaseVersion (". $this->databaseVersion .")");
-			}
+			$retval = $this->set_upgrade_in_progress();
 		}
 		$retval = $this->lockObj->is_lockfile_present();
 		
@@ -579,17 +514,11 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	/**
-	 * Checks for issues with versions.
-	 * 0		== No problems.
-	 * (string)	== upgrade applicable (indicates "major"/"minor"/"maintenance").
-	 * NULL		== encountered error
-	 */
 	protected function check_for_version_conflict() {
 		//set a default return...
 		$retval = NULL;
 		
-		$this->read_version_file();
+//		$this->read_version_file();
 		
 		//parse the version strings.
 		$dbVersion = $this->get_database_version();
@@ -622,8 +551,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 					$retval = "minor";
 				}
 				else {
-					$this->error_handler(__METHOD__ .": downgrading minor versions is unsupported, project_name=(". $this->get_project() ."), ".
-						"file version=(". $versionFileData['version_string'] ."), dbVersion=(". $dbVersion['version_string'] ."");
+					$this->error_handler(__METHOD__ .": downgrading minor versions is unsupported, ".
+						"file version=(". $versionFileData['version_string'] ."), dbVersion=(". $dbVersion['version_string'] .")");
 				}
 			}
 			elseif($versionFileData['version_major'] > $dbVersion['version_major']) {
@@ -641,8 +570,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	protected function get_database_version() {
-		$this->gfObj->debugPrintOpt=1;
+	public function get_database_version($missingVersionAllowed=false) {
 		$sql = "SELECT * FROM ". $this->dbTable ." WHERE ".
 				"project_name=:projectName";
 		
@@ -665,21 +593,22 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 					$retval = $this->parse_version_string($data['version_string']);
 				}
 				else {
-					$this->error_handler(__METHOD__ .": no table in database, failed to create one... ORIGINAL " .
-						"ERROR: ". $dberror .", SCHEMA LOAD ERROR::: ". $loadTableResult);
+					$message = __METHOD__ .": no table in database, failed to create one... ORIGINAL " .
+						"ERROR: ". $dberror .", SCHEMA LOAD ERROR::: ". $loadTableResult;
+					$this->error_handler($message);
 				}
 			}
 			elseif(!strlen($dberror) && $numrows == 0) {
-				if($this->allowNoDBVersion) {
+				if($missingVersionAllowed) {
 					$retval = false;
 				}
 				else {
 					$this->error_handler(__METHOD__ .": no version data found for (". $this->projectName .")");
 				}
-			}
+			}//@codeCoverageIgnoreStart
 			else {
 				$this->error_handler(__METHOD__ .": failed to retrieve version... numrows=(". $numrows ."), DBERROR::: ". $dberror);
-			}
+			}//@codeCoverageIgnoreEnd
 		}
 		else {
 			$data = $this->db->get_single_record();
@@ -695,33 +624,32 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	protected function do_single_upgrade($fromVersion, $toVersion=null) {
-		//Use the "matching_syntax" data in the upgrade.xml file to determine the filename.
-		$versionIndex = "V". $this->get_full_version_string($fromVersion);
-		if(!isset($this->matchingData[$versionIndex])) {
-			//version-only upgrade.
-			$this->newVersion = $toVersion;
-			$this->update_database_version($toVersion);
-		}
-		else {
+		$upgradeType = self::UPGRADE_VERSION_ONLY;
+		
+		$versionIndex = $this->get_full_version_string($fromVersion);
+		
+		if(isset($this->matchingData[$versionIndex])) {
 			//scripted upgrade...
 			$upgradeData = $this->matchingData[$versionIndex];
-			
-			if(isset($upgradeData['TARGET_VERSION']) && count($upgradeData) > 1) {
-				$this->newVersion = $upgradeData['TARGET_VERSION'];
-				if(isset($upgradeData['SCRIPT_NAME']) && isset($upgradeData['CLASS_NAME']) && isset($upgradeData['CALL_METHOD'])) {
-					//good to go; it's a scripted upgrade.
+			if(isset($upgradeData['target_version']) && count($upgradeData) > 1) {
+				$this->newVersion = $upgradeData['target_version'];
+				if(isset($upgradeData['script_name']) && isset($upgradeData['class_name']) && isset($upgradeData['call_method'])) {
 					$this->do_scripted_upgrade($upgradeData);
-					$this->update_database_version($upgradeData['TARGET_VERSION']);
-				}
-				else {
-					$this->error_handler(__METHOD__ .": not enough information to run scripted upgrade for ". $versionIndex);
+					$toVersion = $upgradeData['target_version'];
+					$upgradeType = self::UPGRADE_SCRIPTED;
 				}
 			}
 			else {
-				$this->error_handler(__METHOD__ .": target version not specified, unable to proceed with upgrade for ". $versionIndex);
+				$this->error_handler(__METHOD__ .": target version not specified, unable to proceed with scripted upgrade for ". $versionIndex);
 			}
 		}
+		
+		$this->newVersion = $toVersion;
+		$this->update_database_version($toVersion);
+		
 		$this->do_log("Finished upgrade to ". $this->newVersion, 'system');
+		
+		return $upgradeType;
 	}//end do_single_upgrade()
 	//=========================================================================
 	
@@ -750,8 +678,8 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		
 		//okay, now check that the version string matches the updated bits.
-		if(!$this->check_database_version($this->newVersion)) {
-			$this->error_handler(__METHOD__ .": database version information is invalid: (". $this->newVersion .")");
+		if(!$this->check_database_version($versionInfo)) {
+			$this->error_handler(__METHOD__ .": database version information is invalid: (". $versionInfo .")");
 		}
 		
 		return($retval);
@@ -766,26 +694,18 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	 * Checks consistency of version information in the database, and optionally 
 	 * against a given version string.
 	 */
-	protected function check_database_version() {
-		//retrieve the internal version information.
-		if(!is_null($this->newVersion)) {
-			$data = $this->get_database_version();
-			$versionString = $data['version_string'];
-			
-			if($versionString == $this->newVersion) {
-				$retval = TRUE; 
-			}
-			else {
-				$retval = FALSE;
-			}
-			
-			if(!$retval) {
-				$this->do_log("Version check failed, versionString=(". $versionString ."), checkVersion=(". $this->newVersion .")", 'FATAL');
-			}
-			
+	protected function check_database_version(array $checkThis) {
+		$data = $this->get_database_version();
+		$versionString = $data['version_string'];
+		
+		if ($versionString == $checkThis['version_string']) {
+			$retval = TRUE;
+		} else {
+			$retval = FALSE;
 		}
-		else {
-			$this->error_handler(__METHOD__ .": no version string given (". $this->newVersion .")");
+		
+		if (!$retval) {
+			$this->do_log("Version check failed, versionString=(" . $versionString . "), checkVersion=(" . $this->newVersion . ")", 'FATAL');
 		}
 		
 		return($retval);
@@ -796,7 +716,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	protected function do_scripted_upgrade(array $upgradeData) {
-		$myConfigFile = $upgradeData['SCRIPT_NAME'];
+		$myConfigFile = $upgradeData['script_name'];
 		
 		$this->do_log("Preparing to run script '". $myConfigFile ."'", 'debug');
 		
@@ -807,9 +727,9 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		
 		if(file_exists($fileName)) {
 			
-			$this->do_log("(". __CLASS__ .") Performing scripted upgrade (". $myConfigFile .") from file '". $fileName ."'", 'DEBUG');
-			$createClassName = $upgradeData['CLASS_NAME'];
-			$classUpgradeMethod = $upgradeData['CALL_METHOD'];
+			$this->do_log("(". __CLASS__ .") Performing scripted upgrade (". $myConfigFile .") from file '". $fileName ."'", 'debug');
+			$createClassName = $upgradeData['class_name'];
+			$classUpgradeMethod = $upgradeData['call_method'];
 			require_once($fileName);
 			
 			//now check to see that the class we need actually exists.
@@ -956,64 +876,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	protected function fix_xml_config($config, $path=null) {
-		$this->xmlLoops++;
-		if($this->xmlLoops > 1000) {
-			$this->error_handler(__METHOD__ .": infinite loop detected...");
-		}
-		
-		try {
-			$a2p = new cs_arrayToPath($config);
-		}
-		catch(exception $e) {
-			$this->do_log(__METHOD__ .': encountered exception: '. $e->getMessage());
-			$this->error_handler($e->getMessage());
-		}
-		if(!is_array($this->tempXmlConfig)) {	
-			$this->tempXmlConfig = array();
-		}
-		try {
-			$myA2p = new cs_arrayToPath($this->tempXmlConfig);
-		}
-		catch(exception $e) {
-			$this->do_log(__METHOD__ .': encountered exception: '. $e->getMessage());
-			$this->error_handler($e->getMessage());
-		}
-		
-		$myData = $a2p->get_data($path);
-		
-		if(is_array($myData)) {
-			if(isset($myData['type']) && $myData['type'] != 'open') {
-				if($myData['type'] == 'complete') {
-					$val = null;
-					if(isset($myData['value'])) {
-						$val = $myData['value'];
-					}
-					$myA2p->set_data($path, $val);
-					$this->tempXmlConfig = $myA2p->get_data();
-				}
-				else {
-					$this->error_handler(__METHOD__ .": invalid type (". $myData['type'] .")");
-				}
-			}
-			else {
-				foreach($myData as $i=>$d) {
-					if(!in_array($i, array('type', 'attributes', 'value'))) {
-						$this->fix_xml_config($config, $path .'/'. $i);
-					}
-				}
-			}
-		}
-		else {
-			$this->error_handler(__METHOD__ .": unable to fix data on path=(". $path .")::: ". $this->gfObj->debug_print($myData,0));
-		}
-	}//end fix_xml_config()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================cs_debug_backtrace(1);
-
 	public function load_table() {
 
 		$schemaFileLocation = dirname(__FILE__) .'/setup/schema.'. $this->db->get_dbtype() .'.sql';
@@ -1073,7 +935,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	public function error_handler($details) {
 		//log the error.
 		if(!is_object($this->logsObj)) {
-			throw new exception(__METHOD__ .": error encountered::: ". $details);
+			throw new exception($details);
 		}
 		if($this->internalUpgradeInProgress === false) {
 			$this->do_log($details, 'exception in code');
@@ -1090,7 +952,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	public function load_initial_version() {
 		//if there's an INITIAL_VERSION in the upgrade config file, use that.
 		$this->read_upgrade_config_file();
-		$insertData = array();
 		if(isset($this->initialVersion) && strlen($this->initialVersion)) {
 			$parseThis = $this->initialVersion;
 		}
@@ -1098,8 +959,19 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			$parseThis = $this->versionFileVersion;
 		}
 		
+		$loadRes = $this->set_initial_version($parseThis);
+		
+		return($loadRes);
+	}//end load_initial_version()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	protected function set_initial_version($versionString) {
+		
 		try {
-			$versionInfo = $this->parse_version_string($parseThis);
+			$versionInfo = $this->parse_version_string($versionString);
 			$insertData = array(
 				'projectName'		=> $this->projectName,
 				'versionString'		=> $versionInfo['version_string']
@@ -1120,14 +992,14 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			$this->error_handler(__METHOD__ .":: failed to load initial version due to exception, DETAILS::: ". $e->getMessage());
 		}
 		
-		return($loadRes);
-	}//end load_initial_version()
+		return $loadRes;
+	}
 	//=========================================================================
 	
 	
 	
 	//=========================================================================
-	protected function do_log($message, $type) {
+	protected function do_log($message, $type='exception in code') {
 		$this->debugLogs[] = array('project'=>$this->projectName,'upgradeFile'=>$this->upgradeConfigFile,'message'=>$message,'type'=>$type);
 		if($this->internalUpgradeInProgress === true) {
 			$this->storedLogs[] = func_get_args();

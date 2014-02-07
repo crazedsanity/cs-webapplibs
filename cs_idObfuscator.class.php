@@ -2,18 +2,10 @@
 /*
  * Created on May 16th, 2011
  * 
- * FILE INFORMATION:
- * 
- * $HeadURL$
- * $Id$
- * $LastChangedDate$
- * $LastChangedBy$
- * $LastChangedRevision$
- * 
  * Originally pulled from http://raymorgan.net/web-development/how-to-obfuscate-integer-ids/
  */
 
-class cs_IdObfuscator {
+class cs_idObfuscator {
  
 	public static function encode($id) {
 		if (!is_numeric($id) or $id < 1) {return FALSE;}
@@ -52,7 +44,7 @@ class cs_IdObfuscator {
 	}
  
 	private static function getHash($str,$len) {
-		return substr(sha1($str.CRYPT_SALT),0,$len);
+		return substr(sha1($str.constant('CRYPT_SALT')),0,$len);
 	}
 }
 ?>

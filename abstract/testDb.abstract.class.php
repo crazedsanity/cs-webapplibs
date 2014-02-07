@@ -11,6 +11,9 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	protected $pass = null;
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	public function __construct() {
 		$this->gfObj = new cs_globalFunctions;
 		$this->lock = new cs_lockfile(constant('UNITTEST__LOCKFILE'));
@@ -23,6 +26,9 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	public function skip() {
 		$this->skipUnless($this->check_lockfile(), "Lockfile missing (". $this->lock->get_lockfile() ."): create one BEFORE database-related tests occur.");
 		$this->skipUnless($this->check_requirements(), "Skipping tests for '". $this->getLabel() ."', database not configured");
@@ -32,6 +38,9 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	public function check_lockfile() {
 		$retval = false;
 		
@@ -46,6 +55,9 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	public function check_requirements() {
 		// TODO: make *sure* to stop if there's a lockfile from cs_webdbupgrade.
 		
@@ -65,6 +77,9 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	protected function setUp() {
 		$this->internal_connect_db();
 	}//end setUp()
@@ -73,6 +88,9 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	protected function tearDown() {
 		$this->reset_db();
 	}//end tearDown()
@@ -81,6 +99,9 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	public function internal_connect_db() {
 		if(!is_object($this->dbObj)) {
 			$this->dbObj = new cs_phpDB($this->dsn, $this->user, $this->pass);
@@ -92,6 +113,9 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	
 	
 	//-----------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	public function reset_db($schemaFile=null) {
 		$retval = false;
 		
@@ -117,7 +141,9 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 
 			$retval = true;
 		} catch (Exception $e) {
-			$this->dbObj->rollbackTrans();
+			if(is_object($this->dbObj)) {
+				$this->dbObj->rollbackTrans();
+			}
 			throw $e;
 		}
 		return ($retval);
@@ -128,6 +154,9 @@ abstract class testDbAbstract extends PHPUnit_Framework_TestCase {
 	
 	
 	//-----------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	public function __destruct() {
 		#$this->destroy_db();
 		$this->tearDown();

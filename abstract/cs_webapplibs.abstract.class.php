@@ -3,7 +3,7 @@
  * Created on Aug 19, 2009
  */
 
-abstract class cs_webapplibsAbstract extends cs_versionAbstract {
+abstract class cs_webapplibsAbstract extends cs_version {
 	
 	protected $gfObj;
 	static public $version;
