@@ -49,7 +49,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	protected $dbPrimaryKey = 'version_id';
 	protected $upgradeConfigFile;
 	protected $dbParams = array();
-	protected $rwDir = "";
+	protected $rwDir = "/tmp";
 	protected $initialVersion = "";
 	protected $matchingData = array();
 	
@@ -73,8 +73,10 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	const UPGRADE_VERSION_ONLY = 0;
 	const UPGRADE_SCRIPTED = 1;
 	
+	protected $lockFile='upgrade.lock';
+	
 	//=========================================================================
-	public function __construct($versionFileLocation, $upgradeConfigFile, cs_phpDB $db) {
+	public function __construct($versionFileLocation, $upgradeConfigFile, cs_phpDB $db, $rwDir) {
 		
 		$this->internalVersion = new cs_version();
 		$this->internalVersion->set_version_file_location(dirname(__FILE__) .'/VERSION');
@@ -110,11 +112,29 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		
 		$this->set_version_file_location($versionFileLocation);
-		$this->lockObj = new cs_lockfile();
+		
+		if(!is_null($rwDir) && strlen($rwDir) > 0) {
+			$this->rwDir = $rwDir;
+			$rwType = 'passed';
+		}
+		elseif(defined('RWDIR')) {
+			$this->rwDir = constant('RWDIR');
+			$rwType = 'defined';
+		}
+		else {
+			throw new InvalidArgumentException(__METHOD__ .": required RWDIR not specified");
+		}
+		
+		if (!is_dir($this->rwDir) || !is_readable($this->rwDir) || !is_writable($this->rwDir)) {
+			throw new ErrorException($rwType ." RWDIR var (" . $this->rwDir . ") is not a directory or is not readable/writable");
+		}
+		
+		
+		$this->lockObj = new cs_lockfile($this->rwDir, $this->lockFile);
 		
 		$this->projectName = $this->get_project();
 		
-
+		
 //		$this->check_internal_upgrades();
 //		$this->check_versions(false);
 	}//end __construct()
@@ -136,27 +156,9 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		else {
 			throw new LogicException(__METHOD__ .": database object not found");
 		}
-		$this->lockObj = new cs_lockfile("upgrade.lock");
 		
 		return $this->dbConnected;
 	}//end connect_db()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
-	protected function create_lockfile() {
-		
-		if(!is_object($this->lockObj) || (is_object($this->lockObj) && $this->lockObj->is_lockfile_present())) {
-			$this->lockObj = new cs_lockfile();
-			$this->lockObj->set_lockfile("upgrade.lock");
-
-			if($this->lockObj->is_lockfile_present()) {
-				//there is an existing lockfile...
-				throw new exception(__METHOD__ .": upgrade in progress: ". $this->lockObj->read_lockfile());
-			}
-		}
-	}//end create_lockfile()
 	//=========================================================================
 	
 	
