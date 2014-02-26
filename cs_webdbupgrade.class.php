@@ -76,7 +76,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	protected $lockFile='upgrade.lock';
 	
 	//=========================================================================
-	public function __construct($versionFileLocation, $upgradeConfigFile, cs_phpDB $db, $rwDir) {
+	public function __construct($versionFileLocation, $upgradeConfigFile, cs_phpDB $db, $rwDir=null) {
 		
 		$this->internalVersion = new cs_version();
 		$this->internalVersion->set_version_file_location(dirname(__FILE__) .'/VERSION');
@@ -102,6 +102,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		parent::__construct(true);
 		
 		if(!file_exists($upgradeConfigFile) || !is_readable($upgradeConfigFile)) {
+			cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": required upgrade config file location (". $upgradeConfigFile .") not set or unreadable");
 		}
 		else {
@@ -177,7 +178,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			
 			$oldVersionFileLocation = $this->versionFileLocation;
 			$oldUpgradeConfigFile = $this->upgradeConfigFile;
-			$this->upgradeConfigFile = dirname(__FILE__) .'/upgrades/upgrade.xml';
+			$this->upgradeConfigFile = dirname(__FILE__) .'/upgrades/upgrade.ini';
 
 
 			//set a status flag so we can store log messages (for now).
@@ -818,7 +819,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 						$retval[$matchVersion] = $data['TARGET_VERSION'];
 					}
 					else {
-						$this->do_log(__METHOD__ .": entry in upgrade.xml (". $matchVersion .") is higher than the VERSION file (". $this->versionFileVersion .")", 'warning');
+						$this->do_log(__METHOD__ .": entry in upgrade.ini (". $matchVersion .") is higher than the VERSION file (". $this->versionFileVersion .")", 'warning');
 					}
 				}
 				else {

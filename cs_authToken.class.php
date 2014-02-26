@@ -28,7 +28,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 			parent::__construct(true);
 			$this->db = $db;
 			
-			#$upg = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml');
+			#$upg = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.ini');
 			#$upg->check_versions(true);
 		}
 		else {

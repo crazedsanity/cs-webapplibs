@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<main created="2008-12-18 10:21:00" updated="">
+	<website fix="sanitizeDirs">
+		<SITE_ROOT setglobal="1" setconstant="1" cleanpath="1">{_DIRNAMEOFFILE_}/..</SITE_ROOT>
+		<SITEROOT setglobal="1" setconstant="1">{SITE_ROOT}</SITEROOT>
+		<CS_RWDIR setglobal="1" setconstant="1">{SITE_ROOT}/rw</CS_RWDIR>
+		<RWDIR setglobal="1" setconstant="1">{CS_RWDIR}</RWDIR>
+		<DBTYPE setconstant="1">pgsql</DBTYPE>
+		<DB_PG_HOST setglobal="1" setconstant="1">127.0.0.1</DB_PG_HOST>
+		<DB_PG_DBNAME setglobal="1" setconstant="1">cs__test</DB_PG_DBNAME>
+		<DB_PG_PORT setglobal="1" setconstant="1">5432</DB_PG_PORT>
+		<DB_PG_DBUSER setglobal="1" setconstant="1">postgres</DB_PG_DBUSER>
+		<DB_PG_DBPASS setglobal="1" setconstant="1" />
+		<SESSION_MAX_IDLE setconstant="1" setglobal="1">12 days</SESSION_MAX_IDLE>
+		<SESSION_MAX_TIME setconstant="1">360 days</SESSION_MAX_TIME>
+		<LIBDIR setglobal="1" setconstant="1" parse="1">{SITE_ROOT}/lib</LIBDIR>
+	</website>
+	<cs-content>
+		<DEBUGPRINTOPT setglobal="1" setconstant="1">0</DEBUGPRINTOPT>
+		<WORKINGONIT setglobal="1" setconstant="1">0</WORKINGONIT>
+		<TMPLDIR setglobal="1" setconstant="1" parse="1">{/WEBSITE/SITE_ROOT}/templates</TMPLDIR>
+		<DEFAULT_SECTION setconstant='1'>/content</DEFAULT_SECTION>
+		<ALLOWUNITTESTDBCREATE setconstant='1'>1</ALLOWUNITTESTDBCREATE>
+		<SESSION_NAME setconstant="1">CS_SESSID</SESSION_NAME>
+		<SESSION_DBSAVE setconstant="1" note="Value indicates name of cookie">{/CS-CONTENT/SESSION_NAME}</SESSION_DBSAVE>
+		<session_dbsave_uidpath setconstant="1">/auth/userInfo/uid</session_dbsave_uidpath>
+		<session_db_host setconstant="1">{WEBSITE/DB_PG_HOST}</session_db_host>
+		<session_db_port setconstant="1">{WEBSITE/DB_PG_PORT}</session_db_port>
+		<session_db_dbname setconstant="1">{WEBSITE/DB_PG_DBNAME}</session_db_dbname>
+		<session_db_user setconstant="1">{WEBSITE/DB_PG_DBUSER}</session_db_user>
+		<session_db_password setconstant="1">{WEBSITE/DB_PG_DBPASS}</session_db_password>
+		<autoload_hints setconstant="1">{/WEBSITE/LIBDIR}/class.hints</autoload_hints>
+	</cs-content>
+	<cs-webupgradedb>
+		<db_table setconstant="1" setconstantprefix="cs_webapplibs">cs_version_table</db_table>
+		<db_primarykey setconstant="1" setconstantprefix="cs_webapplibs">project_id</db_primarykey>
+		<db_sequence setconstant="1" setconstantprefix="cs_webapplibs">{DB_TABLE}_{DB_PRIMARYKEY}_seq</db_sequence>
+		<db_connect_host setconstant="1" setconstantprefix="cs_webapplibs">{/WEBSITE/DB_PG_HOST}</db_connect_host>
+		<db_connect_port setconstant="1" setconstantprefix="cs_webapplibs">{/WEBSITE/DB_PG_PORT}</db_connect_port>
+		<db_connect_dbname setconstant="1" setconstantprefix="cs_webapplibs">{WEBSITE/DB_PG_DBNAME}</db_connect_dbname>
+		<db_connect_user setconstant="1" setconstantprefix="cs_webapplibs">{WEBSITE/DB_PG_DBUSER}</db_connect_user>
+		<db_connect_password setconstant="1" setconstantprefix="cs_webapplibs">{WEBSITE/DB_PG_DBPASS}</db_connect_password>
+		<CONFIG_FILE_LOCATION setconstant="1" setconstantprefix="cs_webapplibs">{_CONFIGFILE_}</CONFIG_FILE_LOCATION>
+		<UPGRADE_CONFIG_FILE setconstant="1" setconstantprefix="cs_webapplibs">{SITE_ROOT}/upgrade/upgrade.xml</UPGRADE_CONFIG_FILE>
+		<RWDIR setconstant="1" setconstantprefix="cs_webdbupgrade">{WEBSITE/RWDIR}</RWDIR>
+	</cs-webupgradedb>
+	<cs-project note="This is just a SAMPLE of what else could be here.">
+		<api_authtoken>9dx6f9275dg5972c65e5a5f2366662b7</api_authtoken>
+	</cs-project>
+	<cs-blogger>
+		<cs_blogrwdir setconstant="1">{WEBSITE/CS_RWDIR}/blogger</cs_blogrwdir>
+		<cs_blogimgurl setconstant="1">/images/blog/</cs_blogimgurl>
+		<cs_blogimgdir setconstant="1">{WEBSITE/SITE_ROOT}/public_html/{CS_BLOGIMGURL}</cs_blogimgdir>
+		<cs_authdbname setconstant="1">main.db</cs_authdbname>
+		<cs_blogdbname setconstant="1">main.db</cs_blogdbname>
+		<csblog_db_host setconstant="1">{WEBSITE/DB_PG_HOST}</csblog_db_host>
+		<csblog_db_port setconstant="1">{WEBSITE/DB_PG_PORT}</csblog_db_port>
+		<csblog_db_dbname setconstant="1">{WEBSITE/DB_PG_DBNAME}</csblog_db_dbname>
+		<csblog_db_user setconstant="1">{WEBSITE/DB_PG_DBUSER}</csblog_db_user>
+		<csblog_db_password setconstant="1">{WEBSITE/DB_PG_DBPASS}</csblog_db_password>
+	</cs-blogger>
+	<cs-rssdb>
+		<RSS_FILES_DIR setconstant="1">{WEBSITE/CS_RWDIR}/rss_feeds</RSS_FILES_DIR>
+		<CSRSS_DB_HOST setconstant="1">{WEBSITE/DB_PG_HOST}</CSRSS_DB_HOST>
+		<CSRSS_DB_PORT setconstant="1">{WEBSITE/DB_PG_PORT}</CSRSS_DB_PORT>
+		<CSRSS_DB_DBNAME setconstant="1">{WEBSITE/DB_PG_DBNAME}</CSRSS_DB_DBNAME>
+		<CSRSS_DB_USER setconstant="1">{WEBSITE/DB_PG_DBUSER}</CSRSS_DB_USER>
+		<CSRSS_DB_PASSWORD setconstant="1">{WEBSITE/DB_PG_DBPASS}</CSRSS_DB_PASSWORD>
+	</cs-rssdb>
+	<cs-clilogger>
+		<CLI_DBTYPE setconstant="1">pgsql</CLI_DBTYPE>
+		<CLI_DB_HOST setconstant="1">{WEBSITE/DB_PG_HOST}</CLI_DB_HOST>
+		<CLI_DB_PORT setconstant="1">{WEBSITE/DB_PG_PORT}</CLI_DB_PORT>
+		<CLI_DB_DBNAME setconstant="1">{WEBSITE/DB_PG_DBNAME}</CLI_DB_DBNAME>
+		<CLI_DB_USER setconstant="1">{WEBSITE/DB_PG_DBUSER}</CLI_DB_USER>
+		<CLI_DB_PASSWORD setconstant="1">{WEBSITE/DB_PG_DBPASS}</CLI_DB_PASSWORD>
+	</cs-clilogger>
+</main>

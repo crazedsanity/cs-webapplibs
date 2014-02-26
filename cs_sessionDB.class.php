@@ -44,7 +44,7 @@ class cs_sessionDB extends cs_session {
 		$this->db = $db;
 		
 		if($automaticUpgrades === true) {
-			$x = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.xml', $this->db);
+			$x = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.ini', $this->db);
 			$x->check_versions();
 		}
 		

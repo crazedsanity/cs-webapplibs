@@ -29,7 +29,7 @@ class cs_authUser extends cs_sessionDB {
 	const STATUS_PENDING = 2;
 	
 	//-------------------------------------------------------------------------
-	public function __construct(cs_phpDB $db, $automaticUpgrade=true) {
+	public function __construct(cs_phpDB $db, $automaticUpgrade=false) {
 
 		if(isset($db) && is_object($db)) {
 			//make sure the session has been created.
@@ -69,7 +69,7 @@ class cs_authUser extends cs_sessionDB {
 	protected function check_for_upgrades() {
 		$x = new cs_webdbupgrade(
 				dirname(__FILE__) . '/VERSION', 
-				dirname(__FILE__) . '/upgrades/upgrade.xml', 
+				dirname(__FILE__) . '/upgrades/upgrade.ini', 
 				$this->db
 		);
 		$x->check_versions(true);
