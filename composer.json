@@ -15,8 +15,7 @@
 	],
 	"require": {
 		"php": ">=5.3.0",
-		"crazedsanity/cs-content": "dev-master",
-		"crazedsanity/cs-phpxml": "dev-master"
+		"crazedsanity/cs-content": "dev-master"
 	},
 	"minimum-stability": "dev"
 }

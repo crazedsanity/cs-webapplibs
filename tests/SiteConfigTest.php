@@ -13,29 +13,17 @@ class SiteConfigTest extends PHPUnit_Framework_TestCase {
 		
 		$x = new SimpleXMLElement(file_get_contents($myFile));
 		
-//		cs_global::debug_print($x->attributes(),1);
-		
 		$this->assertEquals('2008-12-18 10:21:00', $x->attributes()->created);
 		$this->assertEquals('', $x->attributes()->updated);
 		
 		$this->assertTrue(isset($x->website));
 		$this->assertEquals('sanitizeDirs', $x->website->attributes()->fix);
-//		cs_global::debug_print("************************* ::: ". $x->website->SITE_ROOT,1);
-//		$this->assertEquals('{_DIRNAMEOFFILE_}', $siteRoot, "!!!LOOOK AT ME!!!!!!!!!!!!!!!!!!!!  ".cs_global::debug_print($siteRoot));
-		
 		
 		$siteRoot = $x->website->SITE_ROOT;
 		$this->assertTrue(is_object($siteRoot));
 		$this->assertEquals('{_DIRNAMEOFFILE_}/..', "$siteRoot");//basically, the object is cast into a string which is the value of the tag.
 		
 		
-//		foreach($x as $section=>$sectionData) {
-//			cs_global::debug_print("\t$section",1,1);
-//			foreach($sectionData as $name=>$value) {
-//				cs_global::debug_print("\t\t$name::: $value", 1,1);
-//			}
-//			cs_global::debug_print("",1);
-//		}
 	}
 	
 	
@@ -44,6 +32,8 @@ class SiteConfigTest extends PHPUnit_Framework_TestCase {
 	 * evaluating GLOBALS and constants.  Ick.
 	 */
 	public function testConfig() {
+		$this->assertFalse(defined('SITE_ROOT'));
+		
 		$configFile = dirname(__FILE__) .'/files/siteConfig.xml';
 		$this->assertTrue(file_exists($configFile));
 		$x = new cs_siteConfig($configFile, null);
@@ -59,13 +49,13 @@ class SiteConfigTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals($GLOBALS['SITE_ROOT'], $GLOBALS['SITEROOT']);
 		
 		//BUG!!!! see https://github.com/crazedsanity/cs-webapplibs/issues/26 
-		$this->assertNotEquals(constant('SITE_ROOT'), $GLOBALS['SITE_ROOT']);
+		$this->assertEquals(constant('SITE_ROOT'), $GLOBALS['SITE_ROOT']);
 		
 		
 		$this->assertEquals('CS_SESSID', constant('SESSION_NAME'));
 		$this->assertTrue(!isset($GLOBALS['SESSION_NAME']));
 		
-		$this->assertEquals(constant('SESSION_DB_HOST'), constant('DB_PG_HOST'));
+		$this->assertEquals(constant('session_db_host'), constant('DB_PG_HOST'));
 		$this->assertEquals(constant('cs_webdbupgrade-RWDIR'), constant('CS_RWDIR'));
 		
 		$this->assertFalse(isset($GLOBALS['API_AUTHTOKEN']));

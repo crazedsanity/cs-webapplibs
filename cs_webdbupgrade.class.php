@@ -327,7 +327,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 				if(isset($config['main']['initial_version'])) {
 					$this->initialVersion = $config['main']['initial_version'];
 				}
-				unset($myConfig['main']);
+				unset($myConfig['main'], $myConfig['defaults']);
 			}
 			
 			$lastVersion = null;
