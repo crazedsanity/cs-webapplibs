@@ -37,9 +37,6 @@ class cs_siteConfig extends cs_webapplibsAbstract {
 	 * @return exception			(FAIL) failed to create object (see exception message)
 	 */
 	public function __construct($configFileLocation, $section=null) {
-		
-		$section = strtoupper($section);
-		
 		parent::__construct();
 		
 		if(strlen($configFileLocation) && file_exists($configFileLocation)) {

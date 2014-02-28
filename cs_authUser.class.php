@@ -23,13 +23,24 @@ class cs_authUser extends cs_sessionDB {
 	/** Sequence name */
 	protected $seq = 'cs_authentication_table_uid_seq';
 	
+	/** */
+	public $separator = '-';
+	
 	//these MUST match the database!
-	const STATUS_DISABLED = 0;
-	const STATUS_ENABLED = 1;
-	const STATUS_PENDING = 2;
+	const STATUS_DISABLED	= 0;
+	const STATUS_ENABLED	= 1;
+	const STATUS_PENDING	= 2;
+	
+	//types of authentication (matches expected hash length)
+	const HASH_MD5		= 32;
+	const HASH_SHA1		= 40;
+	const HASH_SHA256	= 64;
+	const HASH_SHA512	= 128;
 	
 	//-------------------------------------------------------------------------
-	public function __construct(cs_phpDB $db, $automaticUpgrade=false) {
+	public function __construct(cs_phpDB $db, $automaticUpgrade=false, $separator='-') {
+		
+		$this->separator = $separator;
 
 		if(isset($db) && is_object($db)) {
 			//make sure the session has been created.
@@ -113,14 +124,36 @@ class cs_authUser extends cs_sessionDB {
 	
 	
 	//-------------------------------------------------------------------------
-	protected function getPasswordHash(array $dataToHash, $separator='-') {
+	public function getPasswordHash(array $dataToHash, $hashType=self::HASH_SHA1) {
 		
 		foreach($dataToHash as $k=>$v) {
 			if(!strlen($v)) {
 				throw new InvalidArgumentException(__METHOD__ .": invalid data (". $v .") for '". $k ."'");
 			}
 		}
-		$retval = sha1(implode($separator, $dataToHash));
+		
+		$hashThis = implode($this->separator, $dataToHash);
+		
+		switch($hashType) {
+			case self::HASH_MD5:
+				$retval = md5($hashThis);
+				break;
+			
+			case self::HASH_SHA1:
+				$retval = sha1($hashThis);
+				break;
+			
+			case self::HASH_SHA256:
+				$retval = hash('sha256', $hashThis);
+				break;
+			
+			case self::HASH_SHA512:
+				$retval = hash('sha512', $hashThis);
+				break;
+			
+			default:
+				throw new InvalidArgumentException(__METHOD__ .": invalid hash type (". $hashType .")");
+		}
 		
 		return $retval;
 	}//end getPasswordHash()
@@ -135,46 +168,54 @@ class cs_authUser extends cs_sessionDB {
 			$retval = false;
 		}
 		else {
+			$retval = 0;
 			try {
 				$sql = "SELECT uid, username, user_status_id, date_created, last_login, 
-					email, user_status_id FROM cs_authentication_table WHERE username=:username " .
-					"AND passwd=:password AND user_status_id=1";
+					email, passwd, user_status_id FROM cs_authentication_table WHERE 
+					username=:username AND user_status_id=1";
 
 				// NOTE::: in linux, do this:::: echo -e "username-password\c" | sha1sum
 				// (without the "\c" or the switch, the sum won't match)
 				$sumThis = array('username' => $username, 'passwd' => $password);
 				$params = array(
-					'username'		=> $username,
-					'password'		=> $this->getPasswordHash($sumThis)
+					'username'		=> $username
 				);
-				$retval = $this->db->run_query($sql, $params);
+				$numRecords = $this->db->run_query($sql, $params);
 			}
 			catch(Exception $e) {
 				$this->do_log(__METHOD__ .": Exception encountered::: ");
 				throw new exception(__METHOD__ .": DETAILS::: ". $e->getMessage());
 			}
 			try {
-				if($retval == 1) {
+				if($numRecords == 1) {
+					
 					$data = $this->db->get_single_record();
-					$this->userInfo = $data;
-					$this->update_auth_data($this->userInfo);
-
-					/*
-					 * NOTE::: this assumes that there's already a record in the 
-					 * session table... this would probably need to be revisited 
-					 * in the event that authentication is implemented without 
-					 * database storage for sessions.
-					 */
-					$updateRes = $this->updateUid($data['uid'], $this->sid);
-					if ($updateRes == 0) {
-						$insertRes = parent::doInsert($this->sid, $_SESSION, $this->uid);
-						$this->do_log(__METHOD__ . ": inserted new session record, updateRes=(" . $updateRes . "), insertRes=(" . $insertRes . ")", 'debug');
+					if($this->getPasswordHash($sumThis, strlen($data['passwd'])) == $data['passwd']) {
+						
+						$this->userInfo = $data;
+						$this->update_auth_data($this->userInfo);
+						
+						/*
+						 * NOTE::: this assumes that there's already a record in the 
+						 * session table... this would probably need to be revisited 
+						 * in the event that authentication is implemented without 
+						 * database storage for sessions.
+						 */
+						$updateRes = $this->updateUid($data['uid'], $this->sid);
+						if ($updateRes == 0) {
+							$insertRes = parent::doInsert($this->sid, $_SESSION, $this->uid);
+							$this->do_log(__METHOD__ . ": inserted new session record, updateRes=(" . $updateRes . "), insertRes=(" . $insertRes . ")", 'debug');
+						}
+						
+						$this->do_log("Successfully logged-in (" . $retval . ")");
+						$retval = $numRecords;
 					}
-
-					$this->do_log("Successfully logged-in (". $retval .")");
+					else {
+						$this->do_log("Authentication failure, username=(". $username ."), retval=(". $retval .")");
+					}
 				}
 				else {
-					$this->do_log("Authentication failure, username=(". $username ."), retval=(". $retval .")");
+					$this->do_log("Authentication failure, unknown username (". $username .")");
 				}
 
 				if($retval == 1) {
@@ -197,13 +238,13 @@ class cs_authUser extends cs_sessionDB {
 	
 	//-------------------------------------------------------------------------
 	//TODO: use more stuff here, like a salt and/or their UID.
-	public function update_passwd(array $user, $newPass) {
-		
+	public function update_passwd(array $user, $newPass, $hashType=self::HASH_SHA1) {
+		$retval = false;
 		if(is_array($user) && isset($user['username']) && isset($user['uid']) && $user['uid'] > 0) {
 			
 			$sql = 'UPDATE '. $this->table .' SET passwd=:new WHERE uid=:uid';
 			$params = array(
-				'new'	=> $this->getPasswordHash(array($user['username'], $newPass)),
+				'new'	=> $this->getPasswordHash(array($user['username'], $newPass), $hashType),
 				'uid'	=> $user['uid'],
 			);
 			

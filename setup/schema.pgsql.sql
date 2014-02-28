@@ -24,7 +24,7 @@ INSERT INTO cs_user_status_table (user_status_id, description, is_active)
 CREATE TABLE cs_authentication_table (
     uid serial NOT NULL PRIMARY KEY,
     username text NOT NULL UNIQUE,
-    passwd character varying(40),
+    passwd text,
     date_created date DEFAULT now() NOT NULL,
     last_login timestamp with time zone,
     email text,

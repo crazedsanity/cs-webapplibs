@@ -78,8 +78,8 @@ class AuthUserTest extends testDbAbstract {
 		$originalUserData = $x->get_user_data(1,true);
 		$this->assertEquals('75eba0f69d185ef816d0cee43ad44d4b2240de02', $originalUserData['passwd']);
 		$this->assertTrue(is_array($originalUserData));
-		$oldPassHash = $originalUserData['passwd'];
-		$this->assertNotEquals($originalUserData['passwd'], $x->getPasswordHash(array('test', 'test')));
+//		$oldPassHash = $originalUserData['passwd'];
+		$this->assertNotEquals($originalUserData['passwd'], $x->getPasswordHash(array('test', 'test'), strlen($originalUserData['passwd'])));
 		$this->assertFalse($x->login('test', 'test'));
 		
 		//Change test's password...
@@ -93,7 +93,7 @@ class AuthUserTest extends testDbAbstract {
 			'uid'		=> 1,
 			'username'	=> 'test',
 		);
-		$this->assertEquals(1, $x->update_passwd($userInfo, $passwd), 'Failed to set password');
+		$this->assertEquals(1, $x->update_passwd($userInfo, $passwd, $x::HASH_SHA1), 'Failed to set password');
 		
 		$updatedUserInfo = $x->get_user_data(1);
 		$this->assertNotEquals($originalUserData['passwd'], $updatedUserInfo['passwd']);
@@ -105,23 +105,58 @@ class AuthUserTest extends testDbAbstract {
 		unset($compareOriginal['passwd'], $compareUpdated['passwd']);
 		$this->assertEquals($compareOriginal, $compareUpdated);
 		
+	
 		
-		//now, let's authenticate.
-		$_SESSION['uid'] = 1;
-		$this->assertFalse($x->is_authenticated());
-		$this->assertTrue($x->login('test', $passwd), 'Failed to login with updated password');
-		$this->assertTrue($x->is_authenticated());
+		// try authenticating using all the different algorithms...
+		{
+			$types = array(
+				'md5'		=> 32,
+				'sha1'		=> 40,
+				'sha256'	=> 64,
+				'sha512'	=> 128
+			);
+			
+			$this->assertEquals($x::HASH_MD5, $types['md5']);
+			$this->assertEquals($x::HASH_SHA1, $types['sha1']);
+			$this->assertEquals($x::HASH_SHA256, $types['sha256']);
+			$this->assertEquals($x::HASH_SHA512, $types['sha512']);
+		}
+		
+		$this->assertTrue(!$x->is_authenticated());
+		
+		foreach($types as $hashName => $hashType) {
+			$this->assertFalse($x->is_authenticated());
+			
+			$this->assertTrue($x->update_passwd($userInfo, $passwd, $hashType), "Failed to update password using '". $hashName ."' (". $hashType .")");
+			
+			$this->assertFalse($x->is_authenticated());
+			$this->assertTrue($x->login('test', $passwd));
+			$this->assertTrue($x->is_authenticated());
+			
+			$this->assertTrue((bool)$x->logout_sid());
+			$this->assertFalse($x->is_authenticated());
+		}
+		
+//		//now, let's authenticate.
+//		$_SESSION['uid'] = 1;
+//		$this->assertFalse($x->is_authenticated());
+//		$this->assertTrue($x->login('test', $passwd), 'Failed to login with updated password');
+//		$this->assertTrue($x->is_authenticated());
+//		
+//		// change the password, and try to re-authenticate.
+//		unset($_SESSION['uid']);
+//		$this->assertFalse($x->is_authenticated());
+//		$this->assertTrue($x->update_passwd($userInfo, $passwd, $x::HASH_MD5), 'Failed to update password');
+//		$this->assertTrue($x->login('test', $passwd), 'Failed to login with new password');
+//		$this->assertTrue($x->is_authenticated());
+//		$this->assertTrue((bool)$x->logout_sid());
+//		$this->assertFalse($x->is_authenticated());
 	}
 }
 
 class _test_authUser extends cs_authUser {
 	public function __construct($db){
 		parent::__construct($db, false);
-	}
-	
-	
-	public function getPasswordHash(array $info, $separator='-') {
-		return parent::getPasswordHash($info, $separator);
 	}
 	
 	
