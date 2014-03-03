@@ -319,7 +319,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	 */
 	protected function read_upgrade_config_file() {
 		
-		$config = parse_ini_file($this->upgradeConfigFile,true);
+		$config = parse_ini_file($this->upgradeConfigFile,true, INI_SCANNER_RAW);
 		
 		if(is_array($config)) {
 			$myConfig = $config;
