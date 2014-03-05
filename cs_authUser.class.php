@@ -32,10 +32,12 @@ class cs_authUser extends cs_sessionDB {
 	const STATUS_PENDING	= 2;
 	
 	//types of authentication (matches expected hash length)
-	const HASH_MD5		= 32;
-	const HASH_SHA1		= 40;
-	const HASH_SHA256	= 64;
-	const HASH_SHA512	= 128;
+	const HASH_MD5			= 32;
+	const HASH_SHA1			= 40;
+	const HASH_SHA256		= 64;
+	const HASH_SHA512		= 128;
+	const HASH_PHPDEFAULT	= PASSWORD_DEFAULT;
+	const HASH_PHPBCRYPT	= PASSWORD_BCRYPT;
 	
 	//-------------------------------------------------------------------------
 	public function __construct(cs_phpDB $db, $automaticUpgrade=false, $separator='-') {
@@ -122,9 +124,16 @@ class cs_authUser extends cs_sessionDB {
 	//-------------------------------------------------------------------------
 	
 	
+	//-------------------------------------------------------------------------
+	public function generateHash(array $data) {
+		return(implode($this->separator, $data));
+	}//end generateHash()
+	//-------------------------------------------------------------------------
+	
+	
 	
 	//-------------------------------------------------------------------------
-	public function getPasswordHash(array $dataToHash, $hashType=self::HASH_SHA1) {
+	public function getPasswordHash(array $dataToHash, $hashType=null) {
 		
 		foreach($dataToHash as $k=>$v) {
 			if(!strlen($v)) {
@@ -132,13 +141,19 @@ class cs_authUser extends cs_sessionDB {
 			}
 		}
 		
-		$hashThis = implode($this->separator, $dataToHash);
+		$hashThis = $this->generateHash($dataToHash);
 		
 		switch($hashType) {
+			case self::HASH_PHPBCRYPT:
+			case self::HASH_PHPDEFAULT:
+				$retval = password_hash($hashThis, $hashType);
+				break;
 			case self::HASH_MD5:
 				$retval = md5($hashThis);
 				break;
 			
+			case null:
+			trigger_error("password type should not be assumed: future versions of ". __METHOD__ ." will use PHP's default", E_USER_DEPRECATED);
 			case self::HASH_SHA1:
 				$retval = sha1($hashThis);
 				break;
@@ -190,8 +205,20 @@ class cs_authUser extends cs_sessionDB {
 				if($numRecords == 1) {
 					
 					$data = $this->db->get_single_record();
-					if($this->getPasswordHash($sumThis, strlen($data['passwd'])) == $data['passwd']) {
+					
+					if(preg_match('/^\$/', $data['passwd'])) {
+						// this would be using PHP's password_hash() function...
+						$retval = password_verify($this->generateHash($sumThis), $data['passwd']);
+					}
+					elseif($this->getPasswordHash($sumThis, strlen($data['passwd'])) == $data['passwd']) {
 						
+						$retval = $numRecords;
+					}
+					else {
+						$this->do_log("Authentication failure, username=(". $username ."), retval=(". $retval .")");
+					}
+					
+					if((bool)$retval) {
 						$this->userInfo = $data;
 						$this->update_auth_data($this->userInfo);
 						
@@ -208,10 +235,6 @@ class cs_authUser extends cs_sessionDB {
 						}
 						
 						$this->do_log("Successfully logged-in (" . $retval . ")");
-						$retval = $numRecords;
-					}
-					else {
-						$this->do_log("Authentication failure, username=(". $username ."), retval=(". $retval .")");
 					}
 				}
 				else {
@@ -238,7 +261,7 @@ class cs_authUser extends cs_sessionDB {
 	
 	//-------------------------------------------------------------------------
 	//TODO: use more stuff here, like a salt and/or their UID.
-	public function update_passwd(array $user, $newPass, $hashType=self::HASH_SHA1) {
+	public function update_passwd(array $user, $newPass, $hashType=self::HASH_PHPDEFAULT) {
 		$retval = false;
 		if(is_array($user) && isset($user['username']) && isset($user['uid']) && $user['uid'] > 0) {
 			

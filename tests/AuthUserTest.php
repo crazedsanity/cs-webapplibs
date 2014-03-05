@@ -17,6 +17,51 @@ class AuthUserTest extends testDbAbstract {
 		unset($_SESSION);
 	}
 	
+	/**
+	 * Ensuring these functions are enabled is really the job of the 
+	 * application... the "bootstrap.php" script handles this for unit testing.
+	 */
+	public function test_passwordCompat() {
+		$funcList = array(
+			'password_hash', 'password_get_info', 
+			'password_needs_rehash', 'password_verify', 
+		);
+		
+		foreach($funcList as $func) {
+			$this->assertTrue(function_exists($func), "Required function '". 
+					$func ."' is missing, use composer to install the ".
+					"'ircmaxell/password-compat' library or upgrade to ".
+					"PHP 5.5+");
+		}
+	}
+	
+	
+	public function test_collisionOfConstants() {
+		$x = new _empty_testAuthUser();
+		$myConstants = array(
+			'md5'			=> $x::HASH_MD5,
+			'sha1'			=> $x::HASH_SHA1,
+			'sha256'		=> $x::HASH_SHA256,
+			'sha512'		=> $x::HASH_SHA512,
+			'PHP-bcrypt'	=> constant('PASSWORD_BCRYPT'),
+//			'PHP-default'	=> constant('PASSWORD_DEFAULT'),	// the default is PHP-bcrypt... 
+		);
+		
+		foreach($myConstants as $yName => $yVal) {
+			foreach($myConstants as $zName => $zVal) {
+				if($zName == $yName) {
+					$this->assertEquals($zVal, $yVal, "constants do not match for '". $zName ."' and '". $yName ."'... but they should");
+				}
+				else {
+					$this->assertNotEquals($zVal, $yVal, "collision detected: '". $zName ."' matches value for '". $yName ."' (". $zVal ."=". $yVal .")");
+				}
+			}
+		}
+		
+		$this->assertEquals($x::HASH_PHPDEFAULT, PASSWORD_DEFAULT);
+		$this->assertEquals($x::HASH_PHPBCRYPT, PASSWORD_BCRYPT);
+	}
+	
 	
 	public function test_validBaseData() {
 		//$x = new cs_authUser($this->dbObj);
@@ -42,7 +87,7 @@ class AuthUserTest extends testDbAbstract {
 	}
 	
 	
-	public function test_sesionStuff() {
+	public function test_sessionStuff() {
 		$myAuthData = array(
 			'uid'	=> 999,
 			'user'	=> 999,
@@ -84,7 +129,7 @@ class AuthUserTest extends testDbAbstract {
 		
 		//Change test's password...
 		$passwd = '_unitTe5t3r';
-		$newHash = $x->getPasswordHash(array('username'=>'test', 'passwd'=>$passwd));
+		$newHash = $x->getPasswordHash(array('username'=>'test', 'passwd'=>$passwd), $x::HASH_SHA1);
 		$this->assertEquals(
 				$newHash,
 				sha1(implode('-', array('test', $passwd)))
@@ -113,13 +158,15 @@ class AuthUserTest extends testDbAbstract {
 				'md5'		=> 32,
 				'sha1'		=> 40,
 				'sha256'	=> 64,
-				'sha512'	=> 128
+				'sha512'	=> 128,
+				'default'	=> constant('PASSWORD_DEFAULT'),
 			);
 			
 			$this->assertEquals($x::HASH_MD5, $types['md5']);
 			$this->assertEquals($x::HASH_SHA1, $types['sha1']);
 			$this->assertEquals($x::HASH_SHA256, $types['sha256']);
 			$this->assertEquals($x::HASH_SHA512, $types['sha512']);
+			$this->assertEquals($x::HASH_PHPDEFAULT, $types['default']);
 		}
 		
 		$this->assertTrue(!$x->is_authenticated());
@@ -130,27 +177,12 @@ class AuthUserTest extends testDbAbstract {
 			$this->assertTrue($x->update_passwd($userInfo, $passwd, $hashType), "Failed to update password using '". $hashName ."' (". $hashType .")");
 			
 			$this->assertFalse($x->is_authenticated());
-			$this->assertTrue($x->login('test', $passwd));
+			$this->assertTrue($x->login('test', $passwd), "Failed to login using $hashName ($hashType)");
 			$this->assertTrue($x->is_authenticated());
 			
 			$this->assertTrue((bool)$x->logout_sid());
 			$this->assertFalse($x->is_authenticated());
 		}
-		
-//		//now, let's authenticate.
-//		$_SESSION['uid'] = 1;
-//		$this->assertFalse($x->is_authenticated());
-//		$this->assertTrue($x->login('test', $passwd), 'Failed to login with updated password');
-//		$this->assertTrue($x->is_authenticated());
-//		
-//		// change the password, and try to re-authenticate.
-//		unset($_SESSION['uid']);
-//		$this->assertFalse($x->is_authenticated());
-//		$this->assertTrue($x->update_passwd($userInfo, $passwd, $x::HASH_MD5), 'Failed to update password');
-//		$this->assertTrue($x->login('test', $passwd), 'Failed to login with new password');
-//		$this->assertTrue($x->is_authenticated());
-//		$this->assertTrue((bool)$x->logout_sid());
-//		$this->assertFalse($x->is_authenticated());
 	}
 }
 
@@ -167,5 +199,10 @@ class _test_authUser extends cs_authUser {
 	
 	public function update_auth_data(array $data) {
 		parent::update_auth_data($data);
+	}
+}
+
+class _empty_testAuthUser extends cs_authUser {
+	public function __construct($db=null) {
 	}
 }
