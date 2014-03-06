@@ -6,7 +6,7 @@ require_once(dirname(__FILE__) .'/../debugFunctions.php');
 // Handle password compatibility (using "ircmaxell/password-compat")
 {
 	//handle differences in paths...
-	$usePath = dirname(__FILE__) . '/../vexndor/ircmaxell/password-compat/version-test.php';
+	$usePath = dirname(__FILE__) . '/../vendor/ircmaxell/password-compat/version-test.php';
 	
 	ob_start();
 	if(!include_once($usePath)) {
@@ -14,7 +14,7 @@ require_once(dirname(__FILE__) .'/../debugFunctions.php');
 		print "You must set up the project dependencies, run the following commands:\n
 			\twget http://getcomposer.org/composer.phar
 			\tphp composer.phar install ircmaxell/password-compat\n";
-		exit(1);
+		exit(1);//
 	}
 	else {
 		$output = ob_get_contents();
