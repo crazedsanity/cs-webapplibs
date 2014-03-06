@@ -1,5 +1,7 @@
 ## Web Application Libraries
 
+Build status::: [![Build Status](https://travis-ci.org/crazedsanity/cs-webapplibs.png)](https://travis-ci.org/crazedsanity/cs-webapplibs)
+
 *For info about upgrades, check the "upgrades" folder*
 
 (a.k.a. "CS-WebAppLibs" or "CSWAL")
@@ -58,6 +60,7 @@ Look at the library-specific documentation:
  * [CS Web DB Upgrade](docs/README_webdbupgrade.md)
  * [Lock File](docs/README_lockfile.md)
  * [Auth Token](docs/README_authToken.md)
+ * [User Authentication](docs/README_authUser.md)
  * [Session DB](docs/README_sessionDB.md)
  * [Site Configuration](docs/README_siteConfig.md)
 

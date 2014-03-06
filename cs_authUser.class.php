@@ -92,6 +92,9 @@ class cs_authUser extends cs_sessionDB {
 	
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	protected function do_log($details, $type=NULL) {
 		if(is_null($type) || strlen($type) < 3) {
 			$type = "info";
@@ -134,40 +137,44 @@ class cs_authUser extends cs_sessionDB {
 	
 	//-------------------------------------------------------------------------
 	public function getPasswordHash(array $dataToHash, $hashType=null) {
-		
-		foreach($dataToHash as $k=>$v) {
-			if(!strlen($v)) {
-				throw new InvalidArgumentException(__METHOD__ .": invalid data (". $v .") for '". $k ."'");
+		if(count($dataToHash) > 0) {
+			foreach($dataToHash as $k=>$v) {
+				if(!strlen($v)) {
+					throw new InvalidArgumentException(__METHOD__ .": hash data contains one or more empty values");
+				}
+			}
+			
+			$hashThis = $this->generateHash($dataToHash);
+			
+			switch($hashType) {
+				case self::HASH_PHPBCRYPT:
+				case self::HASH_PHPDEFAULT:
+					$retval = password_hash($hashThis, $hashType);
+					break;
+				case self::HASH_MD5:
+					$retval = md5($hashThis);
+					break;
+
+				case null:
+				trigger_error("password type should not be assumed: future versions of ". __METHOD__ ." will use PHP's default", E_USER_DEPRECATED);
+				case self::HASH_SHA1:
+					$retval = sha1($hashThis);
+					break;
+
+				case self::HASH_SHA256:
+					$retval = hash('sha256', $hashThis);
+					break;
+
+				case self::HASH_SHA512:
+					$retval = hash('sha512', $hashThis);
+					break;
+
+				default:
+					throw new InvalidArgumentException(__METHOD__ .": invalid hash type (". $hashType .")");
 			}
 		}
-		
-		$hashThis = $this->generateHash($dataToHash);
-		
-		switch($hashType) {
-			case self::HASH_PHPBCRYPT:
-			case self::HASH_PHPDEFAULT:
-				$retval = password_hash($hashThis, $hashType);
-				break;
-			case self::HASH_MD5:
-				$retval = md5($hashThis);
-				break;
-			
-			case null:
-			trigger_error("password type should not be assumed: future versions of ". __METHOD__ ." will use PHP's default", E_USER_DEPRECATED);
-			case self::HASH_SHA1:
-				$retval = sha1($hashThis);
-				break;
-			
-			case self::HASH_SHA256:
-				$retval = hash('sha256', $hashThis);
-				break;
-			
-			case self::HASH_SHA512:
-				$retval = hash('sha512', $hashThis);
-				break;
-			
-			default:
-				throw new InvalidArgumentException(__METHOD__ .": invalid hash type (". $hashType .")");
+		else {
+			throw new InvalidArgumentException("no data to hash");
 		}
 		
 		return $retval;
@@ -244,7 +251,6 @@ class cs_authUser extends cs_sessionDB {
 				if($retval == 1) {
 					$this->do_cookie();
 				}
-				$retval = $this->check_sid();
 				$this->do_log("Return value from check_sid() was (". $retval .")", 'debug');
 			}
 			catch(Exception $e) {
@@ -260,7 +266,6 @@ class cs_authUser extends cs_sessionDB {
 	
 	
 	//-------------------------------------------------------------------------
-	//TODO: use more stuff here, like a salt and/or their UID.
 	public function update_passwd(array $user, $newPass, $hashType=self::HASH_PHPDEFAULT) {
 		$retval = false;
 		if(is_array($user) && isset($user['username']) && isset($user['uid']) && $user['uid'] > 0) {
@@ -278,15 +283,12 @@ class cs_authUser extends cs_sessionDB {
 					$retval = true;
 				}
 				else {
-					throw new ErrorException(__METHOD__ .": failed to update password");
+					throw new LogicException(__METHOD__ .": failed to update password");
 				}
 			}
 			catch(Exception $ex) {
-				
+				throw new ErrorException(__METHOD__ .": failed to update password: ". $ex->getMessage());
 			}
-		}
-		elseif(isset($user['uid']) && $user['uid'] == 0) {
-			throw new InvalidArgumentException(__METHOD__ .": cannot change password for anonymous user");
 		}
 		else {
 			throw new InvalidArgumentException(__METHOD__ .": invalid user info or password");
@@ -299,6 +301,9 @@ class cs_authUser extends cs_sessionDB {
 	
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	protected function do_cookie() {
 		if(defined('UNITTEST_ACTIVE')) {
 			$createCookieRes = false;
@@ -318,25 +323,36 @@ class cs_authUser extends cs_sessionDB {
 	
 	
 	//-------------------------------------------------------------------------
-	protected function get_user_data($uid) {
-		if(is_numeric($uid) && $uid > 0) {
-			$sql = "SELECT uid, username, user_status_id, date_created, last_login, 
-				passwd, email, user_status_id FROM cs_authentication_table 
-				WHERE uid=:uid AND user_status_id=1";
-			$numrows = $this->db->run_query($sql, array('uid'=> $uid));
+	public function get_user_data($uidOrUsername, $onlyUserStatus=self::STATUS_ENABLED) {
+		$retval = null;
+		if((is_numeric($uidOrUsername) && $uidOrUsername > 0) || (!is_numeric($uidOrUsername) && strlen($uidOrUsername) > 0)) {
+			$condition = 'uid=:uid';
+			if(!is_numeric($uidOrUsername)) {
+				$condition = 'username=:uid';
+			}
+			$sql = "SELECT * FROM cs_authentication_table 
+				WHERE ". $condition ." AND user_status_id=:status";
+			$params = array(
+						'uid'		=> $uidOrUsername,
+						'status'	=> $onlyUserStatus,
+					);
+			$numrows = $this->db->run_query(
+					$sql,
+					$params
+			);
 			
 			if($numrows == 1) {
 				$retval = $this->db->get_single_record();
 			}
 			else {
 				//
-				$details = __METHOD__ .": failed to retrieve a single user (". $numrows .") for uid=(". $uid .")";
+				$details = __METHOD__ .": failed to retrieve a single user (". $numrows .") for uid=(". $uidOrUsername .") with user_status_id=(". $onlyUserStatus .")";
 				$this->do_log($details, 'exception in code');
 				throw new exception($details);
 			}
 		}
 		else {
-			$details = __METHOD__ .": invalid uid (". $uid .")";
+			$details = __METHOD__ .": invalid uid (". $uidOrUsername .")";
 			$this->do_log($details, 'exception in code');
 			throw new exception($details);
 		}
@@ -359,7 +375,6 @@ class cs_authUser extends cs_sessionDB {
 	//-------------------------------------------------------------------------
 	public function logout_sid() {
 		$_SESSION = array();
-		#unset($_SESSION);
 		$retval = $this->logout($this->sid);
 		return($retval);
 	}//end logout_sid()
@@ -368,6 +383,7 @@ class cs_authUser extends cs_sessionDB {
 	
 	
 	//-------------------------------------------------------------------------
+	//TODO: this should be in cs_sessionDB, not here!
 	public function checkin($sid=null) {
 		$retval = NULL;
 		if($this->is_authenticated()) {
@@ -385,18 +401,6 @@ class cs_authUser extends cs_sessionDB {
 		
 		return($retval);
 	}//end checkin()
-	//-------------------------------------------------------------------------
-	
-	
-	
-	//-------------------------------------------------------------------------
-	public function get_user_info($index) {
-		$retval = NULL;
-		if(isset($this->userInfo[$index])) {
-			$retval = $this->userInfo[$index];
-		}
-		return($retval);
-	}//end get_user_info()
 	//-------------------------------------------------------------------------
 	
 	
