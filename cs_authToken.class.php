@@ -10,26 +10,50 @@ class cs_authToken extends cs_webapplibsAbstract {
 	/** Database object. */
 	private $db;
 	
+	/** Algorithm for password_hash() */
+	private $passAlgorithm=PASSWORD_DEFAULT;
+	
+	/** Algorigthm for creating the hash  */
+	private $hashAlgorigthm='sha1';
+	
 	/** Name of the table */
 	private $table = 'cswal_auth_token_table';
 	
 	/** Sequence name for the given table (for PostgreSQL) */
 	private $seq = 'cswal_auth_token_table_auth_token_id_seq';
 	
+	const EXPIRE_SINGLE = 1;
+	const EXPIRE_ALL = 2;
+	
+	/* Specific results for token authentication.  For security purposes, the user should only be given a result of pass/fail */
+	const RESULT_SUCCESS		= 1;
+	const RESULT_FAIL		= 2;
+	const RESULT_EXPIRED	= 4;
+	const RESULT_BADPASS		= 8;
+	
 	
 	//=========================================================================
 	/**
 	 * The CONSTRUCTOR.  Sets internal properties & such.
 	 * @codeCoverageIgnore
+	 * 
+	 * @param cs_phpDB $db			(cs_phpDB) database object.
+	 * @param type $passAlgorithm	(int, optional) for use with PHP's password_hash()
+	 * @param type $nonceAlgorithm	(str, optional) for creating a token string
+	 * @throws exception
 	 */
-	public function __construct(cs_phpDB $db) {
+	public function __construct(cs_phpDB $db, $passAlgorithm=PASSWORD_DEFAULT, $nonceAlgorithm=null) {
 		
 		if(is_object($db)) {
 			parent::__construct(true);
 			$this->db = $db;
 			
-			#$upg = new cs_webdbupgrade(dirname(__FILE__) .'/VERSION', dirname(__FILE__) .'/upgrades/upgrade.ini');
-			#$upg->check_versions(true);
+			if(!is_null($passAlgorithm) && is_numeric($passAlgorithm)) {
+				$this->passAlgorithm = $passAlgorithm;
+			}
+			if(!is_null($nonceAlgorithm) && is_string($nonceAlgorithm)) {
+				$this->hashAlgorigthm = $nonceAlgorithm;
+			}
 		}
 		else {
 			cs_debug_backtrace(1);
@@ -42,19 +66,52 @@ class cs_authToken extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	/**
-	 * Standardized method of creating a hash from a string.
+	 * Generate a hash for creating a new token.  Code was derived from 
+	 * http://stackoverflow.com/questions/3290283/what-is-a-good-way-to-produce-a-random-site-salt-to-be-used-in-creating-passwo/3291689#3291689
 	 * 
-	 * @param $tokenId			(int) matches auth_token_id column....
-	 * @param $uid				(int) matches uid column...
-	 * @param $checksum			(str) This is the value that can be used by the 
-	 * 								calling code to see if the given uid matches 
-	 * 								this data (i.e. using an email address/username).
-	 * @param $stringToHash		(str) Data used to help create a hash, usually 
-	 * 								something very unique.
+	 * @return string		A string that can be used (as part of) a new token.
 	 */
-	protected function create_hash_string($tokenId, $uid, $checksum, $stringToHash=NULL) {
-		return(sha1($tokenId ."_". $uid ."_". $checksum ."_". $stringToHash));
-	}//end create_hash_string()
+	public function generate_token_string() {
+		return hash($this->hashAlgorigthm, $this->create_nonce());
+	}//end generate_token_string()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function crypto_rand_secure($min, $max) {
+		$range = $max - $min;
+		$retval = $min;
+		
+		if($range > 0) {
+			$log = log($range, 2);
+			$bytes = (int) ($log / 8) + 1; // length in bytes
+			$bits = (int) $log + 1; // length in bits
+			$filter = (int) (1 << $bits) - 1; // set all lower bits to 1
+			do {
+				$rnd = hexdec(bin2hex(openssl_random_pseudo_bytes($bytes)));
+				$rnd = $rnd & $filter; // discard irrelevant bits
+			} 
+			while ($rnd >= $range);
+			$retval = $min + $rnd;
+		}
+		return $retval;
+	}
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function create_nonce($length = 32) {
+		$nonce = "";
+		$codeAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		$codeAlphabet.= "abcdefghijklmnopqrstuvwxyz";
+		$codeAlphabet.= "0123456789";
+		for ($i = 0; $i < $length; $i++) {
+			$nonce .= $codeAlphabet[$this->crypto_rand_secure(0, strlen($codeAlphabet))];
+		}
+		return $nonce;
+	}
 	//=========================================================================
 	
 	
@@ -63,26 +120,30 @@ class cs_authToken extends cs_webapplibsAbstract {
 	/**
 	 * Build a token record in the database that can be authenticated against later.
 	 * 
-	 * @param $uid			(int) matches uid column...
-	 * @param $checksum		(str) matches checksum column...
-	 * @param $stringToHash	(str) unique value to help build hash from.
+	 * @param $password		(str) matches checksum column...
+	 * @param $tokenId		(str, optional) key to match against
 	 * @param $lifetime		(str,optional) string (interval) representing how 
-	 * 							long the token should last.
+	 * 							long the token should last
 	 * @param $maxUses		(int,optional) Number of times it can be authenticated 
-	 * 							against before being removed.
+	 * 							against before being removed 
 	 * 
 	 * @return (array)		PASS: contains id & hash for the token.
 	 * @return (exception)	FAIL: exception contains error details.
 	 */
-	public function create_token($uid, $checksum, $stringToHash, $lifetime=null, $maxUses=null) {
+	public function create_token($password, $valueToStore, $tokenId=null, $lifetime=null, $maxUses=null) {
+		
+		if(is_null($tokenId) || strlen($tokenId) < 1) {
+			$tokenId = $this->generate_token_string();
+		}
+		
+		$finalHash = password_hash($password, $this->passAlgorithm);
 		
 		$insertData = array(
-			'uid'		=> $uid,
-			'checksum'	=> $checksum,
-			'token'		=> '____INCOMPLETE____'
+			'auth_token_id'	=> $tokenId,
+			'passwd'		=> $finalHash,
+			'stored_value'	=> serialize($valueToStore),
 		);
 		
-		$insertData['expiration'] = strftime('%Y-%m-%d %T', strtotime('1 day'));
 		if(!is_null($lifetime) && strlen($lifetime)) {
 			$insertData['expiration'] = strftime('%Y-%m-%d %T', strtotime($lifetime));
 		}
@@ -98,23 +159,17 @@ class cs_authToken extends cs_webapplibsAbstract {
 			}
 			$sql = "INSERT INTO cswal_auth_token_table (". $fields .") VALUES (". $values .")";
 
-			$tokenId = $this->db->run_insert($sql, $insertData, $this->seq);
+			$numRows = $this->db->run_query($sql, $insertData);
 			
-			//now that we have the ID, let's create the real hash string.
-			$stringToHash .= microtime(true) ."__". rand(1000, 9999999);
-			$finalHash = $this->create_hash_string($tokenId, $uid, $checksum, $stringToHash);
-			
-			$this->_generic_update($tokenId, array('token'=>$finalHash));
-			$tokenInfo = array(
-				'id'	=> $tokenId,
-				'hash'	=> $finalHash
-			);
+			if($numRows != 1) {
+				throw new LogicException(__METHOD__ .": unable to create token (". $numRows .")");
+			}
 		}
 		catch(exception $e) {
 			throw new ErrorException(__METHOD__ .": failed to create token::: ". $e->getMessage());
 		}
 		
-		return($tokenInfo);
+		return($tokenId);
 	}//end create_token()
 	//=========================================================================
 	
@@ -171,72 +226,46 @@ class cs_authToken extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	/**
-	 * Determine if a token is authentic: the id is used to make the search as
-	 * fast as possible, while the hash & checksum are given to compare against.
-	 * Failure results in FALSE, while success returns the contact_id for the
-	 * given token.
-	 *
-	 * NOTE: the calling program can leave it to this method to say if the
-	 * token is authentic, or use a checksum which can in turn be used to get
-	 * a specific contact_id; when they authenticate, the return of this
-	 * method must then match the contact_id retrieved from the checksum...
-	 *
-	 * EXAMPLE:
-	 * $tokenUid = cs_authToken::authenticate_token($tokenId, $hash, $checksum);
-	 * $realUid = userClass::get_uid_from_email($checksum);
-	 * if($tokenUid == $realUid) {
-	 *	      //token is truly authentic
-	 * }
+	 * Check if a token is valid.  See documentation (docs/README_authUser.md)
 	 * 
-	 * @param $tokenId		(int) auth_token_id to check against
-	 * @param $checksum		(str) required 'checksum' value.
-	 * @param $hash			(str) required 'token' value.
+	 * @param $tokenId	(int) auth_token_id to check against
+	 * @param $pass		(str) required 'checksum' value.
+	 * 
+	 * @return (array)	Contains the following indexes:
+	 *						'result'       => true/false
+	 *						'reason'       => a "RESULT_" class constant
+	 *						'stored_value' => value stored in the token (only on success)
 	 */
-	public function authenticate_token($tokenId, $checksum, $hash) {
+	public function authenticate_token($tokenId, $pass) {
 		
-		$authTokenRes = null;
+		$checkExpiration = $this->remove_expired_tokens($tokenId);
 		
-		if(is_numeric($tokenId) && strlen($checksum) && strlen($hash) == 40) {
-			try {
-				$data = $this->get_token_data($tokenId);
+		$authTokenRes = array(
+			'result'		=> false,
+			'reason'		=> self::RESULT_FAIL,
+		);
+		
+		if($checkExpiration['type'] == self::EXPIRE_SINGLE && $checkExpiration['num'] == 0) {
+			$data = $this->get_token_data($tokenId);
+			if(password_verify($pass, $data['passwd'])) {
+				$authTokenRes['result'] = true;
+				$authTokenRes['reason'] = self::RESULT_SUCCESS;
+				$authTokenRes['stored_value'] = unserialize($data['stored_value']);
 				
-				if(count($data) == 9 && is_array($data) && isset($data['auth_token_id'])) {
-					
-					if($data['token'] == $hash && $data['checksum'] == $checksum) {
-						
-						$methodCall = 'update_token_uses';
-						if(is_numeric($data['max_uses'])) {
-							$authTokenRes = null;
-							if($data['max_uses'] == $data['total_uses']) {
-								//reached max uses already... (maybe this should throw an exception?)
-								$this->destroy_token($tokenId);
-							}
-							elseif($data['total_uses'] < $data['max_uses']) {
-								$authTokenRes = $data['uid'];
-								if(($data['total_uses'] +1) == $data['max_uses']) {
-									//this is the last use: just destroy it.
-									$this->destroy_token($tokenId);
-								}
-							}
-							else {
-								throw new exception(__METHOD__ .": token (". $tokenId .") used more than max allowed uses [total=". $data['total_uses'] .", max=". $data['max_uses'] ."]");
-							}
-						}
-						else {
-							$authTokenRes = $data['uid'];
-							$this->update_token_uses($tokenId);
-						}
-					}
-				}
-				elseif($data === false) {
-					$authTokenRes = null;
-				}
-				else {
-					throw new exception(__METHOD__ .": invalid data returned:: ". $this->gfObj->debug_var_dump($data,0));
-				}
+				//do some maintenance.
+				$this->update_token_uses($tokenId);
+				$this->remove_expired_tokens($tokenId);
 			}
-			catch(exception $e) {
-				throw new exception(__METHOD__ .": failed to authenticate token::: ". $e->getMessage());
+			else {
+				$authTokenRes['reason'] = self::RESULT_BADPASS;
+			}
+		}
+		else {
+			if($checkExpiration['type'] == self::EXPIRE_SINGLE) {
+				$authTokenRes['result'] = self::RESULT_EXPIRED;
+			}
+			else {
+				throw new LogicException(__METHOD__ .": expired multiple tokens instead of just one");
 			}
 		}
 		
@@ -255,7 +284,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 * @return (array)		PASS: contains data about the given ID
 	 * @return (exception)	FAIL: exception contains error details.
 	 */
-	protected function get_token_data($tokenId, $onlyNonExpired=true) {
+	public function get_token_data($tokenId, $onlyNonExpired=false) {
 		try {
 			$sql = "SELECT * FROM ". $this->table ." WHERE auth_token_id=:tokenId";
 			if($onlyNonExpired === true) {
@@ -292,24 +321,42 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 * Deletes any tokens that are past expiration (does not test for total vs. 
 	 * max uses; authenticate_token() does that).
 	 * 
-	 * @param (null)		(void)
+	 * @param tokenId(str,optional)	Optionally checks only a specific token
+	 * 
+	 * @return (array)				indexed array, containing:
+	 *								'type'	=> (EXPIRE_SINGLE|EXPIRE_ALL)
+	 *								'num'	=> (int)
+	 * 
+	 * TODO: log each token's expiration
 	 */
-	public function remove_expired_tokens() {
-		$sql = "SELECT * FROM ". $this->table ." WHERE NOW() > expiration";
+	public function remove_expired_tokens($tokenId=null) {
+		$sql = "SELECT * FROM ". $this->table ." WHERE NOW() > expiration OR (total_uses >= max_uses AND max_uses > 0)";
+		$params = array();
+		$expireType = self::EXPIRE_ALL;
+		if(!is_null($tokenId)) {
+			$sql .= " AND auth_token_id=:id";
+			$params['id'] = $tokenId;
+			$expireType = self::EXPIRE_SINGLE;
+		}
 		
-		$destroyedTokens = 0;
+		$destroyedTokens = array(
+			'type'	=> $expireType,
+			'num'	=> 0
+		);
+		
 		try {
-			$numrows = $this->db->run_query($sql, array());
+			$numrows = $this->db->run_query($sql, $params);
 			
 			if($numrows > 0) {
 				$data = $this->db->farray_fieldnames('auth_token_id');
 				if(is_array($data)) {
 					foreach($data as $tokenId => $tokenData) {
 						//TODO: add logging here?
-						$destroyedTokens += $this->destroy_token($tokenId);
+						$destroyedTokens['num'] += $this->destroy_token($tokenId);
 					}
 				}
 			}
+			$destroyedTokens['num'] = $numrows;
 		}
 		catch(exception $e) {
 			throw new exception(__METHOD__ .": error encountered while expiring tokens::: ". $e->getMessage());
@@ -319,26 +366,4 @@ class cs_authToken extends cs_webapplibsAbstract {
 	}//end remove_expired_tokens()
 	//=========================================================================
 	
-	
-	
-	//=========================================================================
-	private function _generic_update($tokenId, $updateParams) {
-		try {
-			$updateString = "";
-			foreach($updateParams as $k=>$v) {
-				$updateString = $this->gfObj->create_list($updateString, $k .'=:'. $k);
-			}
-			$updateParams['tokenId'] = $tokenId;
-			$sql = "UPDATE ". $this->table ." SET ". $updateString .", last_updated=NOW() " .
-					"WHERE auth_token_id=:tokenId";
-			$updateRes = $this->db->run_update($sql, $updateParams);
-		}
-		catch(exception $e) {
-			throw new exception("failed to update token::: ". $e->getMessage());
-		}
-		return($updateRes);
-	}//end generic_update()
-	//=========================================================================
-	
 }
-?>

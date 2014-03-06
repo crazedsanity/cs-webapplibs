@@ -20,6 +20,7 @@ class testOfCSAuthToken extends testDbAbstract {
 		$this->gfObj = new cs_globalFunctions;
 		$this->gfObj->debugPrintOpt=1;
 		parent::setUp();
+		$this->assertTrue($this->reset_db(dirname(__FILE__) .'/../setup/schema.pgsql.sql'), "Failed to reset database");
 	}//end setUp()
 	//--------------------------------------------------------------------------
 	
@@ -34,15 +35,47 @@ class testOfCSAuthToken extends testDbAbstract {
 	
 	
 	//--------------------------------------------------------------------------
-	function test_token_basics() {
-		$this->internal_connect_db();
+	public function test_creation() {
+		$x = new cs_authToken($this->dbObj);
+//		$this->assertTrue(is_object($x));
+		
+		$name = '_ToKen';
+		$value = __METHOD__;
+		$pass = 'foo@bar.com';
+		
+		$this->assertEquals($name, $x->create_token($pass, $value, $name));
+		
+		
+		$res = $x->remove_expired_tokens($name);
+		
+		$this->assertEquals($res['type'], $x::EXPIRE_SINGLE);
+		$this->assertEquals($res['num'], 0);
+		
+		$expectedResult = array(
+			'result'		=> true,
+			'reason'		=> $x::RESULT_SUCCESS,
+			'stored_value'	=> $value,
+		);
+		$actualResult = $x->authenticate_token($name, $pass);
+		
+		foreach($expectedResult as $k=>$v) {
+			$this->assertTrue(isset($actualResult[$k]));
+			$this->assertEquals($v, $actualResult[$k], "Value mismatch for '". $k ."', ACTUAL::: ". cs_global::debug_print($actualResult,0));
+		}
+	}
+	//--------------------------------------------------------------------------
+	
+	
+	
+	//--------------------------------------------------------------------------
+	function XOLD_test_token_basics() {
 		$dbObj = $this->dbObj;
 		
 		#$dbObj->beginTrans();
 		$tok = new cs_authToken($dbObj);
-		if($this->assertTrue($this->reset_db(dirname(__FILE__) .'/../setup/schema.pgsql.sql'), "Failed to reset database")) {
+//		if($this->assertTrue($this->reset_db(dirname(__FILE__) .'/../setup/schema.pgsql.sql'), "Failed to reset database")) {
 			#$tok->load_schema($type, $dbObj);
-			$tok = new authTokenTester($dbObj);
+			$tok = new cs_authToken($dbObj);
 	
 			//Generic test to ensure we get the appropriate data back.
 			{
@@ -167,42 +200,12 @@ class testOfCSAuthToken extends testDbAbstract {
 				$removedTokens = $tok->remove_expired_tokens();
 				$this->assertEqual(2, $removedTokens);
 			}
-		}
+//		}
 		
 	}//end test_token_basics()
 	//--------------------------------------------------------------------------
 	
 	
-	
-	//--------------------------------------------------------------------------
-	private function do_tokenTest(array $tokenData, $uid, $checksum) {
-		
-		if($this->assertTrue(is_array($tokenData)) && $this->assertTrue(is_numeric($uid)) && $this->assertTrue(strlen($checksum))) {
-			
-			$this->assertTrue(is_array($tokenData));
-			$this->assertTrue((count($tokenData) == 2));
-			$this->assertTrue(isset($tokenData['id']));
-			$this->assertTrue(isset($tokenData['hash']));
-			$this->assertTrue(($tokenData['id'] > 0));
-			$this->assertTrue((strlen($tokenData['hash']) == 40));
-		}
-		
-	}//end do_tokenTest()
-	//--------------------------------------------------------------------------
-	
-	
-}
-
-
-class authTokenTester extends cs_authToken {
-	public $isTest=true;
-	
-	public function tokenData($id, $onlyNonExpired=true) {
-		return($this->get_token_data($id, $onlyNonExpired));
-	}
-	public function doHash($tokenId, $uid, $checksum, $hash) {
-		return($this->create_hash_string($tokenId, $uid, $checksum, $hash));
-	}
 }
 
 ?>

@@ -122,15 +122,13 @@ CREATE TABLE cswal_version_table (
 
 
 CREATE TABLE cswal_auth_token_table (
-	auth_token_id serial NOT NULL PRIMARY KEY,
-	uid integer NOT NULL,-- REFERENCES cs_authentication_table(uid),
-	checksum text NOT NULL,
-	token text NOT NULL,
-	max_uses integer DEFAULT NULL,
+	auth_token_id text NOT NULL UNIQUE PRIMARY KEY,
+	passwd text NOT NULL,
+	max_uses integer NOT NULL DEFAULT 0,
 	total_uses integer NOT NULL DEFAULT 0,
 	creation timestamp NOT NULL DEFAULT NOW(),
-	last_updated timestamp,
-	expiration timestamp NOT NULL
+	expiration timestamp DEFAULT NULL,
+	stored_value text DEFAULT NULL
 );
 
 
