@@ -5,19 +5,27 @@ require_once(dirname(__FILE__) .'/../debugFunctions.php');
 
 // Handle password compatibility (using "ircmaxell/password-compat")
 {
+	//handle differences in paths...
+	$compatPath = '/../../ircmaxell/password-compat/version-test.php';
+	$usePath = dirname(__FILE__) . $compatPath;
+	if(!file_exists($usePath)) {
+		$compatPath = '/..'. $compatPath;
+		$usePath = dirname(__FILE__) . $compatPath;
+	}
+	
 	ob_start();
-	if(!include_once(dirname(__FILE__) .'/../../../ircmaxell/password-compat/version-test.php')) {
+	if(!include_once($usePath)) {
 		ob_end_flush();
 		die("You must set up the project dependencies, run the following commands:\n
 			\twget http://getcomposer.org/composer.phar
-			\tphp composer.phar install");
+			\tphp composer.phar install ircmaxell/password-compat\n");
 	}
 	else {
 		$output = ob_get_contents();
 		ob_end_clean();
 		
 		if(preg_match('/Pass/', $output)) {
-			require_once(dirname(__FILE__) .'/../../../ircmaxell/password-compat/lib/password.php');
+			require_once(dirname($usePath) .'/lib/password.php');
 		}
 	}
 }
