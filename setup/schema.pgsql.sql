@@ -124,7 +124,7 @@ CREATE TABLE cswal_version_table (
 CREATE TABLE cswal_auth_token_table (
 	auth_token_id text NOT NULL UNIQUE PRIMARY KEY,
 	passwd text NOT NULL,
-	max_uses integer NOT NULL DEFAULT 0,
+	max_uses integer NOT NULL DEFAULT 1,
 	total_uses integer NOT NULL DEFAULT 0,
 	creation timestamp NOT NULL DEFAULT NOW(),
 	expiration timestamp DEFAULT NULL,

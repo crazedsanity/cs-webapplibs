@@ -26,10 +26,10 @@ class cs_authToken extends cs_webapplibsAbstract {
 	const EXPIRE_ALL = 2;
 	
 	/* Specific results for token authentication.  For security purposes, the user should only be given a result of pass/fail */
-	const RESULT_SUCCESS		= 1;
-	const RESULT_FAIL		= 2;
-	const RESULT_EXPIRED	= 4;
-	const RESULT_BADPASS		= 8;
+	const RESULT_SUCCESS		= 'ok';
+	const RESULT_FAIL		= 'invalid token/fail';
+	const RESULT_EXPIRED	= 'expired';
+	const RESULT_BADPASS		= 'invalid password';
 	
 	
 	//=========================================================================
@@ -79,7 +79,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	public function crypto_rand_secure($min, $max) {
+	protected function crypto_rand_secure($min, $max) {
 		$range = $max - $min;
 		$retval = $min;
 		
@@ -102,7 +102,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	public function create_nonce($length = 32) {
+	protected function create_nonce($length = 32) {
 		$nonce = "";
 		$codeAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		$codeAlphabet.= "abcdefghijklmnopqrstuvwxyz";
@@ -121,6 +121,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 * Build a token record in the database that can be authenticated against later.
 	 * 
 	 * @param $password		(str) matches checksum column...
+	 * @param $valueToStore (mixed, optional) item to be stored, will be serialized
 	 * @param $tokenId		(str, optional) key to match against
 	 * @param $lifetime		(str,optional) string (interval) representing how 
 	 * 							long the token should last
@@ -130,7 +131,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 * @return (array)		PASS: contains id & hash for the token.
 	 * @return (exception)	FAIL: exception contains error details.
 	 */
-	public function create_token($password, $valueToStore, $tokenId=null, $lifetime=null, $maxUses=null) {
+	public function create_token($password, $valueToStore=null, $tokenId=null, $lifetime=null, $maxUses=null) {
 		
 		if(is_null($tokenId) || strlen($tokenId) < 1) {
 			$tokenId = $this->generate_token_string();
@@ -144,10 +145,12 @@ class cs_authToken extends cs_webapplibsAbstract {
 			'stored_value'	=> serialize($valueToStore),
 		);
 		
-		if(!is_null($lifetime) && strlen($lifetime)) {
-			$insertData['expiration'] = strftime('%Y-%m-%d %T', strtotime($lifetime));
-		}
-		if(!is_null($maxUses) && is_numeric($maxUses) && $maxUses > 0) {
+//		$insertData['expiration'] = null;
+//		if(!is_null($lifetime) && strlen($lifetime)) {
+////			$insertData['expiration'] = strftime('%Y-%m-%d %T', strtotime($lifetime));
+//			$insertData['expiration'] = "____GAH!!!___";
+//		}
+		if(!is_null($maxUses) && is_numeric($maxUses)) {
 			$insertData['max_uses'] = $maxUses;
 		}
 		try {
@@ -157,8 +160,15 @@ class cs_authToken extends cs_webapplibsAbstract {
 				$fields = $this->gfObj->create_list($fields, $k);
 				$values = $this->gfObj->create_list($values, ':'. $k);
 			}
+			
+			if(!is_null($lifetime) && strlen($lifetime) > 0) {
+				$fields .= ", expiration";
+				$values .= ", NOW() + :life::interval";
+				$insertData['life'] = $lifetime;
+			}
+			
 			$sql = "INSERT INTO cswal_auth_token_table (". $fields .") VALUES (". $values .")";
-
+			
 			$numRows = $this->db->run_query($sql, $insertData);
 			
 			if($numRows != 1) {
@@ -166,7 +176,12 @@ class cs_authToken extends cs_webapplibsAbstract {
 			}
 		}
 		catch(exception $e) {
-			throw new ErrorException(__METHOD__ .": failed to create token::: ". $e->getMessage());
+			if(preg_match('/duplicate key value violates unique constraint/', $e->getMessage())) {
+				throw new ErrorException(__METHOD__ .": attempt to create non-unique token (". $tokenId .")");
+			}
+			else {
+				throw new ErrorException(__METHOD__ .": failed to create token::: ". $e->getMessage());
+			}
 		}
 		
 		return($tokenId);
@@ -209,7 +224,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 * @return (int)		PASS: this many were deleted (should always be 1)
 	 * @return (exception)	FAIL: exception contains error details
 	 */
-	protected function destroy_token($tokenId) {
+	public function destroy_token($tokenId) {
 		try {
 			$sql = "DELETE FROM ". $this->table ." WHERE auth_token_id=:tokenId";
 			$deleteRes = $this->db->run_update($sql, array('tokenId'=>$tokenId));
@@ -247,22 +262,24 @@ class cs_authToken extends cs_webapplibsAbstract {
 		
 		if($checkExpiration['type'] == self::EXPIRE_SINGLE && $checkExpiration['num'] == 0) {
 			$data = $this->get_token_data($tokenId);
-			if(password_verify($pass, $data['passwd'])) {
-				$authTokenRes['result'] = true;
-				$authTokenRes['reason'] = self::RESULT_SUCCESS;
-				$authTokenRes['stored_value'] = unserialize($data['stored_value']);
-				
-				//do some maintenance.
-				$this->update_token_uses($tokenId);
-				$this->remove_expired_tokens($tokenId);
-			}
-			else {
-				$authTokenRes['reason'] = self::RESULT_BADPASS;
+			if(is_array($data)) {
+				if(password_verify($pass, $data['passwd'])) {
+					$authTokenRes['result'] = true;
+					$authTokenRes['reason'] = self::RESULT_SUCCESS;
+					$authTokenRes['stored_value'] = unserialize($data['stored_value']);
+
+					//do some maintenance.
+					$this->update_token_uses($tokenId);
+					$this->remove_expired_tokens($tokenId);
+				}
+				else {
+					$authTokenRes['reason'] = self::RESULT_BADPASS;
+				}
 			}
 		}
 		else {
 			if($checkExpiration['type'] == self::EXPIRE_SINGLE) {
-				$authTokenRes['result'] = self::RESULT_EXPIRED;
+				$authTokenRes['reason'] = self::RESULT_EXPIRED;
 			}
 			else {
 				throw new LogicException(__METHOD__ .": expired multiple tokens instead of just one");
@@ -284,13 +301,11 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 * @return (array)		PASS: contains data about the given ID
 	 * @return (exception)	FAIL: exception contains error details.
 	 */
-	public function get_token_data($tokenId, $onlyNonExpired=false) {
+	public function get_token_data($tokenId) {
 		try {
-			$sql = "SELECT * FROM ". $this->table ." WHERE auth_token_id=:tokenId";
-			if($onlyNonExpired === true) {
-				$sql .= " AND expiration::date >= CURRENT_DATE";
-			}
-			
+			$sql = "SELECT *, (max_uses - total_uses) as remaining_uses, "
+					. "(NOW() - expiration) as time_remaining "
+					. "FROM ". $this->table ." WHERE auth_token_id=:tokenId";
 			try {
 				$numrows = $this->db->run_query($sql, array('tokenId'=>$tokenId));
 
