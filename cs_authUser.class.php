@@ -40,6 +40,9 @@ class cs_authUser extends cs_sessionDB {
 	const HASH_PHPBCRYPT	= PASSWORD_BCRYPT;
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * @codeCoverageIgnore
+	 */
 	public function __construct(cs_phpDB $db, $automaticUpgrade=false, $separator='-') {
 		
 		$this->separator = $separator;

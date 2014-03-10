@@ -186,15 +186,19 @@ class AuthUserTest extends testDbAbstract {
 			$this->assertTrue($x->update_passwd($userInfo, $passwd, $hashType), "Failed to update password using '". $hashName ."' (". $hashType .")");
 			
 			$this->assertFalse($x->is_authenticated());
+			$this->assertFalse($x->check_sid());
 			
 			$this->assertFalse((bool)$x->login(ucfirst($user), $passwd), "Username accepted with incorrect casing");
 			$this->assertFalse($x->is_authenticated());
+			$this->assertFalse($x->check_sid());
 			
 			$this->assertTrue((bool)$x->login($user, $passwd), "Failed to login using $hashName ($hashType)");
 			$this->assertTrue($x->is_authenticated());
+			$this->assertTrue($x->check_sid());
 			
 			$this->assertTrue((bool)$x->logout_sid());
 			$this->assertFalse($x->is_authenticated());
+			$this->assertFalse($x->check_sid());
 		}
 	}
 	
