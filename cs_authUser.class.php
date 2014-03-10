@@ -414,5 +414,24 @@ class cs_authUser extends cs_sessionDB {
 		return($retval);
 	}//end logout_inactive_sessions()
 	//-------------------------------------------------------------------------
+	
+	
+	
+	public function get_user_info($index=null) {
+		$retval = null;
+		if(!is_null($this->userInfo) && is_array($this->userInfo)) {
+			if(!is_null($index)) {
+				$retval = $this->userInfo[$index];
+			}
+			else {
+				$retval = $this->userInfo;
+			}
+		}
+		else {
+			throw LogicException(__METHOD__ .": no user data available");
+		}
+		
+		return $retval;
+	}
 }//end authUser{}
 
