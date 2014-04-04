@@ -318,6 +318,59 @@ class AuthUserTest extends testDbAbstract {
 			}
 		}
 	}
+	
+	
+	public function test_update_user_data() {
+		$x = new cs_authUser($this->dbObj);
+		
+		$data = $x->get_user_data('test', $x::STATUS_ENABLED);
+		
+		$this->assertTrue(is_array($data));
+		$this->assertTrue(isset($data['uid']));
+		$this->assertTrue(is_numeric($data['uid']));
+		$this->assertEquals($data['user_status_id'], $x::STATUS_ENABLED);
+		
+		try {
+			$x->update_user_info(array(), $data['uid']);
+			$this->fail("Successfully updated... nothing");
+		}
+		catch(Exception $ex) {
+			if(!preg_match("/invalid user info/", $ex->getMessage())) {
+				$this->fail("unexpected or invalid exception message: ". $ex->getMessage());
+			}
+		}
+		
+		try {
+			$x->update_user_info(array(''=>"test"), $data['uid']);
+			$this->fail("Successfully updated without specifying a field");
+		} catch (Exception $ex) {
+			if(!preg_match("/invalid parameter number/i", $ex->getMessage())) {
+				$this->fail("unexpected or invalid exception message: ". $ex->getMessage());
+			}
+		}
+		
+		$updateResult = $x->update_user_info(array('email'=> 'Poop@user.com'), $data['uid']);
+		
+		$this->assertEquals(1, $updateResult);
+		
+		$newData = $x->get_user_data('test', $x::STATUS_ENABLED);
+		$this->assertEquals($newData['uid'], $data['uid']);
+		$this->assertNotEquals($data, $newData);
+		
+		
+		$disableResult = $x->update_user_info(array('user_status_id'=>$x::STATUS_DISABLED), $data['uid']);
+		$this->assertEquals(1, $disableResult);
+		
+		try {
+			$x->get_user_data('test', $x::STATUS_ENABLED);
+			$this->fail("Found user enabled even after disabling them");
+		} catch (Exception $ex) {
+			if(!preg_match("/failed to retrieve a single user \(0\)/", $ex->getMessage())) {
+				$this->fail("unexpected or invalid exception message: ". $ex->getMessage());
+			}
+		}
+//		$this->assertEquals(array(), $x->get_user_data('test', $x::STATUS_ENABLED));
+	}
 }
 
 class _test_authUser extends cs_authUser {

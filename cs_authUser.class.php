@@ -273,25 +273,12 @@ class cs_authUser extends cs_sessionDB {
 		$retval = false;
 		if(is_array($user) && isset($user['username']) && isset($user['uid']) && $user['uid'] > 0) {
 			
-			$sql = 'UPDATE '. $this->table .' SET passwd=:new WHERE uid=:uid';
 			$params = array(
-				'new'	=> $this->getPasswordHash(array($user['username'], $newPass), $hashType),
-				'uid'	=> $user['uid'],
+				'passwd'	=> $this->getPasswordHash(array($user['username'], $newPass), $hashType),
+//				'uid'	=> $user['uid'],
 			);
 			
-			try {
-				$numRows = $this->db->run_update($sql, $params);
-
-				if($numRows == 1) {
-					$retval = true;
-				}
-				else {
-					throw new LogicException(__METHOD__ .": failed to update password");
-				}
-			}
-			catch(Exception $ex) {
-				throw new ErrorException(__METHOD__ .": failed to update password: ". $ex->getMessage());
-			}
+			$retval = $this->update_user_info($params, $user['uid']);
 		}
 		else {
 			throw new InvalidArgumentException(__METHOD__ .": invalid user info or password");
@@ -417,6 +404,7 @@ class cs_authUser extends cs_sessionDB {
 	
 	
 	
+	//-------------------------------------------------------------------------
 	public function get_user_info($index=null) {
 		$retval = null;
 		if(!is_null($this->userInfo) && is_array($this->userInfo)) {
@@ -433,5 +421,45 @@ class cs_authUser extends cs_sessionDB {
 		
 		return $retval;
 	}
+	//-------------------------------------------------------------------------
+	
+	
+	
+	//-------------------------------------------------------------------------
+	public function update_user_info(array $data, $uid) {
+		$retval = false;
+		if(is_array($data) && count($data) > 0 && !isset($data['uid'])) { //can't change UID
+			
+			$updateSql = '';
+			$params = array();
+			foreach($data as $f=>$v) {
+				$updateSql = cs_global::create_list($updateSql, $f .'=:'. $f, ', ');
+				$params[$f] = $v;
+			}
+			
+			$sql = 'UPDATE '. $this->table .' SET '. $updateSql .' WHERE uid=:uid';
+			$params['uid'] = $uid;
+			
+			try {
+				$numRows = $this->db->run_update($sql, $params);
+
+				if($numRows == 1) {
+					$retval = true;
+				}
+				else {
+					throw new LogicException(__METHOD__ .": failed to update user information");
+				}
+			}
+			catch(Exception $ex) {
+				throw new ErrorException(__METHOD__ .": error while trying to update user information: ". $ex->getMessage());
+			}
+		}
+		else {
+			throw new InvalidArgumentException(__METHOD__ .": invalid user info");
+		}
+		
+		return $retval;
+	}
+	//-------------------------------------------------------------------------
 }//end authUser{}
 
