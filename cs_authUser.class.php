@@ -98,12 +98,12 @@ class cs_authUser extends cs_sessionDB {
 	/**
 	 * @codeCoverageIgnore
 	 */
-	protected function do_log($details, $type=NULL) {
+	protected function do_log($details, $type=NULL, $uid=null) {
 		if(is_null($type) || strlen($type) < 3) {
 			$type = "info";
 		}
 		try {
-			$this->logger->log_by_class($details, $type);
+			$this->logger->log_by_class($details, $type, $uid);
 		}
 		catch(Exception $ex) {
 			throw new exception(__METHOD__ .": failed to create log::: ". $ex->getMessage());

@@ -400,12 +400,17 @@ class cs_sessionDB extends cs_session {
 	//-------------------------------------------------------------------------
 	public function sessdb_destroy($sid) {
 		try {
-			$sql = "DELETE FROM ". self::tableName ." WHERE session_id=:session_id";
-			$params = array('session_id'=>$sid);
-			$numDeleted = $this->db->run_update($sql, $params);
+			$num = $this->db->run_query("SELECT * FROM ". self::tableName ." WHERE session_id=:id", array('id'=> $sid));
 			
-			if($numDeleted > 0) {
-				$this->do_log("Destroyed session_id (". $sid .")", 'deleted');
+			$logUid = null;
+			if($num > 0 ) {
+				$record = $this->db->get_single_record();
+				$logUid = $record['uid'];
+				
+				$sql = "DELETE FROM ". self::tableName ." WHERE session_id=:session_id";
+				$params = array('session_id'=>$sid);
+				$this->db->run_update($sql, $params);
+				$this->do_log("Destroyed session_id (". $sid .")", 'deleted', $logUid);
 			}
 		}
 		catch(exception $e) {
@@ -456,7 +461,7 @@ class cs_sessionDB extends cs_session {
 				$sessionsToExpire = $this->db->farray_fieldnames('session_id');
 				
 				foreach($sessionsToExpire as $id=>$data) {
-					$this->do_log("Expiring session, UID=(". $data['uid'] ."), date_created=(". $data['date_created'] ."), last_updated=(". $data['last_updated'] ."), DATA::: ". $data['session_data']);
+					$this->do_log("Expiring session, UID=(". $data['uid'] ."), date_created=(". $data['date_created'] ."), last_updated=(". $data['last_updated'] ."), DATA::: ". $data['session_data'], $data['uid']);
 					$this->sessdb_destroy($id);
 					$retval++;
 				}
@@ -479,7 +484,7 @@ class cs_sessionDB extends cs_session {
 	 * @param type $type
 	 * @return type
 	 */
-	protected function do_log($message, $type) {
+	protected function do_log($message, $type, $uid=null) {
 		$retval = null;
 		try {
 			//check if the logger object has been created.
@@ -487,7 +492,7 @@ class cs_sessionDB extends cs_session {
 				$newDB = $this->connectDb();
 				$this->logger = new cs_webdblogger($newDB, $this->logCategory);
 			}
-			$retval = $this->logger->log_by_class("SID=(". $this->sid .") -- ". $message,$type);
+			$retval = $this->logger->log_by_class("SID=(". $this->sid .") -- ". $message,$type, $uid);
 		}
 		catch(Exception $e) {
 			$this->flogger($e->getMessage());
