@@ -423,7 +423,7 @@ class cs_sessionDB extends cs_session {
 	 * Define maximum lifetime (in seconds) to store sessions in the database. 
 	 * Anything that is older than that time will be purged (gc='garbage collector').
 	 * 
-	 * TODO: make the usage of $maxLifetime make sense (or remove it)
+	 * TODO: handle max lifetime, not just max idle
 	 */
 	public function sessdb_gc($maxIdleSeconds=1440, $maxLifeSeconds=null) {
 		
@@ -441,17 +441,28 @@ class cs_sessionDB extends cs_session {
 			$maxIdleSeconds = "NOW() - interval '". ini_get('session.gc_maxlifetime') ."'";
 		}
 		
-		$sql = "DELETE FROM ". self::tableName ." WHERE last_updated < ". $maxIdleSeconds;
+		//retrieve all the expired sessions so their expiration can be logged appropriately.
+		$sql = "SELECT * FROM ". self::tableName ." WHERE last_updated < ". $maxIdleSeconds;
 		
 		try {
 			if(strlen($this->sid) && $excludeCurrent === false) {
 				$params['session_id'] = $this->sid;
-				$sql .= " AND session_id != :session_id";
+				$sql .= " AND session_id <> :session_id";
 			}
-			$retval = $this->db->run_update($sql, $params);
-		}
-		catch(exception $e) {
-			$this->exception_handler(__METHOD__ .": exception while cleaning: ". $e->getMessage() . "\nSQL::: ". $sql ."\n\nPARAMS: ". print_r($params, 1));
+			$numRows = $this->db->run_query($sql, $params);
+			$retval = 0;
+			
+			if($numRows > 0) {
+				$sessionsToExpire = $this->db->farray_fieldnames('session_id');
+				
+				foreach($sessionsToExpire as $id=>$data) {
+					$this->do_log("Expiring session, UID=(". $data['uid'] ."), date_created=(". $data['date_created'] ."), last_updated=(". $data['last_updated'] ."), DATA::: ". $data['session_data']);
+					$this->sessdb_destroy($id);
+					$retval++;
+				}
+			}
+		} catch (Exception $ex) {
+			$this->exception_handler(__METHOD__ .": exception while retrieving records for cleaning: ". $ex->getMessage() ."\nSQL: ". $sql ."\n\nPARAMS: ". print_r($params,1));
 		}
 		
 		return($retval);
@@ -462,6 +473,12 @@ class cs_sessionDB extends cs_session {
 	
 	
 	//-------------------------------------------------------------------------
+	/**
+	 * 
+	 * @param type $message
+	 * @param type $type
+	 * @return type
+	 */
 	protected function do_log($message, $type) {
 		$retval = null;
 		try {
