@@ -68,9 +68,6 @@ class testOfCSSessionDB extends testDbAbstract {
 			$this->assertEquals(null, $x->lastException);
 			
 			$this->assertEquals(0, $x->sessdb_gc(), $x->lastException);
-			$this->assertEquals(0, $x->sessdb_gc(null), $x->lastException);
-			$this->assertEquals(0, $x->sessdb_gc(0), $x->lastException);
-			$this->assertEquals(0, $x->sessdb_gc(30), $x->lastException);
 			$this->assertEquals(0, $x->sessdb_close(), $x->lastException);
 			
 			$this->assertTrue($x->is_valid_sid($sid));
@@ -92,25 +89,6 @@ class testOfCSSessionDB extends testDbAbstract {
 		$this->assertEquals(count($testSessions), $x->get_recently_active_sessions());
 		$this->assertEquals(null, $x->lastException);
 		
-		
-//		
-//		$mySid = '__TEST_SESSDB__';
-//		$testSessData = array('myTest'=>__METHOD__);
-//		
-//		$this->assertEquals($mySid, $sessDB->doInsert($mySid, $testSessData));
-//		$this->assertEquals($testSessData, unserialize($sessDB->sessdb_read($mySid)));
-//		
-//		$secondSid = __FUNCTION__;
-//		$secondTestData = array('anotherTest'=>__METHOD__);
-//		$this->assertEquals($secondSid, $sessDB->doInsert($secondSid, $secondTestData));
-//		
-//		$this->assertEquals(null, $sessDB->lastException);
-//		$this->assertEquals(0, $sessDB->sessdb_gc(5), $sessDB->lastException);
-//		$this->assertEquals($testSessData, $sessDB->sessdb_read($mySid));
-//		
-//		$this->assertEquals(null, $sessDB->lastException);
-//		$this->assertEquals(0, $sessDB->sessdb_gc(), $sessDB->lastException);
-//		$this->assertEquals(null, $sessDB->lastException);
 	}
 }
 

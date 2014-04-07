@@ -398,22 +398,21 @@ class cs_sessionDB extends cs_session {
 	
 	
 	//-------------------------------------------------------------------------
-	public function sessdb_destroy($sid) {
+	public function sessdb_destroy($sid, $uid=null) {
 		try {
-			$num = $this->db->run_query("SELECT * FROM ". self::tableName ." WHERE session_id=:id", array('id'=> $sid));
-			
 			$logUid = null;
-			if($num > 0 ) {
-				$record = $this->db->get_single_record();
-				$logUid = $record['uid'];
-				
-				$sql = "DELETE FROM ". self::tableName ." WHERE session_id=:session_id";
-				$params = array('session_id'=>$sid);
-				$this->db->run_update($sql, $params);
-				$this->do_log("Destroyed session_id (". $sid .")", 'deleted', $logUid);
+			if (is_null($uid)) {
+				$num = $this->db->run_query("SELECT * FROM " . self::tableName . " WHERE session_id=:id", array('id' => $sid));
+				if ($num > 0) {
+					$record = $this->db->get_single_record();
+					$logUid = $record['uid'];
+				}
 			}
-		}
-		catch(exception $e) {
+			$sql = "DELETE FROM " . self::tableName . " WHERE session_id=:session_id";
+			$params = array('session_id' => $sid);
+			$this->db->run_update($sql, $params);
+			$this->do_log("Destroyed session_id (" . $sid . ")", 'deleted', $logUid);
+		} catch(exception $e) {
 			//do... nothing?
 			$this->exception_handler($e->getMessage());
 		}
@@ -428,46 +427,38 @@ class cs_sessionDB extends cs_session {
 	 * Define maximum lifetime (in seconds) to store sessions in the database. 
 	 * Anything that is older than that time will be purged (gc='garbage collector').
 	 * 
-	 * TODO: handle max lifetime, not just max idle
+	 * @return int
 	 */
-	public function sessdb_gc($maxIdleSeconds=1440, $maxLifeSeconds=null) {
-		
-		if(!is_null($maxIdleSeconds) && !is_integer($maxIdleSeconds)) {
-			throw new LogicException(__METHOD__ .": invalid specification for seconds (". $maxIdleSeconds .")");
-		}
-		$retval = -1;
-		$excludeCurrent = true;
-		$params = array();
-		
-		if(!is_null($maxIdleSeconds) && $maxIdleSeconds > 0) {
-			$maxIdleSeconds = "NOW() - interval '". $maxIdleSeconds ." seconds'";
-		}
-		else {
-			$maxIdleSeconds = "NOW() - interval '". ini_get('session.gc_maxlifetime') ."'";
+	public function sessdb_gc() {
+		$condition = "NOW() - interval '". ini_get('session.gc_maxlifetime') ." seconds'";
+		if (defined('SESSION_MAX_IDLE')) {
+			$idle = constant('SESSION_MAX_IDLE');
+			if(is_numeric($idle)) {
+				$condition = "NOW() - interval '". $idle ." seconds'";
+			}
+			else {
+				$condition = $idle;
+			}
 		}
 		
 		//retrieve all the expired sessions so their expiration can be logged appropriately.
-		$sql = "SELECT * FROM ". self::tableName ." WHERE last_updated < ". $maxIdleSeconds;
+		$sql = "SELECT * FROM ". self::tableName ." WHERE last_updated < ". $condition;
 		
 		try {
-			if(strlen($this->sid) && $excludeCurrent === false) {
-				$params['session_id'] = $this->sid;
-				$sql .= " AND session_id <> :session_id";
-			}
-			$numRows = $this->db->run_query($sql, $params);
+			$numRows = $this->db->run_query($sql);
 			$retval = 0;
 			
 			if($numRows > 0) {
 				$sessionsToExpire = $this->db->farray_fieldnames('session_id');
 				
 				foreach($sessionsToExpire as $id=>$data) {
-					$this->do_log("Expiring session, UID=(". $data['uid'] ."), date_created=(". $data['date_created'] ."), last_updated=(". $data['last_updated'] ."), DATA::: ". $data['session_data'], $data['uid']);
+					$this->do_log("Expiring session, condition=(". $condition ."), UID=(". $data['uid'] ."), date_created=(". $data['date_created'] ."), last_updated=(". $data['last_updated'] ."), DATA::: ". $data['session_data'], $data['uid']);
 					$this->sessdb_destroy($id);
 					$retval++;
 				}
 			}
 		} catch (Exception $ex) {
-			$this->exception_handler(__METHOD__ .": exception while retrieving records for cleaning: ". $ex->getMessage() ."\nSQL: ". $sql ."\n\nPARAMS: ". print_r($params,1));
+			$this->exception_handler(__METHOD__ .": exception while retrieving records for cleaning: ". $ex->getMessage() ."\nSQL: ". $sql);
 		}
 		
 		return($retval);
