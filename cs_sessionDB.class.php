@@ -437,7 +437,7 @@ class cs_sessionDB extends cs_session {
 				$condition = "NOW() - interval '". $idle ." seconds'";
 			}
 			else {
-				$condition = $idle;
+				$condition = "NOW() - interval '". $idle ."'";
 			}
 		}
 		
