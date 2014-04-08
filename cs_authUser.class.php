@@ -188,79 +188,66 @@ class cs_authUser extends cs_sessionDB {
 	
 	//-------------------------------------------------------------------------
 	public function login($username, $password) {
-		if($this->is_authenticated()) {
-			$this->do_log("User (". $username .") is already logged in, can't login again", 'error');
-			$retval = false;
-		}
-		else {
-			$retval = 0;
-			try {
-				$sql = "SELECT uid, username, user_status_id, date_created, last_login, 
+		$retval = 0;
+		try {
+			$sql = "SELECT uid, username, user_status_id, date_created, last_login, 
 					email, passwd, user_status_id FROM cs_authentication_table WHERE 
 					username=:username AND user_status_id=1";
 
-				// NOTE::: in linux, do this:::: echo -e "username-password\c" | sha1sum
-				// (without the "\c" or the switch, the sum won't match)
-				$sumThis = array('username' => $username, 'passwd' => $password);
-				$params = array(
-					'username'		=> $username
-				);
-				$numRecords = $this->db->run_query($sql, $params);
-			}
-			catch(Exception $e) {
-				$this->do_log(__METHOD__ .": Exception encountered::: ");
-				throw new exception(__METHOD__ .": DETAILS::: ". $e->getMessage());
-			}
-			try {
-				if($numRecords == 1) {
-					
-					$data = $this->db->get_single_record();
-					
-					if(preg_match('/^\$/', $data['passwd'])) {
-						// this would be using PHP's password_hash() function...
-						$retval = password_verify($this->generateHash($sumThis), $data['passwd']);
-					}
-					elseif($this->getPasswordHash($sumThis, strlen($data['passwd'])) == $data['passwd']) {
-						
-						$retval = $numRecords;
-					}
-					else {
-						$this->do_log("Authentication failure, username=(". $username ."), retval=(". $retval .")");
-					}
-					
-					if((bool)$retval) {
-						$this->userInfo = $data;
-						$this->update_auth_data($this->userInfo);
-						
-						/*
-						 * NOTE::: this assumes that there's already a record in the 
-						 * session table... this would probably need to be revisited 
-						 * in the event that authentication is implemented without 
-						 * database storage for sessions.
-						 */
-						$updateRes = $this->updateUid($data['uid'], $this->sid);
-						if ($updateRes == 0) {
-							$insertRes = parent::doInsert($this->sid, $_SESSION, $this->uid);
-							$this->do_log(__METHOD__ . ": inserted new session record, updateRes=(" . $updateRes . "), insertRes=(" . $insertRes . ")", 'debug');
-						}
-						
-						$this->do_log("Successfully logged-in (" . $retval . ")");
-					}
-				}
-				else {
-					$this->do_log("Authentication failure, unknown username (". $username .")");
-				}
-
-				if($retval == 1) {
-					$this->do_cookie();
-				}
-				$this->do_log("Return value from check_sid() was (". $retval .")", 'debug');
-			}
-			catch(Exception $e) {
-				throw new exception(__METHOD__ .": DETAILS: ". $e->getMessage());
-			}
+			// NOTE::: in linux, do this:::: echo -e "username-password\c" | sha1sum
+			// (without the "\c" or the switch, the sum won't match)
+			$sumThis = array('username' => $username, 'passwd' => $password);
+			$params = array(
+				'username' => $username
+			);
+			$numRecords = $this->db->run_query($sql, $params);
+		} catch (Exception $e) {
+			$this->do_log(__METHOD__ . ": Exception encountered::: ");
+			throw new exception(__METHOD__ . ": DETAILS::: " . $e->getMessage());
 		}
-
+		try {
+			if ($numRecords == 1) {
+				
+				$data = $this->db->get_single_record();
+				
+				if (preg_match('/^\$/', $data['passwd'])) {
+					// this would be using PHP's password_hash() function...
+					$retval = password_verify($this->generateHash($sumThis), $data['passwd']);
+				} elseif ($this->getPasswordHash($sumThis, strlen($data['passwd'])) == $data['passwd']) {
+					$retval = $numRecords;
+				} else {
+					$this->do_log("Authentication failure, username=(" . $username . "), retval=(" . $retval . ")");
+				}
+				
+				if ((bool) $retval) {
+					$this->userInfo = $data;
+					$this->update_auth_data($this->userInfo);
+					
+					/*
+					 * NOTE::: this assumes that there's already a record in the 
+					 * session table... this would probably need to be revisited 
+					 * in the event that authentication is implemented without 
+					 * database storage for sessions.
+					 */
+					$updateRes = $this->updateUid($data['uid'], $this->sid);
+					if ($updateRes == 0) {
+						$insertRes = parent::doInsert($this->sid, $_SESSION, $this->uid);
+						$this->do_log(__METHOD__ . ": inserted new session record, updateRes=(" . $updateRes . "), insertRes=(" . $insertRes . ")", 'debug');
+					}
+					
+					$this->do_log("Successfully logged-in (" . $retval . ")");
+				}
+			} else {
+				$this->do_log("Authentication failure, unknown username (" . $username . ")");
+			}
+			
+			if ($retval == 1) {
+				$this->do_cookie();
+			}
+			$this->do_log("Return value from check_sid() was (" . $retval . ")", 'debug');
+		} catch (Exception $e) {
+			throw new exception(__METHOD__ . ": DETAILS: " . $e->getMessage());
+		}
 		
 		return($retval);
 	}//end login()

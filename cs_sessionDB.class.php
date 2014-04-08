@@ -429,6 +429,7 @@ class cs_sessionDB extends cs_session {
 	 * @return int
 	 */
 	public function sessdb_gc() {
+		$retval = -1;
 		$condition = "NOW() - interval '". ini_get('session.gc_maxlifetime') ." seconds'";
 		if (defined('SESSION_MAX_IDLE')) {
 			$idle = constant('SESSION_MAX_IDLE');
@@ -496,6 +497,7 @@ class cs_sessionDB extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	protected function exception_handler($message, $throwException=false) {
+		$logId = null;
 		try {
 			$this->lastException = $message;
 			if(function_exists('cs_debug_backtrace')) {
