@@ -73,7 +73,6 @@ class cs_sessionDB extends cs_session {
 			else {
 				$gf = new cs_globalFunctions;
 				$id = session_id();
-				cs_debug_backtrace(1);
 				$this->exception_handler(__METHOD__ .": failed to set session save handler, session_id=(". $id ."), result=(". strip_tags($gf->debug_var_dump($setRes,0)) .')', true);
 			}
 		}
@@ -476,7 +475,6 @@ class cs_sessionDB extends cs_session {
 	 * @return type
 	 */
 	protected function do_log($message, $type, $uid=null) {
-		$retval = null;
 		try {
 			//check if the logger object has been created.
 			if(!is_object($this->logger)) {
@@ -498,7 +496,6 @@ class cs_sessionDB extends cs_session {
 	
 	//-------------------------------------------------------------------------
 	protected function exception_handler($message, $throwException=false) {
-		$logId = null;
 		try {
 			$this->lastException = $message;
 			if(function_exists('cs_debug_backtrace')) {
