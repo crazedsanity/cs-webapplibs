@@ -118,6 +118,88 @@ class cs_authToken extends cs_webapplibsAbstract {
 	
 	//=========================================================================
 	/**
+	 * Lookup a token type.
+	 * 
+	 * @param type $findThis	(str) searches the "token_type" column for this.
+	 * 
+	 * @return int				token_type_id that was found; default 0 (unknown)
+	 * @throws exception
+	 */
+	public function lookup_token_type($findThis) {
+		$retval = 0;
+		$sql = "SELECT * FROM cswal_token_type_table WHERE token_type=:type";
+		
+		try {
+			$numrows = $this->db->run_query($sql, array('type'=> $findThis));
+			
+			if($numrows == 1) {
+				$data = $this->db->get_single_record();
+				$retval = $data['token_type_id'];
+			}
+		} catch (Exception $ex) {
+			throw new exception(__METHOD__ .": failed to retrieve token type::: ". $ex->getMessage());
+		}
+		
+		return $retval;
+	}//end lookup_token_type()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function create_type($type, $desc) {
+		$sql = "INSERT INTO cswal_token_type_table (token_type, token_desc) VALUES 
+			(:type, :desc)";
+		$params = array(
+			'type'	=> $type,
+			'desc'	=> $desc,
+		);
+		
+		try {
+			$id = $this->db->run_insert($sql, $params, 'cswal_token_type_table_token_type_id_seq');
+		} catch (Exception $ex) {
+			throw new Exception(__METHOD__ .": failed to create token type::: ". $ex->getMessage());
+		}
+		return $id;
+	}//end create_type()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	/**
+	 * Updates the given ID in the token_type table.
+	 * 
+	 * @param $id		(int) ID to update
+	 * @param $type		(str) value for token_type
+	 * @param $desc		(str) value for token_desc
+	 * 
+	 * @return int		Number of records updated (1)
+	 * @throws Exception
+	 */
+	public function update_type($id, $type, $desc) {
+		$sql = "UPDATE cswal_token_type_table SET token_type=:type, 
+			token_desc=:desc WHERE token_type_id=:id";
+		$params = array(
+			'id'	=> $id,
+			'type'	=> $type,
+			'desc'	=> $desc,
+		);
+		
+		try {
+			$retval = $this->db->run_update($sql, $params);
+		} catch (Exception $ex) {
+			throw new Exception(__METHOD__ .": failed to update type::: ". $ex->getMessage());
+		}
+		
+		return $retval;
+	}//end update_type()
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	/**
 	 * Build a token record in the database that can be authenticated against later.
 	 * 
 	 * @param $password		(str) matches checksum column...
@@ -127,29 +209,35 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 * 							long the token should last
 	 * @param $maxUses		(int,optional) Number of times it can be authenticated 
 	 * 							against before being removed 
+	 * @param $tokenType	(int/string,optional) type of token; can be a string 
+	 *							for looking up the given type
 	 * 
-	 * @return (array)		PASS: contains id & hash for the token.
-	 * @return (exception)	FAIL: exception contains error details.
+	 * @return (string)		PASS: contains the token string.
+	 * 
+	 * @throws ErrorException
+	 * @throws LogicException
 	 */
-	public function create_token($password, $valueToStore=null, $tokenId=null, $lifetime=null, $maxUses=null) {
+	public function create_token($password, $valueToStore=null, $tokenId=null, $lifetime=null, $maxUses=null, $tokenType=0, $uid=0) {
 		
 		if(is_null($tokenId) || strlen($tokenId) < 1) {
 			$tokenId = $this->generate_token_string();
 		}
 		
+		
 		$finalHash = password_hash($password, $this->passAlgorithm);
+		
+		if(!is_numeric($tokenType)) {
+			$tokenType = $this->lookup_token_type($tokenType);
+		}
 		
 		$insertData = array(
 			'auth_token_id'	=> $tokenId,
 			'passwd'		=> $finalHash,
 			'stored_value'	=> serialize($valueToStore),
+			'token_type_id'	=> $tokenType,
+			'uid'			=> $uid,
 		);
 		
-//		$insertData['expiration'] = null;
-//		if(!is_null($lifetime) && strlen($lifetime)) {
-////			$insertData['expiration'] = strftime('%Y-%m-%d %T', strtotime($lifetime));
-//			$insertData['expiration'] = "____GAH!!!___";
-//		}
 		if(!is_null($maxUses) && is_numeric($maxUses)) {
 			$insertData['max_uses'] = $maxUses;
 		}
@@ -157,8 +245,8 @@ class cs_authToken extends cs_webapplibsAbstract {
 			$fields = "";
 			$values = "";
 			foreach($insertData as $k=>$v) {
-				$fields = $this->gfObj->create_list($fields, $k);
-				$values = $this->gfObj->create_list($values, ':'. $k);
+				$fields = cs_global::create_list($fields, $k);
+				$values = cs_global::create_list($values, ':'. $k);
 			}
 			
 			if(!is_null($lifetime) && strlen($lifetime) > 0) {
@@ -305,7 +393,9 @@ class cs_authToken extends cs_webapplibsAbstract {
 		try {
 			$sql = "SELECT *, (max_uses - total_uses) as remaining_uses, "
 					. "(NOW() - expiration) as time_remaining "
-					. "FROM ". $this->table ." WHERE auth_token_id=:tokenId";
+					. "FROM ". $this->table ." AS t1 INNER JOIN 
+						cswal_token_type_table AS t2 ON (t1.token_type_id=t2.token_type_id)
+						WHERE auth_token_id=:tokenId";
 			try {
 				$numrows = $this->db->run_query($sql, array('tokenId'=>$tokenId));
 

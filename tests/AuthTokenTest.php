@@ -290,4 +290,40 @@ class testOfCSAuthToken extends testDbAbstract {
 			}
 		}
 	}
+	
+	
+	public function test_lookup() {
+		$x = new cs_authToken($this->dbObj);
+		
+		$this->assertEquals(0, $x->lookup_token_type('unknown'));
+		$this->assertEquals(0, $x->lookup_token_type('obviously does not exist'));
+		$this->assertEquals(1, $x->lookup_token_type('lost_password'));
+		
+		$newId = $x->create_type(__FUNCTION__, __FUNCTION__ ." - desc");
+		$this->assertEquals($newId, $x->lookup_token_type(__FUNCTION__));
+	}
+	
+	
+	public function test_create_with_type() {
+		$x = new cs_authToken($this->dbObj);
+		
+		$password = __METHOD__;
+		$valueToStore = __METHOD__;
+		$tokenId = null;
+		$lifetime = null;
+		$maxUses = 1;
+		$tokenType = __FUNCTION__;
+		$uid = 1;
+		
+		$typeId = $x->create_Type($tokenType, __METHOD__);
+		
+		$id = $x->create_token($password, $valueToStore, $tokenId, $lifetime, $maxUses, $tokenType, $uid);
+		
+		$data = $x->get_token_data($id);
+		
+		$this->assertEquals($id, $data['auth_token_id']);
+		$this->assertEquals($typeId, $data['token_type_id']);
+		$this->assertEquals(__FUNCTION__, $data['token_type']);
+		$this->assertEquals(__METHOD__, $data['token_desc']);
+	}
 }

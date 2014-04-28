@@ -121,8 +121,19 @@ CREATE TABLE cswal_version_table (
 );
 
 
+CREATE TABLE cswal_token_type_table (
+	token_type_id serial NOT NULL PRIMARY KEY,
+	token_type varchar(30) NOT NULL UNIQUE,
+	token_desc text
+);
+INSERT INTO cswal_token_type_table VALUES (0, 'unknown', 'Unknown token type');
+INSERT INTO cswal_token_type_table (token_type, token_desc) VALUES ('lost_password', 'Lost password system');
+
+
 CREATE TABLE cswal_auth_token_table (
 	auth_token_id text NOT NULL UNIQUE PRIMARY KEY,
+	token_type_id integer NOT NULL REFERENCES cswal_token_type_table(token_type_id) DEFAULT 0,
+	uid integer NOT NULL REFERENCES cs_authentication_table(uid) DEFAULT 0,
 	passwd text NOT NULL,
 	max_uses integer NOT NULL DEFAULT 1,
 	total_uses integer NOT NULL DEFAULT 0,
