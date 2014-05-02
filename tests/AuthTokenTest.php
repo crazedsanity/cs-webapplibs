@@ -326,4 +326,36 @@ class testOfCSAuthToken extends testDbAbstract {
 		$this->assertEquals(__FUNCTION__, $data['token_type']);
 		$this->assertEquals(__METHOD__, $data['token_desc']);
 	}
+	
+	
+	public function test_get_all() {
+		$x = new cs_authToken($this->dbObj);
+		
+		//TODO: test offset/limit
+		
+		$this->assertEquals(array(), $x->get_all());
+		
+		$x->create_token(__METHOD__, __METHOD__, null, null, 0, 0, 0);
+		$x->create_token(__METHOD__, __METHOD__, null, null, 0, 1, 0);
+		$x->create_token(__METHOD__, __METHOD__, null, null, 0, 1, 1);
+		
+		$firstData = $x->get_all(0);
+		$firstKeys = array_keys($firstData);
+		$this->assertEquals(2, count($firstData));
+		
+		//NOTE: if this fails, the ordering has probably changed.
+		$this->assertEquals(0, $firstData[$firstKeys[1]]['uid']);
+		$this->assertEquals(0, $firstData[$firstKeys[1]]['token_type_id'], cs_global::debug_print($firstData));
+		
+		$secondData = $x->get_all(1);
+		$secondKeys = array_keys($secondData);
+		$this->assertEquals(1, count($secondData));
+		$this->assertEquals(1, $secondData[$secondKeys[0]]['uid']);
+		$this->assertEquals(1, $secondData[$secondKeys[0]]['token_type_id']);
+		
+		
+		$this->assertEquals(3, count($x->get_all()));
+		$this->assertEquals(2, count($x->get_all(null,1)));
+		$this->assertEquals(1, count($x->get_all(null,0)));
+	}
 }

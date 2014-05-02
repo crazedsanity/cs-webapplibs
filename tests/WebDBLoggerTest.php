@@ -31,7 +31,7 @@ class testOfCSWebDbLogger extends testDbAbstract {
 	
 	//--------------------------------------------------------------------------
 	public function tearDown() {
-		parent::tearDown();
+//		parent::tearDown();
 	}//end tearDown()
 	//--------------------------------------------------------------------------
 	
@@ -82,6 +82,63 @@ class testOfCSWebDbLogger extends testDbAbstract {
 	}//end test_basic_functions()
 	//--------------------------------------------------------------------------
 	
+	
+	
+	public function test_get_logs() {
+		$x = new cs_webdblogger($this->dbObj, __CLASS__);
+		
+		// create some logs to search through.
+//		$x->log_by_class(__METHOD__, "error");
+		
+		$createRecords = array(
+			'MAIN'	=> array(
+				'first',
+				'second',
+				'third',
+				'fourth',
+			),
+			'xxx'		=> array(
+				'fifth',
+				'sixth',
+			),
+			'error'		=> array(
+				'seventh',
+			),
+		);
+		
+		$totalRecords = 0;
+		$testRecords = array();
+		$byClass = array();
+		
+		foreach($createRecords as $class=> $list) {
+			foreach($list as $details) {
+				$id = $x->log_by_class($details, $class);
+				
+				$this->assertTrue(is_numeric($id));
+				
+				$testRecords[$id] = $details;
+				
+				if(isset($byClass[$class])) {
+					$byClass[$class]++;
+				}
+				else {
+					$byClass[$class] = 1;
+				}
+				$totalRecords++;
+			}
+		}
+		
+		foreach(array_keys($createRecords) as $class) {
+			$theLogs = $x->get_logs($class);
+			$this->assertEquals(count($createRecords[$class]), count($theLogs), "Failed to find logs that match '". $class ."'... ". cs_global::debug_print($theLogs));
+		}
+		
+//		$data = $x->get_logs(null);
+//		
+//		$this->assertEquals(1, count($data), cs_global::debug_print($data,1));
+//		
+//		$this->assertEquals(1, count($x->get_logs('test')));
+	}
 	
 }
 

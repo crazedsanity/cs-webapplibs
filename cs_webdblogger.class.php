@@ -58,6 +58,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	const logTable = 'cswal_log_table';
 	const attribTable = 'cswal_attribute_table';
 	const logAttribTable = 'cswal_log_attribute_table';
+	const userTable = 'cs_authentication_table';
 	
 	
 	
@@ -424,9 +425,6 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	//=========================================================================
 	
 	
-	//TODO: create methods for log retrieval that are parameterized...
-	
-	
 	
 	//=========================================================================
 	/**
@@ -455,32 +453,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 				}
 			}
 			catch(exception $e) {
-				#if($this->setupComplete === true) {
-					throw new exception(__METHOD__ .": encountered error::: ". $e->getMessage());
-				/*/
-				}
-				else {
-					try {
-						// TODO: re-implement database-specific check (requires implementing cs_phpDB::get_dbtype())
-						$mySchemaFile = dirname(__FILE__) .'/setup/schema.pgsql.sql';
-						if(file_exists($mySchemaFile)) {
-							$this->setupComplete = true;
-							$this->run_sql_file($mySchemaFile);
-
-							//Create the default category.
-	cs_debug_backtrace(1);
-							$this->create_log_category('Database');
-
-							$retval = $this->create_log_category($catName);
-						}
-						else {
-							throw new exception(__METHOD__ .": missing schema file (". $mySchemaFile ."), can't run setup");
-						}
-					}
-					catch(Exception $ex) {
-						throw new exception(__METHOD__ .": unable to attempt setup::: ". $ex->getMessage());
-					}
-				}#*/
+				throw new exception(__METHOD__ .": encountered error::: ". $e->getMessage());
 			}
 		}
 		else {
@@ -750,5 +723,91 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	//=========================================================================
 	
 	
-}//end logsClass{}
-?>
+	
+	//=========================================================================
+	public function get_logs($criteria, array $pagination=null) {
+		//TODO: allow array for $criteria, so more complex operations can be done
+		$_crit = "";
+		if(!is_null($criteria) && is_string($criteria) && strlen($criteria) > 0) {
+			$_crit = strtolower($criteria);
+		}
+		
+		$_orderBy = " ORDER BY log_id DESC";
+		$_limit = " LIMIT 100";
+		$_offset = "";
+		if(!is_null($pagination) && is_array($pagination) && count($pagination) > 0) {
+			foreach($pagination as $k=>$v) {
+				switch(strtolower($k)) {
+					case "order":
+						$_orderBy = " ORDER BY ". $v;
+						break;
+					
+					case "limit":
+						if(is_numeric($v)) {
+							$_limit = " LIMIT ". $v;
+						}
+						elseif(is_null($v)) {
+							$_limit = "";
+						}
+						else {
+							throw new InvalidArgumentException(__METHOD__ .": non-numeric argument for limit (". $v .")");
+						}
+						break;
+					
+					case "offset":
+						if(is_numeric($v)) {
+							$_offset = "OFFSET ". $v;
+						}
+						elseif(is_null($v)) {
+							$_offset = "";
+						}
+						else {
+							throw new InvalidArgumentException(__METHOD__ .": non-numeric argument for offset (". $v .")");
+						}
+						break;
+					
+					default:
+						throw new InvalidArgumentException(__METHOD__ .": invalid index '". $k ."'");
+				}
+			}
+		}
+		
+		//TODO: handle more complex scenarios, like time periods.
+		$sql = "SELECT 
+			l.*, cl.class_name, ca.category_name, ev.description, u.username, u.email
+			FROM ". self::logTable ." AS l 
+				INNER JOIN ". self::eventTable ." AS ev ON (l.event_id=ev.event_id) 
+				INNER JOIN ". self::classTable ." AS cl ON (cl.class_id=ev.class_id) 
+				INNER JOIN ". self::categoryTable ." AS ca ON (ca.category_id=ev.category_id)
+				INNER JOIN ". self::userTable ." AS u ON (l.uid=u.uid)";
+		
+		$params = array();
+		if(strlen($_crit)) {
+			$sql .= " WHERE l.details LIKE :search::text
+				OR cl.class_name LIKE :search2::text
+				OR ca.category_name LIKE :search3::text
+				OR ev.description LIKE :search4::text";
+			$params['search'] = "%". $_crit ."%";
+			$params['search2'] = "%". $_crit ."%";
+			$params['search3'] = "%". $_crit ."%";
+			$params['search4'] = "%". $_crit ."%";
+		}
+		$sql .= $_orderBy . $_limit;
+		
+		
+		try {
+//cs_global::debug_print(__METHOD__ .": SQL::: ". $sql,1);
+			$numrows = $this->db->run_query($sql, $params);
+			
+			$retval = array();
+			if($numrows > 0) {
+				$retval = $this->db->farray_fieldnames();
+			}
+		} catch (Exception $ex) {
+			throw new ErrorException(__METHOD__ .": failed to retrieve logs, details::: ". $ex->getMessage() . "\n\nSQL::: ". $sql ."\n\nPARAMS::: ". cs_global::debug_print($params));
+		}
+		
+		return $retval;
+	}
+	//=========================================================================
+}

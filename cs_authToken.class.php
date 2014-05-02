@@ -211,6 +211,7 @@ class cs_authToken extends cs_webapplibsAbstract {
 	 * 							against before being removed 
 	 * @param $tokenType	(int/string,optional) type of token; can be a string 
 	 *							for looking up the given type
+	 * @param $uid			(int, optional) value for uid column
 	 * 
 	 * @return (string)		PASS: contains the token string.
 	 * 
@@ -417,6 +418,65 @@ class cs_authToken extends cs_webapplibsAbstract {
 		}
 		return($tokenData);
 	}//end get_token_data();
+	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	/**
+	 * 
+	 * @param $uid		(int/optional) Find tokens just for this uid
+	 * @param $type		(int/optional) Find tokens just of this type
+	 * @param $limit	(int/optional) Limit number of results (pagination)
+	 * @param $offset	(int/optional) Offset number of results (pagination)
+	 * 
+	 * @return type
+	 * @throws Exception
+	 */
+	public function get_all($uid=null, $type=null, $limit=null, $offset=0) {
+		$sql = "SELECT *, (a.max_uses - a.total_uses) AS remaining_uses, 
+			(NOW() - a.expiration) AS time_remaining FROM cswal_auth_token_table 
+			AS a INNER JOIN cswal_token_type_table AS t USING (token_type_id)";
+		
+		$params = array();
+		
+		if(!is_null($uid)) {
+			$params['uid'] = $uid;
+		}
+		if(!is_null($type)) {
+			$params['token_type_id'] = $type;
+		}
+		
+		if(count($params) > 0) {
+			$criteria = "";
+			foreach($params as $field=>$val) {
+				$criteria = cs_global::create_list($criteria, $field .'=:'. $field, " AND ");
+			}
+			$sql .= " WHERE ". $criteria;
+		}
+		
+		$sql .= " ORDER BY t.token_type, t.token_desc";
+		
+		if(!is_null($limit) && is_numeric($limit)) {
+			$sql .= " LIMIT ". $limit;
+		}
+		if(!is_null($offset) && is_numeric($offset)) {
+			$sql .= " OFFSET ". $offset;
+		}
+		
+		try {
+			$numrows = $this->db->run_query($sql, $params);
+			
+			$retval = array();
+			if($numrows > 0) {
+				$retval = $this->db->farray_fieldnames('auth_token_id');
+			}
+		} catch (Exception $ex) {
+			throw new Exception(__METHOD__ .": failed to retrieve tokens, SQL::: ". $sql ."\n\nDETAILS::: ". $ex->getMessage());
+		}
+		
+		return $retval;
+	}//end get_all()
 	//=========================================================================
 	
 	
