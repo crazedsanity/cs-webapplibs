@@ -51,6 +51,8 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	protected $pendingLogs;
 	protected $suspendLogging=false;
 	
+	public $_debug=null;
+	
 	/** List of tables keyed off an internal reference name. */
 	const categoryTable = 'cswal_category_table';
 	const classTable = 'cswal_class_table';
@@ -735,7 +737,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		$_orderBy = " ORDER BY log_id DESC";
 		$_limit = " LIMIT 100";
 		$_offset = "";
-		if(!is_null($pagination) && is_array($pagination) && count($pagination) > 0) {
+		if(is_array($pagination)) {
 			foreach($pagination as $k=>$v) {
 				switch(strtolower($k)) {
 					case "order":
@@ -756,7 +758,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 					
 					case "offset":
 						if(is_numeric($v)) {
-							$_offset = "OFFSET ". $v;
+							$_offset = " OFFSET ". $v;
 						}
 						elseif(is_null($v)) {
 							$_offset = "";
@@ -792,11 +794,9 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			$params['search3'] = "%". $_crit ."%";
 			$params['search4'] = "%". $_crit ."%";
 		}
-		$sql .= $_orderBy . $_limit;
-		
+		$sql .= $_orderBy . $_limit .$_offset;
 		
 		try {
-//cs_global::debug_print(__METHOD__ .": SQL::: ". $sql,1);
 			$numrows = $this->db->run_query($sql, $params);
 			
 			$retval = array();
