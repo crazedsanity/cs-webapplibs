@@ -104,6 +104,9 @@ class testOfCSWebDbLogger extends testDbAbstract {
 			'error'		=> array(
 				'seventh',
 			),
+			'another'	=> array(
+				'EigTh',
+			)
 		);
 		
 		$totalRecords = 0;

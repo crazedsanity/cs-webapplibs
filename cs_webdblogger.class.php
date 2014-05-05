@@ -785,16 +785,14 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		
 		$params = array();
 		if(strlen($_crit)) {
-			$sql .= " WHERE l.details LIKE :search::text
-				OR cl.class_name LIKE :search2::text
-				OR ca.category_name LIKE :search3::text
-				OR ev.description LIKE :search4::text";
+			$sql .= " WHERE LOWER(l.details) LIKE :search::text
+				OR LOWER(cl.class_name) LIKE :search::text
+				OR LOWER(ca.category_name) LIKE :search::text
+				OR LOWER(ev.description) LIKE :search::text";
 			$params['search'] = "%". $_crit ."%";
-			$params['search2'] = "%". $_crit ."%";
-			$params['search3'] = "%". $_crit ."%";
-			$params['search4'] = "%". $_crit ."%";
 		}
 		$sql .= $_orderBy . $_limit .$_offset;
+$this->_debug = $sql;
 		
 		try {
 			$numrows = $this->db->run_query($sql, $params);
