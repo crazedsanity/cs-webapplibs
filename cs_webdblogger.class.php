@@ -788,7 +788,9 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			$sql .= " WHERE LOWER(l.details) LIKE :search::text
 				OR LOWER(cl.class_name) LIKE :search::text
 				OR LOWER(ca.category_name) LIKE :search::text
-				OR LOWER(ev.description) LIKE :search::text";
+				OR LOWER(ev.description) LIKE :search::text
+				OR LOWER(u.username) LIKE :search::text
+				OR LOWER(u.email) LIKE :search::text";
 			$params['search'] = "%". $_crit ."%";
 		}
 		$sql .= $_orderBy . $_limit .$_offset;

@@ -452,7 +452,9 @@ class cs_sessionDB extends cs_session {
 				$sessionsToExpire = $this->db->farray_fieldnames('session_id');
 				
 				foreach($sessionsToExpire as $id=>$data) {
-					$this->do_log("Expiring session, condition=(". $condition ."), UID=(". $data['uid'] ."), date_created=(". $data['date_created'] ."), last_updated=(". $data['last_updated'] ."), DATA::: ". $data['session_data'], $data['uid']);
+					$logDetails = "Expiring session, condition=(". $condition ."), UID=(". $data['uid'] ."), date_created=(". $data['date_created'] ."), last_updated=(". $data['last_updated'] ."), DATA::: ". $data['session_data'];
+					
+					$this->do_log($logDetails, "debug", $data['uid']);
 					$this->sessdb_destroy($id);
 					$retval++;
 				}
