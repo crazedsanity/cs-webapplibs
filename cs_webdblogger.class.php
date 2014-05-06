@@ -810,4 +810,89 @@ $this->_debug = $sql;
 		return $retval;
 	}
 	//=========================================================================
+	
+	
+	
+	//=========================================================================
+	public function get_logs_count($criteria, array $pagination=null) {
+		//TODO: allow array for $criteria, so more complex operations can be done
+		$_crit = "";
+		if(!is_null($criteria) && is_string($criteria) && strlen($criteria) > 0) {
+			$_crit = strtolower($criteria);
+		}
+		
+		$_limit = "";
+		$_offset = "";
+		if(is_array($pagination)) {
+			foreach($pagination as $k=>$v) {
+				switch(strtolower($k)) {
+					case "order":
+						break;
+					
+					case "limit":
+						if(is_numeric($v)) {
+							$_limit = " LIMIT ". $v;
+						}
+						elseif(is_null($v)) {
+							$_limit = "";
+						}
+						else {
+							throw new InvalidArgumentException(__METHOD__ .": non-numeric argument for limit (". $v .")");
+						}
+						break;
+					
+					case "offset":
+						if(is_numeric($v)) {
+							$_offset = " OFFSET ". $v;
+						}
+						elseif(is_null($v)) {
+							$_offset = "";
+						}
+						else {
+							throw new InvalidArgumentException(__METHOD__ .": non-numeric argument for offset (". $v .")");
+						}
+						break;
+					
+					default:
+						throw new InvalidArgumentException(__METHOD__ .": invalid index '". $k ."'");
+				}
+			}
+		}
+		
+		//TODO: handle more complex scenarios, like time periods.
+		$sql = "SELECT 
+			count(1) AS count
+			FROM ". self::logTable ." AS l 
+				INNER JOIN ". self::eventTable ." AS ev ON (l.event_id=ev.event_id) 
+				INNER JOIN ". self::classTable ." AS cl ON (cl.class_id=ev.class_id) 
+				INNER JOIN ". self::categoryTable ." AS ca ON (ca.category_id=ev.category_id)
+				INNER JOIN ". self::userTable ." AS u ON (l.uid=u.uid)";
+		
+		$params = array();
+		if(strlen($_crit)) {
+			$sql .= " WHERE LOWER(l.details) LIKE :search::text
+				OR LOWER(cl.class_name) LIKE :search::text
+				OR LOWER(ca.category_name) LIKE :search::text
+				OR LOWER(ev.description) LIKE :search::text
+				OR LOWER(u.username) LIKE :search::text
+				OR LOWER(u.email) LIKE :search::text";
+			$params['search'] = "%". $_crit ."%";
+		}
+		$sql .= $_limit .$_offset;
+		
+		try {
+			$numrows = $this->db->run_query($sql, $params);
+			
+			$retval = -1;
+			if($numrows > 0) {
+				$data = $this->db->get_single_record();
+				$retval = $data['count'];
+			}
+		} catch (Exception $ex) {
+			throw new ErrorException(__METHOD__ .": failed to retrieve logs, details::: ". $ex->getMessage() . "\n\nSQL::: ". $sql ."\n\nPARAMS::: ". cs_global::debug_print($params));
+		}
+		
+		return $retval;
+	}
+	//=========================================================================
 }
