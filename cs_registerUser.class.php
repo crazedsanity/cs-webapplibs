@@ -159,14 +159,12 @@ class cs_registerUser {
 							$retval = $this->dbObj->run_insert($insertSql, $insertData, 'cs_authentication_table_uid_seq');
 							
 							//now let's build the activation email.
-							require_once(constant('LIBDIR') ."/phpmailer/class.phpmailer.php");
-							require_once(constant('LIBDIR') ."/cs-content/cs_genericPage.class.php");
 							$activateData = array(
 								'email'			=> $email,
 								'username'		=> $username,
 								'activateHash'	=> md5($retval .'-'. $username),
 								'uid'			=> $retval,
-								'HOST'			=> $GLOBALS['pageObj']->templateVars['HOST'],
+								'HOST'			=> $_SERVER['HTTP_HOST'],
 								'username'		=> $username,
 								'password'		=> $password
 							);
@@ -189,7 +187,7 @@ class cs_registerUser {
 					}
 				}
 				else {
-					$details = __METHOD__ .": password complexity failed";
+					$details = "Password complexity failed: >= 8 chars, 1 letter, 1 number, at least one upper and one lowercase.";
 					$this->logger->log_by_class($details, 'exception');
 					throw new exception($details);
 				}
