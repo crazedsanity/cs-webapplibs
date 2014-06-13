@@ -128,27 +128,27 @@ class AuthUserTest extends testDbAbstract {
 		$this->assertEquals('75eba0f69d185ef816d0cee43ad44d4b2240de02', $originalUserData['passwd']);
 		$this->assertTrue(is_array($originalUserData));
 //		$oldPassHash = $originalUserData['passwd'];
-		$this->assertNotEquals($originalUserData['passwd'], $x->getPasswordHash(array('test', 'test'), strlen($originalUserData['passwd'])));
+//		$this->assertNotEquals($originalUserData['passwd'], $x->getPasswordHash(array('test', 'test'), strlen($originalUserData['passwd'])));
 		$this->assertFalse((bool)$x->login('test', 'test'));
 		
 		//Change test's password...
 		$passwd = '_unitTe5t3r';
 		$user = 'test';
 		
-		$newHash = $x->getPasswordHash(array('username'=>$user, 'passwd'=>$passwd), $x::HASH_SHA1);
-		$this->assertEquals(
-				$newHash,
-				sha1(implode('-', array($user, $passwd)))
-		);
-		$userInfo = array(
-			'uid'		=> 1,
-			'username'	=> $user,
-		);
-		$this->assertEquals(1, $x->update_passwd($this->userInfo, $passwd, $x::HASH_SHA1), 'Failed to set password');
+//		$newHash = $x->getPasswordHash(array('username'=>$user, 'passwd'=>$passwd), $x::HASH_SHA1);
+//		$this->assertEquals(
+//				$newHash,
+//				sha1(implode('-', array($user, $passwd)))
+//		);
+		$uid = 1;
+//		$userInfo = array(
+//			'uid'		=> 1,
+//			'username'	=> $user,
+//		);
+		$this->assertEquals(1, $x->update_passwd($uid, $passwd), 'Failed to set password');
 		
 		$updatedUserInfo = $x->get_user_data(1);
 		$this->assertNotEquals($originalUserData['passwd'], $updatedUserInfo['passwd']);
-		$this->assertEquals($newHash, $updatedUserInfo['passwd']);
 		
 		$compareOriginal = $originalUserData;
 		$compareUpdated = $updatedUserInfo;
@@ -156,50 +156,29 @@ class AuthUserTest extends testDbAbstract {
 		unset($compareOriginal['passwd'], $compareUpdated['passwd']);
 		$this->assertEquals($compareOriginal, $compareUpdated);
 		
-	
 		
-		// try authenticating using all the different algorithms...
-		{
-			$types = array(
-				'md5'		=> 32,
-				'sha1'		=> 40,
-				'sha256'	=> 64,
-				'sha512'	=> 128,
-				'default'	=> constant('PASSWORD_DEFAULT'),
-			);
-			
-			$this->assertEquals($x::HASH_MD5, $types['md5']);
-			$this->assertEquals($x::HASH_SHA1, $types['sha1']);
-			$this->assertEquals($x::HASH_SHA256, $types['sha256']);
-			$this->assertEquals($x::HASH_SHA512, $types['sha512']);
-			$this->assertEquals($x::HASH_PHPDEFAULT, $types['default']);
-		}
-		
-		$this->assertTrue(!$x->is_authenticated());
+		$this->assertFalse($x->is_authenticated());
 		
 		$_SESSION = array();
-		$this->assertTrue(count($_SESSION) == 0);
+		$this->assertEquals(count($_SESSION), 0);
 		
-		foreach($types as $hashName => $hashType) {
-			$this->assertFalse($x->is_authenticated());
-			
-			$this->assertTrue($x->update_passwd($userInfo, $passwd, $hashType), "Failed to update password using '". $hashName ."' (". $hashType .")");
-			
-			$this->assertFalse($x->is_authenticated());
-			$this->assertFalse($x->check_sid());
-			
-			$this->assertFalse((bool)$x->login(ucfirst($user), $passwd), "Username accepted with incorrect casing");
-			$this->assertFalse($x->is_authenticated());
-			$this->assertFalse($x->check_sid());
-			
-			$this->assertTrue((bool)$x->login($user, $passwd), "Failed to login using $hashName ($hashType)");
-			$this->assertTrue($x->is_authenticated());
-			$this->assertTrue($x->check_sid());
-			
-			$this->assertTrue((bool)$x->logout_sid());
-			$this->assertFalse($x->is_authenticated());
-			$this->assertFalse($x->check_sid());
-		}
+		$this->assertFalse($x->is_authenticated());
+		$this->assertTrue($x->update_passwd($uid, $passwd), "Failed to update password");
+		$this->assertFalse($x->is_authenticated());
+		$this->assertFalse($x->check_sid());
+		
+		$this->assertFalse((bool)$x->login(ucfirst($user), $passwd), "Username accepted with incorrect casing");
+		$this->assertFalse($x->is_authenticated());
+		$this->assertFalse($x->check_sid());
+		
+		$this->assertTrue((bool)$x->login($user, $passwd), "Failed to login");
+		$this->assertTrue($x->is_authenticated());
+		$this->assertTrue($x->check_sid());
+		
+		$this->assertTrue((bool)$x->logout_sid());
+		$this->assertFalse($x->is_authenticated());
+		$this->assertFalse($x->check_sid());
+		
 	}
 	
 	
@@ -211,68 +190,22 @@ class AuthUserTest extends testDbAbstract {
 			$this->fail("password allowed to be null");
 		}
 		catch(Exception $ex) {
-			if(!preg_match('/update_passwd: invalid user info or password/', $ex->getMessage())) {
+			if(!preg_match('/update_passwd: invalid ID or password/', $ex->getMessage())) {
 				$this->fail("malformed or unexpected content in exception: ". $ex->getMessage());
 			}
 		}
 		
-	}
-	
-	
-	public function test_update_passwd_with_empty_string() {
-		$x = new cs_authUser($this->dbObj);
-		
-		try {
-			$this->assertFalse($x->update_passwd($this->userInfo, ""));
-			$this->fail("password allowed to be empty");
-		}
-		catch(InvalidArgumentException $ex) {
-			if(!preg_match('/getPasswordHash:.+one or more empty values/', $ex->getMessage())) {
-				$this->fail("malformed or unexpected content in exception: ". $ex->getMessage());
-			}
-		}
-		catch(Exception $ex) {
-			$this->fail("Generic exception caught where InvalidArgumentException expected: ". $ex->getMessage());
-		}
-		
-	}
-	
-	
-	public function test_invalid_password_hash_with_invalid_user_data() {
-		$x = new cs_authUser($this->dbObj);
-		try {
-			$x->getPasswordHash(array(), "");
-			$this->fail("empty password + array worked");
-		} catch (Exception $ex) {
-			if(!preg_match('/no data to hash/', $ex->getMessage())) {
-				$this->fail("unexpected exception data: ". $ex->getMessage());
-			}
-		}
 	}
 	
 	
 	public function test_update_password_with_invalid_username() {
 		$x = new cs_authUser($this->dbObj);
 		try {
-			$x->update_passwd(array('uid'=>'101', 'username'=> '_invalidUSER23432423423'), "");
+			$x->update_passwd(99999999, "");
 			$this->fail("updating password for non-existent user worked");
 		} catch (Exception $ex) {
-			if(!preg_match('/getPasswordHash:.+one or more empty values/', $ex->getMessage())) {
+			if(!preg_match('/update_user_info:.+failed to update user information/', $ex->getMessage())) {
 				$this->fail("unexpected exception data: ". $ex->getMessage());
-			}
-		}
-	}
-	
-	
-	public function test_invalid_password_hash_type() {
-		$x = new cs_authUser($this->dbObj);
-		
-		try {
-			$x->getPasswordHash(array('username'=>'poop'), "Test!234", 9999);
-			$this->fail("invalid hash type allowed");
-		} catch (Exception $ex) {
-			if(!preg_match('/invalid hash type/', $ex->getMessage())) {
-				$this->fail("malformed or unexpected content in exception: ". $ex->getMessage());
 			}
 		}
 	}

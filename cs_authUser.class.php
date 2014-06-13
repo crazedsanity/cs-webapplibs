@@ -130,61 +130,6 @@ class cs_authUser extends cs_sessionDB {
 	//-------------------------------------------------------------------------
 	
 	
-	//-------------------------------------------------------------------------
-	public function generateHash(array $data) {
-		return(implode($this->separator, $data));
-	}//end generateHash()
-	//-------------------------------------------------------------------------
-	
-	
-	
-	//-------------------------------------------------------------------------
-	public function getPasswordHash(array $dataToHash, $hashType=null) {
-		if(count($dataToHash) > 0) {
-			foreach($dataToHash as $k=>$v) {
-				if(!strlen($v)) {
-					throw new InvalidArgumentException(__METHOD__ .": hash data contains one or more empty values");
-				}
-			}
-			
-			$hashThis = $this->generateHash($dataToHash);
-			
-			switch($hashType) {
-				case self::HASH_PHPBCRYPT:
-				case self::HASH_PHPDEFAULT:
-					$retval = password_hash($hashThis, $hashType);
-					break;
-				case self::HASH_MD5:
-					$retval = md5($hashThis);
-					break;
-
-				case null:
-				trigger_error("password type should not be assumed: future versions of ". __METHOD__ ." will use PHP's default", E_USER_DEPRECATED);
-				case self::HASH_SHA1:
-					$retval = sha1($hashThis);
-					break;
-
-				case self::HASH_SHA256:
-					$retval = hash('sha256', $hashThis);
-					break;
-
-				case self::HASH_SHA512:
-					$retval = hash('sha512', $hashThis);
-					break;
-
-				default:
-					throw new InvalidArgumentException(__METHOD__ .": invalid hash type (". $hashType .")");
-			}
-		}
-		else {
-			throw new InvalidArgumentException("no data to hash");
-		}
-		
-		return $retval;
-	}//end getPasswordHash()
-	//-------------------------------------------------------------------------
-	
-	
 	
 	//-------------------------------------------------------------------------
 	public function login($username, $password) {
@@ -210,14 +155,7 @@ class cs_authUser extends cs_sessionDB {
 				
 				$data = $this->db->get_single_record();
 				
-				if (preg_match('/^\$/', $data['passwd'])) {
-					// this would be using PHP's password_hash() function...
-					$retval = password_verify($this->generateHash($sumThis), $data['passwd']);
-				} elseif ($this->getPasswordHash($sumThis, strlen($data['passwd'])) == $data['passwd']) {
-					$retval = $numRecords;
-				} else {
-					$this->do_log("Authentication failure, username=(" . $username . "), retval=(" . $retval . ")");
-				}
+				$retval = password_verify($password, $data['passwd']);
 				
 				if ((bool) $retval) {
 					$this->userInfo = $data;
@@ -256,19 +194,16 @@ class cs_authUser extends cs_sessionDB {
 	
 	
 	//-------------------------------------------------------------------------
-	public function update_passwd(array $user, $newPass, $hashType=self::HASH_PHPDEFAULT) {
+	public function update_passwd($uid, $newPass) {
 		$retval = false;
-		if(is_array($user) && isset($user['username']) && isset($user['uid']) && $user['uid'] > 0) {
-			
+		if(is_numeric($uid)) {
 			$params = array(
-				'passwd'	=> $this->getPasswordHash(array($user['username'], $newPass), $hashType),
-//				'uid'	=> $user['uid'],
+				'passwd'	=> password_hash($newPass, PASSWORD_DEFAULT),
 			);
-			
-			$retval = $this->update_user_info($params, $user['uid']);
+			$retval = $this->update_user_info($params, $uid);
 		}
 		else {
-			throw new InvalidArgumentException(__METHOD__ .": invalid user info or password");
+			throw new InvalidArgumentException(__METHOD__ .": invalid ID or password");
 		}
 		
 		return $retval;

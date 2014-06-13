@@ -149,7 +149,7 @@ class cs_registerUser {
 						//this is where we attempt to insert the user's information.
 						$insertData = array(
 							'username'	=> $username,
-							'passwd'	=> md5($username .'-'. $password),
+							'passwd'	=> password_hash($password, PASSWORD_DEFAULT),
 							'email'		=> $email
 						);
 						$insertSql = "INSERT INTO cs_authentication_table (username, passwd, email) 
