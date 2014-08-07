@@ -133,7 +133,13 @@ class cs_authUser extends cs_sessionDB {
 	
 	//-------------------------------------------------------------------------
 	public function login($username, $password) {
-		$retval = 0;
+		/*
+		 * 0 = fail
+		 * false = password failed
+		 * true = pass
+		 * 
+		 */
+		$retval = false;
 		try {
 			$sql = "SELECT uid, username, user_status_id, date_created, last_login, 
 					email, passwd, user_status_id FROM cs_authentication_table WHERE 
@@ -157,7 +163,7 @@ class cs_authUser extends cs_sessionDB {
 				
 				$retval = password_verify($password, $data['passwd']);
 				
-				if ((bool) $retval) {
+				if ($retval) {
 					$this->userInfo = $data;
 					$this->update_auth_data($this->userInfo);
 					
@@ -179,10 +185,9 @@ class cs_authUser extends cs_sessionDB {
 				$this->do_log("Authentication failure, unknown username (" . $username . ")");
 			}
 			
-			if ($retval == 1) {
+			if ($retval == true) {
 				$this->do_cookie();
 			}
-			$this->do_log("Return value from check_sid() was (" . $retval . ")", 'debug');
 		} catch (Exception $e) {
 			throw new exception(__METHOD__ . ": DETAILS: " . $e->getMessage());
 		}
