@@ -242,15 +242,20 @@ class cs_authUser extends cs_sessionDB {
 			if(!is_numeric($uidOrUsername)) {
 				$condition = 'username=:uid';
 			}
-			$sql = "SELECT * FROM cs_authentication_table 
-				WHERE ". $condition ." AND user_status_id=:status";
+			$sql = "SELECT * FROM cs_authentication_table WHERE ". $condition;
 			$params = array(
-						'uid'		=> $uidOrUsername,
-						'status'	=> $onlyUserStatus,
-					);
+				'uid'		=> $uidOrUsername,
+			);
+			
+			$xDetails = " of any status";
+			if(!is_null($onlyUserStatus)) {
+				$params['status'] = $onlyUserStatus;
+				 $sql .= " AND user_status_id=:status";
+				 $xDetails = " with user_status_id=(". $onlyUserStatus .")";
+			}
 			$numrows = $this->db->run_query(
-					$sql,
-					$params
+				$sql,
+				$params
 			);
 			
 			if($numrows == 1) {
@@ -258,7 +263,7 @@ class cs_authUser extends cs_sessionDB {
 			}
 			else {
 				//
-				$details = __METHOD__ .": failed to retrieve a single user (". $numrows .") for uid=(". $uidOrUsername .") with user_status_id=(". $onlyUserStatus .")";
+				$details = __METHOD__ .": failed to retrieve a single user (". $numrows .") for uid=(". $uidOrUsername .")" . $xDetails;
 				$this->do_log($details, 'exception in code');
 				throw new exception($details);
 			}
