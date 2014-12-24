@@ -15,8 +15,8 @@
 	],
 	"require": {
 		"php": ">=5.3.0",
-		"crazedsanity/cs-content": "1.2.20",
-		"ircmaxell/password-compat": "1.0.4"
+		"crazedsanity/cs-content": ">= 1.2.20",
+		"ircmaxell/password-compat": ">= 1.0"
 	},
 	"minimum-stability": "dev"
 }
