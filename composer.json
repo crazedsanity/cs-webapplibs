@@ -15,8 +15,8 @@
 	],
 	"require": {
 		"php": ">=5.3.0",
-		"crazedsanity/cs-content": "dev-master",
-		"ircmaxell/password-compat": "dev-master"
+		"crazedsanity/cs-content": "1.2.19",
+		"ircmaxell/password-compat": "1.0.4"
 	},
 	"minimum-stability": "dev"
 }
