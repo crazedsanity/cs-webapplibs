@@ -2,6 +2,18 @@
 
 Build status::: [![Build Status](https://travis-ci.org/crazedsanity/cs-webapplibs.png)](https://travis-ci.org/crazedsanity/cs-webapplibs)
 
+
+# Library Depracation...
+
+This set of libraries, along with those it depends on from cs-content, is getting retired.  The components are being moved into other, self-contained repositories.  The hope is that this will allow for easier and more focused development.  Here's the list so far:
+
+ * Template: from cs-content, "cs_genericPage"; crazedsanity/template
+ * Core: from cs-content, the core libraries; crazedsanity/core
+    * ToolBox (previously cs_globalFunctions)
+    * Version (previously cs_version)
+ * SiteConfig: from cs-webapplibs, previously cs_siteConfig; crazedsanity/siteconfig
+ * Database: from cs-webapplibs, previously cs_phpDB; crazedsanity/database
+
 *For info about upgrades, check the "upgrades" folder*
 
 (a.k.a. "CS-WebAppLibs" or "CSWAL")
