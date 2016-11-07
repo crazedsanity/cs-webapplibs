@@ -3,16 +3,29 @@
 Build status::: [![Build Status](https://travis-ci.org/crazedsanity/cs-webapplibs.png)](https://travis-ci.org/crazedsanity/cs-webapplibs)
 
 
-# Library Depracation...
+# Library Deprecation...
 
 This set of libraries, along with those it depends on from cs-content, is getting retired.  The components are being moved into other, self-contained repositories.  The hope is that this will allow for easier and more focused development.  Here's the list so far:
 
- * Template: from cs-content, "cs_genericPage"; crazedsanity/template
- * Core: from cs-content, the core libraries; crazedsanity/core
-    * ToolBox (previously cs_globalFunctions)
-    * Version (previously cs_version)
- * SiteConfig: from cs-webapplibs, previously cs_siteConfig; crazedsanity/siteconfig
- * Database: from cs-webapplibs, previously cs_phpDB; crazedsanity/database
+ * [AuthToken](https://github.com/crazedsanity/AuthToken) (replaces `cs_authToken`): [![Build Status](https://travis-ci.org/crazedsanity/AuthToken.svg?branch=master)](https://travis-ci.org/crazedsanity/AuthToken)
+ * [AuthUser](https://github.com/crazedsanity/authuser) (replaces `cs_authUser`): [![Build Status](https://travis-ci.org/crazedsanity/authuser.svg?branch=master)](https://travis-ci.org/crazedsanity/authuser)
+ * ID Obfuscator (replaces `cs_idObfuscator`): **(no replacement yet...)**
+ * [Lockfile](https://github.com/crazedsanity/lockfile) (replaces `cs_lockfile`): [![Build Status](https://travis-ci.org/crazedsanity/lockfile.svg?branch=master)](https://travis-ci.org/crazedsanity/lockfile)
+ * [Permission](https://github.com/crazedsanity/permission) (replaces `cs_permission`): [![Build Status](https://travis-ci.org/crazedsanity/permission.svg?branch=master)](https://travis-ci.org/crazedsanity/permission)
+ * [Database](https://github.com/crazedsanity/database) (replaces `cs_phpDB`): [![Build Status](https://travis-ci.org/crazedsanity/database.svg?branch=master)](https://travis-ci.org/crazedsanity/database)
+ * User Registration (replaces `cs_registerUser`): **(no replacement yet)**
+ * [DB Session](https://github.com/crazedsanity/dbsession) (replaces `cs_sessionDB`): [![Build Status](https://travis-ci.org/crazedsanity/dbsession.svg?branch=master)](https://travis-ci.org/crazedsanity/dbsession)
+ * [Site Config](https://github.com/crazedsanity/siteconfig) (replaces `cs_siteConfig`): [![Build Status](https://travis-ci.org/crazedsanity/siteconfig.svg?branch=master)](https://travis-ci.org/crazedsanity/siteconfig)
+ * Web DB Logger (replaces `cs_webdblogger`): **(no replacement yet...)**
+ * Web DB Upgrade (replaces `cs_webdbupgrade`): **(no replacement yet...)**
+
+Other libraries of note:
+
+ * [FileSystem](https://github.com/crazedsanity/filesystem): [![Build Status](https://travis-ci.org/crazedsanity/filesystem.svg?branch=master)](https://travis-ci.org/crazedsanity/filesystem)
+ * [Session](https://github.com/crazedsanity/session): [![Build Status](https://travis-ci.org/crazedsanity/session.svg?branch=master)](https://travis-ci.org/crazedsanity/session)
+ * [Template](https://github.com/crazedsanity/template): [![Build Status](https://travis-ci.org/crazedsanity/template.svg?branch=master)](https://travis-ci.org/crazedsanity/template)
+ * [Version](https://github.com/crazedsanity/version): [![Build Status](https://travis-ci.org/crazedsanity/version.svg?branch=master)](https://travis-ci.org/crazedsanity/version)
+
 
 *For info about upgrades, check the "upgrades" folder*
 
@@ -43,7 +56,7 @@ tables.
 
 Unit testing was previously done with SimpleTest, but now uses (or is being 
 converted to use) PHPUnit: this was done to help ease incorporation with 
-[Travis-CI](http://travis-ci-org) for continuous integration testing. 
+[Travis-CI](http://travis-ci-org/crazedsanity/) for continuous integration testing. 
 
 Testing database interaction can be a tricky thing, and it must conform to 
 how [Travis-CI's database setup works](http://about.travis-ci.org/docs/user/database-setup/).
