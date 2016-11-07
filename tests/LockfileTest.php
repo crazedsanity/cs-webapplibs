@@ -1,5 +1,7 @@
 <?php
 
+use crazedsanity\core\ToolBox;
+
 class LockfileTest extends PHPUnit_Framework_TestCase {
 	public $fs;
 	public $dir;
