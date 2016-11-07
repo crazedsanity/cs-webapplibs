@@ -467,7 +467,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	//=========================================================================
 	public static function parse_version_string($versionString) {
 		if(is_null($versionString) || !strlen($versionString)) {
-			self::error_handler(__METHOD__ .": invalid version string ($versionString)");
+			throw new exception(__METHOD__ .": invalid version string ($versionString)");
 		}
 		
 		$suffix = "";
@@ -496,7 +496,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			$retval['version_suffix'] = $suffix;
 		}
 		else {
-			self::error_handler(__METHOD__ .": invalid version string format, requires MAJOR.MINOR syntax (". $versionString .")");
+			throw new exception(__METHOD__ .": invalid version string format, requires MAJOR.MINOR syntax (". $versionString .")");
 		}
 		
 		return($retval);
@@ -878,11 +878,11 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	//=========================================================================
 	public function error_handler($details) {
 		//log the error.
-		if(!is_object(self::logsObj)) {
+		if(!is_object($this->logsObj)) {
 			throw new exception($details);
 		}
 		if(self::internalUpgradeInProgress === false) {
-			self::do_log($details, 'exception in code');
+			$this->do_log($details, 'exception in code');
 		}
 		
 		//now throw an exception so other code can catch it.
