@@ -1,16 +1,11 @@
 <?php
 
-require_once(dirname(__FILE__) .'/../abstract/testDb.abstract.class.php');
-require_once(dirname(__FILE__) .'/../abstract/cs_webapplibs.abstract.class.php');
-require_once(dirname(__FILE__) .'/../cs_webdblogger.class.php');
 
-class testOfCSWebDbLogger extends testDbAbstract {
+class testOfCSWebDbLogger extends crazedsanity\database\TestDbAbstract {
 	
 	
 	//--------------------------------------------------------------------------
 	function __construct() {
-		$this->gfObj = new cs_globalFunctions;
-		$this->gfObj->debugPrintOpt=1;
 		parent::__construct();
 	}//end __construct()
 	//--------------------------------------------------------------------------
@@ -19,9 +14,6 @@ class testOfCSWebDbLogger extends testDbAbstract {
 	
 	//--------------------------------------------------------------------------
 	function setUp() {
-		$this->gfObj = new cs_globalFunctions;
-		$this->gfObj->debugPrintOpt=1;
-		
 		$this->reset_db(dirname(__FILE__) .'/../setup/schema.pgsql.sql');
 		parent::setUp();
 	}//end setUp()
@@ -45,7 +37,7 @@ class testOfCSWebDbLogger extends testDbAbstract {
 		$myCache = $log->logClassCache;
 		
 		$this->assertTrue(is_array($myCache));
-		$this->assertEquals(count($myCache), 0, "Expected no categories, found some::: ". $this->gfObj->debug_print($myCache,0));
+		$this->assertEquals(count($myCache), 0, "Expected no categories, found some::: ". ToolBox::debug_print($myCache,0));
 		
 		$categoryName = "TEST";
 		
@@ -133,12 +125,12 @@ class testOfCSWebDbLogger extends testDbAbstract {
 		
 		foreach(array_keys($createRecords) as $class) {
 			$theLogs = $x->get_logs($class);
-			$this->assertEquals(count($createRecords[$class]), count($theLogs), "Failed to find logs that match '". $class ."'... ". cs_global::debug_print($theLogs));
+			$this->assertEquals(count($createRecords[$class]), count($theLogs), "Failed to find logs that match '". $class ."'... ". ToolBox::debug_print($theLogs));
 		}
 		
 //		$data = $x->get_logs(null);
 //		
-//		$this->assertEquals(1, count($data), cs_global::debug_print($data,1));
+//		$this->assertEquals(1, count($data), ToolBox::debug_print($data,1));
 //		
 //		$this->assertEquals(1, count($x->get_logs('test')));
 	}

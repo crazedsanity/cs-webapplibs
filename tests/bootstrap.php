@@ -1,7 +1,9 @@
 <?php
 
-require_once(dirname(__FILE__) .'/../AutoLoader.class.php');
-require_once(dirname(__FILE__) .'/../debugFunctions.php');
+//require_once(dirname(__FILE__) .'/../AutoLoader.class.php');
+//require_once(dirname(__FILE__) .'/../debugFunctions.php');
+
+require_once( __DIR__ .'/../vendor/autoload.php');
 
 // Handle password compatibility (using "ircmaxell/password-compat")
 {
@@ -36,10 +38,6 @@ define('UNITTEST_ACTIVE', 1);
 // set the timezone to avoid spurious errors from PHP
 date_default_timezone_set("America/Chicago");
 
-AutoLoader::registerDirectory(dirname(__FILE__) .'/../');
+//AutoLoader::registerDirectory(dirname(__FILE__) .'/../');
 
 
-
-
-
-error_reporting(E_ALL);

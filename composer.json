@@ -13,10 +13,18 @@
 			"role": "Developer"
 		}
 	],
+	"autoload": {
+		"classmap": ["src", "abstract"]
+	},
 	"require": {
 		"php": ">=5.3.0",
 		"crazedsanity/cs-content": ">= 1.2.20",
-		"ircmaxell/password-compat": ">= 1.0"
+		"ircmaxell/password-compat": "^1.0",
+		"crazedsanity/authtoken": "^0.1",
+		"crazedsanity/authuser": "^0.1",
+		"crazedsanity/lockfile": "^0.1",
+		"crazedsanity/dbsession": "^0.1",
+		"crazedsanity/siteconfig": "^0.2.1"
 	},
 	"minimum-stability": "dev"
 }

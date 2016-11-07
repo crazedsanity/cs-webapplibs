@@ -1,6 +1,6 @@
 <?php
 
-class IdObfuscatorTest extends testDbAbstract {
+class IdObfuscatorTest extends crazedsanity\database\TestDbAbstract {
 	
 	
 	public function __construct() {

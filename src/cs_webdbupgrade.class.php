@@ -62,14 +62,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	private $dbConnected = false;
 	
 	
-	/** List of acceptable suffixes; example "1.0.0-BETA3" -- NOTE: these MUST be in 
-	 * an order that reflects newest -> oldest; "ALPHA happens before BETA, etc. */
-	protected $suffixList = array(
-		'ALPHA', 	//very unstable
-		'BETA', 	//kinda unstable, but probably useable
-		'RC'		//all known bugs fixed, searching for unknown ones
-	);
-	
 	const UPGRADE_VERSION_ONLY = 0;
 	const UPGRADE_SCRIPTED = 1;
 	
@@ -473,10 +465,9 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	public function parse_version_string($versionString) {
+	public static function parse_version_string($versionString) {
 		if(is_null($versionString) || !strlen($versionString)) {
-			cs_debug_backtrace(1);
-			$this->error_handler(__METHOD__ .": invalid version string ($versionString)");
+			self::error_handler(__METHOD__ .": invalid version string ($versionString)");
 		}
 		
 		$suffix = "";
@@ -505,7 +496,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 			$retval['version_suffix'] = $suffix;
 		}
 		else {
-			$this->error_handler(__METHOD__ .": invalid version string format, requires MAJOR.MINOR syntax (". $versionString .")");
+			self::error_handler(__METHOD__ .": invalid version string format, requires MAJOR.MINOR syntax (". $versionString .")");
 		}
 		
 		return($retval);
@@ -766,22 +757,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	public function is_higher_version($version, $checkIfHigher) {
-		try {
-			$retval = parent::is_higher_version($version, $checkIfHigher);
-		}
-		catch(exception $e) {
-			$this->error_handler($e->getMessage());
-		}
-		
-		return($retval);
-		
-	}//end is_higher_version()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
 	/**
 	 * Determines list of upgrades to perform.
 	 * 
@@ -845,38 +820,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
 	
 	//=========================================================================
-	protected function parse_suffix($suffix) {
-		$retval = NULL;
-		if(strlen($suffix)) {
-			//determine what kind it is.
-			foreach($this->suffixList as $type) {
-				if(preg_match('/^'. $type .'/', $suffix)) {
-					$checkThis = preg_replace('/^'. $type .'/', '', $suffix);
-					if(strlen($checkThis) && is_numeric($checkThis)) {
-						//oooh... it's something like "BETA3"
-						$retval = array(
-							'type'		=> $type,
-							'number'	=> $checkThis
-						);
-					}
-					else {
-						$this->error_handler(__METHOD__ .": invalid suffix (". $suffix .")");
-					}
-					break;
-				}
-			}
-		}
-		else {
-			$this->error_handler(__METHOD__ .": invalid suffix (". $suffix .")");
-		}
-		
-		return($retval);
-	}//end parse_suffix()
-	//=========================================================================
-	
-	
-	
-	//=========================================================================
 	public function load_table() {
 
 		$schemaFileLocation = dirname(__FILE__) .'/setup/schema.'. $this->db->get_dbtype() .'.sql';
@@ -935,11 +878,11 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	//=========================================================================
 	public function error_handler($details) {
 		//log the error.
-		if(!is_object($this->logsObj)) {
+		if(!is_object(self::logsObj)) {
 			throw new exception($details);
 		}
-		if($this->internalUpgradeInProgress === false) {
-			$this->do_log($details, 'exception in code');
+		if(self::internalUpgradeInProgress === false) {
+			self::do_log($details, 'exception in code');
 		}
 		
 		//now throw an exception so other code can catch it.

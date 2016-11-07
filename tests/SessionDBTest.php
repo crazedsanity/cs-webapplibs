@@ -1,6 +1,6 @@
 <?php
 
-class testOfCSSessionDB extends testDbAbstract {
+class testOfCSSessionDB extends crazedsanity\database\TestDbAbstract {
 	
 	public function __construct() {
 		parent::__construct();

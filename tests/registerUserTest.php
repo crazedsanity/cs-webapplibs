@@ -1,12 +1,10 @@
 <?php
 
 
-class RegisterUserTest extends testDbAbstract {
+class RegisterUserTest extends crazedsanity\database\TestDbAbstract {
 	
 	//--------------------------------------------------------------------------
 	function __construct() {
-		$this->gfObj = new cs_globalFunctions;
-		$this->gfObj->debugPrintOpt=1;
 		parent::__construct();
 	}//end __construct()
 	//--------------------------------------------------------------------------
@@ -15,9 +13,6 @@ class RegisterUserTest extends testDbAbstract {
 	
 	//--------------------------------------------------------------------------
 	function setUp() {
-		$this->gfObj = new cs_globalFunctions;
-		$this->gfObj->debugPrintOpt=1;
-		
 		$this->reset_db(dirname(__FILE__) .'/../setup/schema.pgsql.sql');
 		parent::setUp();
 	}//end setUp()

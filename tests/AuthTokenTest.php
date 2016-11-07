@@ -4,19 +4,17 @@
  * Created on Jan 25, 2009
  */
 
-class testOfCSAuthToken extends testDbAbstract {
+use crazedsanity\core\ToolBox;
+
+class testOfCSAuthToken extends crazedsanity\database\TestDbAbstract {
 
 	function __construct() {
-		$this->gfObj = new cs_globalFunctions;
-		$this->gfObj->debugPrintOpt = 1;
 		parent::__construct();
 	}
 	
 	
 	
 	function setUp() {
-		$this->gfObj = new cs_globalFunctions;
-		$this->gfObj->debugPrintOpt = 1;
 		parent::setUp();
 		$this->assertTrue($this->reset_db(dirname(__FILE__) . '/../setup/schema.pgsql.sql'), "Failed to reset database");
 	}
@@ -53,7 +51,7 @@ class testOfCSAuthToken extends testDbAbstract {
 
 		foreach ($expectedResult as $k => $v) {
 			$this->assertTrue(isset($actualResult[$k]));
-			$this->assertEquals($v, $actualResult[$k], "Value mismatch for '" . $k . "', ACTUAL::: " . cs_global::debug_print($actualResult, 0));
+			$this->assertEquals($v, $actualResult[$k], "Value mismatch for '" . $k . "', ACTUAL::: " . ToolBox::debug_print($actualResult, 0));
 		}
 	}
 	
@@ -345,7 +343,7 @@ class testOfCSAuthToken extends testDbAbstract {
 		
 		//NOTE: if this fails, the ordering has probably changed.
 		$this->assertEquals(0, $firstData[$firstKeys[1]]['uid']);
-		$this->assertEquals(0, $firstData[$firstKeys[1]]['token_type_id'], cs_global::debug_print($firstData));
+		$this->assertEquals(0, $firstData[$firstKeys[1]]['token_type_id'], ToolBox::debug_print($firstData));
 		
 		$secondData = $x->get_all(1);
 		$secondKeys = array_keys($secondData);

@@ -1,6 +1,6 @@
 <?php
 
-class testOfCSPermission extends testDbAbstract {
+class testOfCSPermission extends crazedsanity\database\TestDbAbstract {
 	public function test_bitwise() {
 		$p = new _perm(); //this ensures the class file has been included
 		

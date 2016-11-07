@@ -3,7 +3,7 @@
  * Created on Aug 19, 2009
  */
 
-abstract class cs_webapplibsAbstract extends cs_version {
+abstract class cs_webapplibsAbstract extends crazedsanity\version\Version {
 	
 	protected $gfObj;
 	static public $version;
@@ -11,9 +11,6 @@ abstract class cs_webapplibsAbstract extends cs_version {
 	//-------------------------------------------------------------------------
     public function __construct($makeGfObj=true) {
 		
-		if($makeGfObj === true) {
-			$this->gfObj = new cs_globalFunctions();
-		}
 		$this->set_version_file_location(dirname(__FILE__) .'/../VERSION');
     }//end __construct()
 	//-------------------------------------------------------------------------

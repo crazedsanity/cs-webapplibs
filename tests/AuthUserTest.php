@@ -1,7 +1,8 @@
 <?php
 
+use crazedsanity\core\ToolBox;
 
-class AuthUserTest extends testDbAbstract {
+class AuthUserTest extends crazedsanity\database\TestDbAbstract {
 	
 	public $userInfo = array(
 		'username'	=> 'test',
@@ -215,7 +216,7 @@ class AuthUserTest extends testDbAbstract {
 		$x = new cs_authUser($this->dbObj);
 		
 		$data = $x->get_user_data('test', $x::STATUS_ENABLED);
-		$this->assertTrue(is_array($data), cs_global::debug_print($data));
+		$this->assertTrue(is_array($data), ToolBox::debug_print($data));
 		
 		$this->assertTrue(isset($data['uid']));
 		$this->assertTrue(isset($data['username']));

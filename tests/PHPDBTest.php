@@ -4,7 +4,7 @@
  */
 
 
-class TestOfCSPHPDB extends testDbAbstract {
+class TestOfCSPHPDB extends crazedsanity\database\TestDbAbstract {
 	
 	
 	//-------------------------------------------------------------------------

@@ -1,13 +1,11 @@
 <?php
 
-class testOfCSWebDbUpgrade extends testDbAbstract {
+class testOfCSWebDbUpgrade extends crazedsanity\database\TestDbAbstract {
 	
 	public $fileToVersion = array();
 	
 	//--------------------------------------------------------------------------
 	function __construct() {
-		$this->gfObj = new cs_globalFunctions;
-		$this->gfObj->debugPrintOpt=1;
 		@unlink(dirname(__FILE__) .'/files/rw/upgrade.lock');
 		parent::__construct();
 		
@@ -23,8 +21,6 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 	
 	//--------------------------------------------------------------------------
 	function setUp() {
-		$this->gfObj = new cs_globalFunctions;
-		$this->gfObj->debugPrintOpt=1;
 		
 		$this->reset_db(dirname(__FILE__) .'/../setup/schema.pgsql.sql');
 		parent::setUp();
@@ -434,7 +430,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 		
 		$this->assertFalse($upgObj->is_upgrade_in_progress());
 		
-//		$this->gfObj->debug_print($lastKey,1);
+//		ToolBox::debug_print($lastKey,1);
 		$upgObj->check_versions(true);
 		$this->assertFalse($upgObj->is_upgrade_in_progress());
 		$this->assertEquals($upgObj->parse_version_string($upgObj->versionFileVersion), $upgObj->get_database_version());
@@ -444,7 +440,7 @@ class testOfCSWebDbUpgrade extends testDbAbstract {
 //		$this->assertEquals(
 //				$upgObj->parse_version_string($lastKey), 
 //				$upgObj->parse_version_string($upgObj->versionFileVersion),
-//				__METHOD__ .": last key: ". $this->gfObj->debug_print($lastKey,0)
+//				__METHOD__ .": last key: ". ToolBox::debug_print($lastKey,0)
 //		);
 	}//end test_upgrade()
 	//--------------------------------------------------------------------------
@@ -514,11 +510,6 @@ class upgradeTester extends cs_webdbupgrade {
 	public function get_upgrade_list() {
 		return(parent::get_upgrade_list());
 	}//end get_upgrade_list()
-	
-	
-	public function parse_suffix($suffix) {
-		return(parent::parse_suffix($suffix));
-	}//end parse_suffix()
 	
 	
 	public function get_full_version_string($versionString) {

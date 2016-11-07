@@ -52,7 +52,7 @@ class LockfileTest extends PHPUnit_Framework_TestCase {
 			$this->assertFalse(file_exists($myFile));
 
 			$lf->create_lockfile($myTestContents);
-			$this->assertEquals($this->dir .'/'. $myFile, $lf->get_lockfile(), cs_global::debug_print($lf,0));
+			$this->assertEquals($this->dir .'/'. $myFile, $lf->get_lockfile(), ToolBox::debug_print($lf,0));
 			$this->assertTrue(file_exists($myFile));
 			$this->assertEquals(file_get_contents($myFile), $myTestContents);
 			$this->assertEquals(file_get_contents($myFile), $lf->read_lockfile());
