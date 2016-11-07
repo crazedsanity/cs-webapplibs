@@ -182,7 +182,6 @@ class testOfCSPermission extends crazedsanity\database\TestDbAbstract {
 
 class _perm extends cs_permission {
 	public function __construct() {
-		$this->gf = new cs_globalFunctions();
 	}
 }
 
