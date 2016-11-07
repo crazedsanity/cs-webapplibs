@@ -1,5 +1,6 @@
 <?php
 
+use crazedsanity\database\Database;
 
 class testOfCSWebDbLogger extends crazedsanity\database\TestDbAbstract {
 	
@@ -138,12 +139,12 @@ class testOfCSWebDbLogger extends crazedsanity\database\TestDbAbstract {
 }
 
 class _logTester extends cs_webdblogger {
-	public function __construct(cs_phpDB $db) {
+	public function __construct(Database $db) {
 		$this->db = $db;
 		$this->gfObj = new cs_globalFunctions();
 	}
 	
-	public function init(cs_phpDB $db, $logCategory=null, $checkForUpgrades=true) {
+	public function init(Database $db, $logCategory=null, $checkForUpgrades=true) {
 		parent::__construct($db, $logCategory, $checkForUpgrades);
 	}
 	

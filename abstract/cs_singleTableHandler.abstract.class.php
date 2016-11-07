@@ -3,6 +3,10 @@
  * Created on June 24, 2010
  */
 
+use crazedsanity\database\Database;
+use crazedsanity\core\ToolBox;
+
+
 abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	
 	protected $gfObj;
@@ -22,7 +26,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 	 * @param $pkeyField		(str) Name of the primary key field, for performing updates & retrieving specific records.
 	 * @param $cleanStringArr	(array) Array of {fieldName}=>{dataType} for allowing updates & creating records.
 	 */
-    public function __construct(cs_phpDB $dbObj, $tableName, $seqName, $pkeyField, array $cleanStringArr) {
+    public function __construct(Database $dbObj, $tableName, $seqName, $pkeyField, array $cleanStringArr) {
 		$this->set_version_file_location(dirname(__FILE__) . '/../VERSION');
 		parent::__construct(true);
 		
@@ -324,7 +328,7 @@ abstract class cs_singleTableHandlerAbstract extends cs_webapplibsAbstract {
 			}
 		}
 		else {
-			throw new exception(__METHOD__ .":: failed to update record (". $recId ."), invalid recordId (". $recId ."), or no data in array::: ". $this->gfObj->debug_var_dump($updates,0));
+			throw new exception(__METHOD__ .":: failed to update record (". $recId ."), invalid recordId (". $recId ."), or no data in array::: ". ToolBox::debug_var_dump($updates,0));
 		}
 		return($retval);
 	}//end update_record()

@@ -4,6 +4,7 @@
  * 
  */
 
+use crazedsanity\database\Database;
 
 class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
@@ -68,7 +69,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	protected $lockFile='upgrade.lock';
 	
 	//=========================================================================
-	public function __construct($versionFileLocation, $upgradeConfigFile, cs_phpDB $db, $rwDir=null) {
+	public function __construct($versionFileLocation, $upgradeConfigFile, Database $db, $rwDir=null) {
 		
 		$this->internalVersion = new cs_version();
 		$this->internalVersion->set_version_file_location(dirname(__FILE__) .'/VERSION');

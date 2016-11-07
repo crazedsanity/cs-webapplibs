@@ -1,5 +1,7 @@
 <?php
 
+use crazedsanity\database\Database;
+use crazedsanity\core\ToolBox;
 
 class cs_registerUser {
 	
@@ -12,13 +14,11 @@ class cs_registerUser {
 	public $debug=array();
 	
 	//-------------------------------------------------------------------------
-	public function __construct(cs_phpDB $db) {
+	public function __construct(Database $db) {
 		
 		$this->dbObj = $db;
 		
 		$this->logger = new cs_webdblogger($this->dbObj, 'Registration');
-		
-		$this->gfObj = new cs_globalFunctions;
 	}//end __construct()
 	//-------------------------------------------------------------------------
 	
@@ -35,7 +35,7 @@ class cs_registerUser {
 				$retval = true;
 			}
 			$this->logger->log_by_class(__METHOD__ .": username=[". $username ."], result=(". 
-					$this->gfObj->interpret_bool($retval, array(0,1)) .")", 'precheck');
+					ToolBox::interpret_bool($retval, array(0,1)) .")", 'precheck');
 		}
 		catch(Exception $e) {
 			$details = __METHOD__ .": determine username availability, DETAILS::: ". $e->getMessage();
@@ -78,7 +78,7 @@ class cs_registerUser {
 						$passFailText = "ok";
 					}
 					else {
-						$retval['info'] = $this->gfObj->create_list($retval['info'], $text, " and ");
+						$retval['info'] = ToolBox::create_list($retval['info'], $text, " and ");
 					}
 				}
 				if($passes == count($regexList)) {
@@ -93,7 +93,7 @@ class cs_registerUser {
 			}
 		}
 		$this->logger->log_by_class(__METHOD__ .": result=(". 
-				$this->gfObj->interpret_bool($retval['result'], array(0,1)) ."), "
+				ToolBox::interpret_bool($retval['result'], array(0,1)) ."), "
 						."passcheck=(". $retval['passcheck'] .")", 'precheck');
 		
 		return($retval);
@@ -106,7 +106,7 @@ class cs_registerUser {
 	public function check_email_validity($emailAddr, $giveReasonOnFail=false) {
 		$retval = false;
 		if(strlen($emailAddr)) {
-			$cleaned = $this->gfObj->cleanString($emailAddr, 'email');
+			$cleaned = ToolBox::cleanString($emailAddr, 'email');
 			//the length assumes an email with the smallest form being 'jd@xy.com'
 			$emailRegex = '/^[A-Z0-9\._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i';
 			if($emailAddr == $cleaned && preg_match($emailRegex, $emailAddr)) {
@@ -228,7 +228,7 @@ class cs_registerUser {
 		$result = $this->send_single_email($to, $subj, $body);
 		$this->debug[__METHOD__] = $result;
 		
-		$this->logger->log_by_class($this->gfObj->debug_print($this->debug,0), 'debug');
+		$this->logger->log_by_class(ToolBox::debug_print($this->debug,0), 'debug');
 		
 		return($result);
 	}//end send_activation_email()

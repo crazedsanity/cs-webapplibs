@@ -15,6 +15,7 @@
  SELECT l.log_id as id, l.creation, l.event_id as lid, le.description AS event, l.details FROM cswal_log_table AS l INNER JOIN cswal_event_table AS le USING (event_id) ORDER BY log_id DESC LIMIT 25;
  */
 
+use crazedsanity\database\Database;
 
 class cs_webdblogger extends cs_webapplibsAbstract {
 	/** Database handle */
@@ -78,7 +79,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 	/**
 	 * The constructor.
 	 */
-	public function __construct(cs_phpDB $db, $logCategory=null, $checkForUpgrades=true) {
+	public function __construct(Database $db, $logCategory=null, $checkForUpgrades=true) {
 		//assign the database object.
 		if(is_object($db)) {
 			$this->db = $db;
@@ -88,11 +89,6 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 		}
 		
 		$this->set_version_file_location(dirname(__FILE__) . '/VERSION');
-		
-		$mustBeHigherThan = '1.5.0';
-		if(!$this->is_higher_version($mustBeHigherThan, $this->db->get_version())) {
-			throw new exception(__METHOD__ .": requires cs_phpDB of higher than v". $mustBeHigherThan,1);
-		}
 		
 		parent::__construct(true);
 		

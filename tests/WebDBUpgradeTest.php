@@ -1,5 +1,7 @@
 <?php
 
+use crazedsanity\database\Database;
+
 class testOfCSWebDbUpgrade extends crazedsanity\database\TestDbAbstract {
 	
 	public $fileToVersion = array();
@@ -459,7 +461,7 @@ class upgradeTester extends cs_webdbupgrade {
 	}//end __construct()
 	
 	
-	public function doSetup($versionFileLocation, $upgradeConfigFile, cs_phpDB $db = null, $rwDir=null, $lockFile = 'unittest_upgrade.lock') {
+	public function doSetup($versionFileLocation, $upgradeConfigFile, Database $db = null, $rwDir=null, $lockFile = 'unittest_upgrade.lock') {
 		if(is_null($rwDir) || !strlen($rwDir)) {
 			$rwDir = dirname(__FILE__) .'/files/rw';
 		}
