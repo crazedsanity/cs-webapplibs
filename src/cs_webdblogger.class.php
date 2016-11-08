@@ -16,6 +16,7 @@
  */
 
 use crazedsanity\database\Database;
+use crazedsanity\core\ToolBox;
 
 class cs_webdblogger extends cs_webapplibsAbstract {
 	/** Database handle */
@@ -175,7 +176,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 				$this->logClassCache = array();
 			}
 			else {
-				throw new exception(__METHOD__ .": unknown data returned: ". $this->gfObj->debug_var_dump($data,0));
+				throw new exception(__METHOD__ .": unknown data returned: ". ToolBox::debug_var_dump($data,0));
 			}
 		}
 		catch(exception $e) {
@@ -196,7 +197,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 				$this->attributeCache = array();
 			}
 			else {
-				throw new exception(__METHOD__ .": unknown data returned: ". $this->gfObj->debug_var_dump($data,0));
+				throw new exception(__METHOD__ .": unknown data returned: ". ToolBox::debug_var_dump($data,0));
 			}
 		}
 		catch(exception $e) {
@@ -256,7 +257,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 				$retval = $data['event_id'];
 			}
 			else {
-				throw new exception("invalid data returned::: ". $this->gfObj->debug_var_dump($data,0));
+				throw new exception("invalid data returned::: ". ToolBox::debug_var_dump($data,0));
 			}
 		}
 		catch(exception $e) {
@@ -314,7 +315,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			
 			//okay, setup an array of all the data we need.
 			$params = array (
-				'eventId'	=> $this->gfObj->cleanString($logEventId, 'numeric'),
+				'eventId'	=> ToolBox::cleanString($logEventId, 'numeric'),
 				'uid'			=> $myUid,
 				'affectedUid'	=> $uid,
 				'details'		=> $details
@@ -336,7 +337,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 					}
 				}
 				else {
-					throw new exception(__METHOD__ .": failed to insert id or invalid return (". $this->gfObj->debug_var_dump($newId,0) .")");
+					throw new exception(__METHOD__ .": failed to insert id or invalid return (". ToolBox::debug_var_dump($newId,0) .")");
 				}
 			}
 			catch(exception $e) {
@@ -410,7 +411,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 					$retval = $newId;
 				}
 				else {
-					throw new exception(__METHOD__ .": unable to insert id or bad return::: ". $this->gfObj->debug_var_dump($newId,0));
+					throw new exception(__METHOD__ .": unable to insert id or bad return::: ". ToolBox::debug_var_dump($newId,0));
 				}
 			}
 			catch(exception $e) {
@@ -479,7 +480,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			}
 			else {
 				throw new exception(__METHOD__ .": invalid data returned for " .
-						"category::: ". $this->gfObj->debug_var_dump($newId,0));
+						"category::: ". ToolBox::debug_var_dump($newId,0));
 			}
 		}
 		catch(exception $e) {
@@ -511,7 +512,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			}
 			else {
 				throw new exception(__METHOD__ .": failed to insert class or invalid " .
-						"id::: ". $this->gfObj->debug_var_dump($newId,0));
+						"id::: ". ToolBox::debug_var_dump($newId,0));
 			}
 		}
 		catch(exception $e) {
@@ -542,7 +543,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 				}
 				else {
 					throw new exception(__METHOD__ .": failed to retrieve class " .
-							"name, or invalid return data::: ". $this->gfObj->debug_print($data,0));
+							"name, or invalid return data::: ". ToolBox::debug_print($data,0));
 				}
 			}
 			catch(exception $e) {
@@ -577,7 +578,7 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 				}
 				else {
 					throw new exception(__METHOD__ .": failed to retrieve " .
-							"category name::: ". $this->gfObj->debug_var_dump($data,0));
+							"category name::: ". ToolBox::debug_var_dump($data,0));
 				}
 			}
 			catch(exception $e) {
