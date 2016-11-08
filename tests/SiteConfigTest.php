@@ -1,5 +1,6 @@
 <?php
 
+use crazedsanity\core\ToolBox;
 
 class SiteConfigTest extends PHPUnit_Framework_TestCase {
 	
@@ -40,12 +41,14 @@ class SiteConfigTest extends PHPUnit_Framework_TestCase {
 		$this->assertTrue(is_object($x));
 		$this->assertTrue(is_array($x->config));
 		
+		foreach($x->get_valid_sections() as $section) {
+			$x->make_section_constants($section);
+			$x->make_section_globals($section);
+		}
 		
 		$this->assertTrue(is_array($GLOBALS));
 		
-		$myFs = new cs_fileSystem(dirname(__FILE__));
-		
-		$this->assertEquals($myFs->resolve_path_with_dots(dirname($configFile) .'/..'), $GLOBALS['SITE_ROOT']);
+		$this->assertEquals(ToolBox::resolve_path_with_dots(dirname($configFile) .'/..'), $GLOBALS['SITE_ROOT']);
 		$this->assertEquals($GLOBALS['SITE_ROOT'], $GLOBALS['SITEROOT']);
 		
 		//BUG!!!! see https://github.com/crazedsanity/cs-webapplibs/issues/26 
@@ -53,10 +56,10 @@ class SiteConfigTest extends PHPUnit_Framework_TestCase {
 		
 		
 		$this->assertEquals('CS_SESSID', constant('SESSION_NAME'));
-		$this->assertTrue(!isset($GLOBALS['SESSION_NAME']));
+		$this->assertTrue(!empty($GLOBALS['SESSION_NAME']));
 		
 		$this->assertEquals(constant('session_db_host'), constant('DB_PG_HOST'));
-		$this->assertEquals(constant('cs_webdbupgrade-RWDIR'), constant('CS_RWDIR'));
+		$this->assertEquals(constant('cs_webupgradedb-RWDIR'), constant('CS_RWDIR'));
 		
 		$this->assertFalse(isset($GLOBALS['API_AUTHTOKEN']));
 		$this->assertFalse(defined('API_AUTHTOKEN'));

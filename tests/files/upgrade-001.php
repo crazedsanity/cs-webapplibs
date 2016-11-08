@@ -1,12 +1,14 @@
 <?php
 
+use crazedsanity\core\FileSystem;
+
 /**
  * @codeCoverageIgnore
  */
 class upgrade_001 {
 	
 	public function __construct() {
-		$this->fsObj = new cs_fileSystem(dirname(__FILE__) .'/rw');
+		$this->fsObj = new FileSystem(dirname(__FILE__) .'/rw');
 	}
 	
 	
