@@ -4,8 +4,8 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "a703642a76a4e595609778e6302a3b11",
-    "content-hash": "71c05d67f26cdd435a771f6c82785b25",
+    "hash": "83282edb9a12efaded6b0b8c5ee68bba",
+    "content-hash": "cb7841dae4923291e740531eec228533",
     "packages": [
         {
             "name": "crazedsanity/authtoken",
@@ -537,6 +537,53 @@
                 "php"
             ],
             "time": "2016-06-30 21:52:15"
+        },
+        {
+            "name": "crazedsanity/webdbupgrade",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/crazedsanity/webdbupgrade.git",
+                "reference": "67871a08ff1d5afdb3e9a5c299bc64644349820c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/crazedsanity/webdbupgrade/zipball/67871a08ff1d5afdb3e9a5c299bc64644349820c",
+                "reference": "67871a08ff1d5afdb3e9a5c299bc64644349820c",
+                "shasum": ""
+            },
+            "require": {
+                "crazedsanity/database": "^0.4",
+                "crazedsanity/lockfile": "^0.1",
+                "php": ">=5.3.0"
+            },
+            "type": "library",
+            "autoload": {
+                "classmap": [
+                    "src"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Dan Falconer",
+                    "email": "github@crazedsanity.com",
+                    "homepage": "http://www.crazedsanity.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Library for handling scripted upgrades to a web application",
+            "homepage": "https://github.com/crazedsanity/webdbupgrade",
+            "keywords": [
+                "database",
+                "php",
+                "upgrades",
+                "web"
+            ],
+            "time": "2016-11-08 20:42:43"
         },
         {
             "name": "ircmaxell/password-compat",

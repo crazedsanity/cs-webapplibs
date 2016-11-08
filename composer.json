@@ -24,7 +24,8 @@
 		"crazedsanity/authuser": "^0.1",
 		"crazedsanity/lockfile": "^0.1",
 		"crazedsanity/dbsession": "^0.1",
-		"crazedsanity/siteconfig": "^0.2.1"
+		"crazedsanity/siteconfig": "^0.2.1",
+		"crazedsanity/webdbupgrade": "^0.1"
 	},
 	"minimum-stability": "dev"
 }
