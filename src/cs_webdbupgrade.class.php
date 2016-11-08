@@ -5,6 +5,8 @@
  */
 
 use crazedsanity\database\Database;
+use crazedsanity\version\Version;
+use crazedsanity\core\ToolBox;
 
 class cs_webdbupgrade extends cs_webapplibsAbstract {
 	
@@ -71,11 +73,10 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 	//=========================================================================
 	public function __construct($versionFileLocation, $upgradeConfigFile, Database $db, $rwDir=null) {
 		
-		$this->internalVersion = new cs_version();
-		$this->internalVersion->set_version_file_location(dirname(__FILE__) .'/VERSION');
+		$this->internalVersion = new Version(__DIR__ .'/../VERSION');
 		$this->internalProjectName = $this->internalVersion->get_project();
 		
-		$this->set_version_file_location(dirname(__FILE__) .'/VERSION');
+		$this->set_version_file_location(__DIR__ .'/../VERSION');
 		$this->internalProjectName = $this->get_project();
 		
 		if(isset(self::$calls)) {
@@ -86,7 +87,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		}
 		
 		if(self::$calls > 100) {
-//			cs_debug_backtrace(1);
 			throw new LogicException(__METHOD__ .": called too many times (". self::$calls .")... ");
 		}
 		
@@ -95,7 +95,6 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 		parent::__construct(true);
 		
 		if(!file_exists($upgradeConfigFile) || !is_readable($upgradeConfigFile)) {
-			cs_debug_backtrace(1);
 			throw new exception(__METHOD__ .": required upgrade config file location (". $upgradeConfigFile .") not set or unreadable");
 		}
 		else {
@@ -179,7 +178,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 
 
 			//do stuff here...
-			$this->set_version_file_location(dirname(__FILE__) .'/VERSION');
+			$this->set_version_file_location(__DIR__ .'/../VERSION');
 			$this->read_version_file();
 
 			//if there is an error, then... uh... yeah.
@@ -409,7 +408,7 @@ class cs_webdbupgrade extends cs_webapplibsAbstract {
 							$this->newVersion = $this->databaseVersion;
 						}
 						else {
-							$this->do_log(__METHOD__ .": upgradeList::: ". $this->gfObj->debug_print($upgradeList,0), 'debug');
+							$this->do_log(__METHOD__ .": upgradeList::: ". ToolBox::debug_print($upgradeList,0), 'debug');
 							$this->error_handler(__METHOD__ .": finished upgrade, but version wasn't updated (expecting '". $this->versionFileVersion ."', got '". $this->databaseVersion ."')!!!");
 						}
 					}

@@ -88,14 +88,14 @@ class cs_webdblogger extends cs_webapplibsAbstract {
 			throw new exception(__METHOD__ .":: invalid database object");
 		}
 		
-		$this->set_version_file_location(dirname(__FILE__) . '/VERSION');
+		$this->set_version_file_location(__DIR__ . '/../VERSION');
 		
 		parent::__construct(true);
 		
 		//see if there's an upgrade to perform...
 		if($checkForUpgrades === true) {
 			$this->suspendLogging = true;
-			$upgObj = new cs_webdbupgrade(dirname(__FILE__) . '/VERSION', dirname(__FILE__) .'/upgrades/upgrade.ini', $db);
+			$upgObj = new cs_webdbupgrade(__DIR__ . '/../VERSION', __DIR__ .'/../upgrades/upgrade.ini', $db);
 			$upgObj->check_versions(true);
 			$this->suspendLogging = false;
 			$this->handle_suspended_logs();

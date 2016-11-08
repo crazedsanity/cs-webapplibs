@@ -1,5 +1,7 @@
 <?php
 
+use crazedsanity\database\Database;
+
 class testOfCSSessionDB extends crazedsanity\database\TestDbAbstract {
 	
 	public function __construct() {
@@ -102,7 +104,7 @@ class sessionTester extends cs_sessionDB {
 		$this->$name = $value;
 	}
 	
-	public function __construct(cs_phpdb $db) {
+	public function __construct(Database $db) {
 		$this->db = $db;
 		parent::__construct(false, $db);
 	}

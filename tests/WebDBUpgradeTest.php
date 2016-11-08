@@ -432,7 +432,6 @@ class testOfCSWebDbUpgrade extends crazedsanity\database\TestDbAbstract {
 		
 		$this->assertFalse($upgObj->is_upgrade_in_progress());
 		
-//		ToolBox::debug_print($lastKey,1);
 		$upgObj->check_versions(true);
 		$this->assertFalse($upgObj->is_upgrade_in_progress());
 		$this->assertEquals($upgObj->parse_version_string($upgObj->versionFileVersion), $upgObj->get_database_version());
