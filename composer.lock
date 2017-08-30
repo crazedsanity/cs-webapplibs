@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "83282edb9a12efaded6b0b8c5ee68bba",
+    "hash": "a3c1b5eaf076d80f3ed89b241f75ae79",
     "content-hash": "cb7841dae4923291e740531eec228533",
     "packages": [
         {
@@ -85,16 +85,16 @@
         },
         {
             "name": "crazedsanity/core",
-            "version": "v0.3.0",
+            "version": "v0.3.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/crazedsanity/core.git",
-                "reference": "b241ca855633fb39f80e1a6ade2cd7d61e56476a"
+                "reference": "49560503429c9635164e13f513b2d05e3d461fd9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/crazedsanity/core/zipball/b241ca855633fb39f80e1a6ade2cd7d61e56476a",
-                "reference": "b241ca855633fb39f80e1a6ade2cd7d61e56476a",
+                "url": "https://api.github.com/repos/crazedsanity/core/zipball/49560503429c9635164e13f513b2d05e3d461fd9",
+                "reference": "49560503429c9635164e13f513b2d05e3d461fd9",
                 "shasum": ""
             },
             "require": {
@@ -126,7 +126,7 @@
                 "oaoo",
                 "php"
             ],
-            "time": "2016-08-13 00:29:30"
+            "time": "2017-08-15 16:41:05"
         },
         {
             "name": "crazedsanity/cs-content",
@@ -181,21 +181,24 @@
         },
         {
             "name": "crazedsanity/database",
-            "version": "v0.4.4",
+            "version": "v0.4.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/crazedsanity/database.git",
-                "reference": "a0e8eb90041b0352a3709f89fe22d4f598502e30"
+                "reference": "928ed69942dc1fb925bfda12382e4feb54a57572"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/crazedsanity/database/zipball/a0e8eb90041b0352a3709f89fe22d4f598502e30",
-                "reference": "a0e8eb90041b0352a3709f89fe22d4f598502e30",
+                "url": "https://api.github.com/repos/crazedsanity/database/zipball/928ed69942dc1fb925bfda12382e4feb54a57572",
+                "reference": "928ed69942dc1fb925bfda12382e4feb54a57572",
                 "shasum": ""
             },
             "require": {
                 "crazedsanity/core": "~0.3",
                 "php": ">=5.3.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^4.6 || ^5.0"
             },
             "type": "library",
             "autoload": {
@@ -227,26 +230,28 @@
                 "postgres",
                 "sqlite"
             ],
-            "time": "2016-11-07 00:26:09"
+            "time": "2017-05-02 18:51:41"
         },
         {
             "name": "crazedsanity/dbsession",
-            "version": "v0.1.2",
+            "version": "v0.1.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/crazedsanity/dbsession.git",
-                "reference": "68f250312ca4b52e750eb3470ca752400da0b735"
+                "reference": "94d4c383821b78fb1dcd9d41400f1a73faa3c50d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/crazedsanity/dbsession/zipball/68f250312ca4b52e750eb3470ca752400da0b735",
-                "reference": "68f250312ca4b52e750eb3470ca752400da0b735",
+                "url": "https://api.github.com/repos/crazedsanity/dbsession/zipball/94d4c383821b78fb1dcd9d41400f1a73faa3c50d",
+                "reference": "94d4c383821b78fb1dcd9d41400f1a73faa3c50d",
                 "shasum": ""
             },
             "require": {
-                "crazedsanity/database": "~0.3",
-                "crazedsanity/session": "~0.1",
-                "php": ">=5.3.0"
+                "crazedsanity/database": "~0.4",
+                "crazedsanity/session": "~0.1"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^4.6 || ^5.0"
             },
             "type": "library",
             "autoload": {
@@ -275,7 +280,7 @@
                 "php",
                 "session"
             ],
-            "time": "2015-12-16 02:31:55"
+            "time": "2017-08-30 17:02:47"
         },
         {
             "name": "crazedsanity/filesystem",
@@ -370,20 +375,20 @@
         },
         {
             "name": "crazedsanity/session",
-            "version": "v0.1.0",
+            "version": "v0.1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/crazedsanity/session.git",
-                "reference": "2454372e99d4b3ebb98cc3ff7608634f2ef764cc"
+                "reference": "0be33931480b6c1ad9f89cc9f1475ba5841e00dc"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/crazedsanity/session/zipball/2454372e99d4b3ebb98cc3ff7608634f2ef764cc",
-                "reference": "2454372e99d4b3ebb98cc3ff7608634f2ef764cc",
+                "url": "https://api.github.com/repos/crazedsanity/session/zipball/0be33931480b6c1ad9f89cc9f1475ba5841e00dc",
+                "reference": "0be33931480b6c1ad9f89cc9f1475ba5841e00dc",
                 "shasum": ""
             },
-            "require": {
-                "php": ">=5.3.0"
+            "require-dev": {
+                "phpunit/phpunit": "^4.6 || ^5.0"
             },
             "type": "library",
             "autoload": {
@@ -410,7 +415,7 @@
                 "oaoo",
                 "php"
             ],
-            "time": "2015-05-20 03:56:31"
+            "time": "2017-08-30 16:45:04"
         },
         {
             "name": "crazedsanity/siteconfig",
@@ -450,16 +455,16 @@
         },
         {
             "name": "crazedsanity/template",
-            "version": "v0.4.5",
+            "version": "v0.4.8",
             "source": {
                 "type": "git",
                 "url": "https://github.com/crazedsanity/template.git",
-                "reference": "e27b83fdc4e05516deed7b584f791bdfac55e125"
+                "reference": "4e0c090f19456753692293b944e6d6f3f0839165"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/crazedsanity/template/zipball/e27b83fdc4e05516deed7b584f791bdfac55e125",
-                "reference": "e27b83fdc4e05516deed7b584f791bdfac55e125",
+                "url": "https://api.github.com/repos/crazedsanity/template/zipball/4e0c090f19456753692293b944e6d6f3f0839165",
+                "reference": "4e0c090f19456753692293b944e6d6f3f0839165",
                 "shasum": ""
             },
             "require": {
@@ -492,24 +497,24 @@
                 "php",
                 "template"
             ],
-            "time": "2016-10-07 15:16:16"
+            "time": "2017-08-15 16:29:11"
         },
         {
             "name": "crazedsanity/version",
-            "version": "v0.2.0",
+            "version": "v0.2.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/crazedsanity/version.git",
-                "reference": "b1d287c8908fc6d92563cc4d5bc9077fce9f70cf"
+                "reference": "5ea87a726f60ba57045381995540bcb1b189e74e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/crazedsanity/version/zipball/b1d287c8908fc6d92563cc4d5bc9077fce9f70cf",
-                "reference": "b1d287c8908fc6d92563cc4d5bc9077fce9f70cf",
+                "url": "https://api.github.com/repos/crazedsanity/version/zipball/5ea87a726f60ba57045381995540bcb1b189e74e",
+                "reference": "5ea87a726f60ba57045381995540bcb1b189e74e",
                 "shasum": ""
             },
-            "require": {
-                "php": ">=5.3.0"
+            "require-dev": {
+                "phpunit/phpunit": "^4.6 || ^5.0"
             },
             "type": "library",
             "autoload": {
@@ -536,7 +541,7 @@
                 "oaoo",
                 "php"
             ],
-            "time": "2016-06-30 21:52:15"
+            "time": "2017-08-29 19:40:27"
         },
         {
             "name": "crazedsanity/webdbupgrade",

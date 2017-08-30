@@ -1,7 +1,5 @@
 <?php
 
-//require_once(dirname(__FILE__) .'/../AutoLoader.class.php');
-//require_once(dirname(__FILE__) .'/../debugFunctions.php');
 
 require_once( __DIR__ .'/../vendor/autoload.php');
 
@@ -37,7 +35,5 @@ define('UNITTEST_ACTIVE', 1);
 
 // set the timezone to avoid spurious errors from PHP
 date_default_timezone_set("America/Chicago");
-
-//AutoLoader::registerDirectory(dirname(__FILE__) .'/../');
 
 
